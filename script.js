@@ -648,37 +648,58 @@ async function loadHistoryUI() {
     historyList.innerHTML = list.length
       ? list
           .map((h) => {
-            const p = h?.prize || "-";
-            const w = h?.winner?.display || "-";
-            const u = h?.winner?.username
-              ? String(h.winner.username).replace("@", "")
-              : "";
-            const id = h?.winner?.id || "";
-            const at = h?.at ? new Date(h.at).toLocaleString() : "";
+  // ✅ Support multiple server shapes (winner object OR flat fields)
+  const winnerObj = h?.winner  h?.member  h?.user || {};
 
-            let btn = "";
-if (u) {
-  btn = `<button class="btn mini js-telegram"
-            data-user="${esc(String(u))}">
-            Telegram
-         </button>`;
-} else {
-  btn = `<button class="btn mini js-notice"
-            data-id="${esc(String(id))}"
-            data-name="${esc(String(w))}">
-            Notice
-         </button>`;
-}
+  const p =
+    h?.prize ??
+    h?.prize_name ??
+    h?.prizeName ??
+    h?.item ??
+    "-";
 
-            return `<div style="padding:10px 0; border-bottom:1px solid rgba(16,19,24,0.10)">
-            <div><b>${esc(p)}</b> — ${esc(w)} ${btn}</div>
-            <div style="font-size:12px; color:rgba(16,19,24,0.60)">${esc(
-              at
-            )}</div>
-          </div>`;
-          })
-          .join("")
-      : `<div class="small">No winners yet</div>`;
+  const w =
+    winnerObj?.display ??
+    winnerObj?.name ??
+    h?.winner_display ??
+    h?.winner_name ??
+    h?.display ??
+    h?.name ??
+    "-";
+
+  const usernameRaw =
+    winnerObj?.username ??
+    h?.winner_username ??
+    h?.username ??
+    "";
+
+  const u = String(usernameRaw || "").replace("@", "").trim();
+
+  const id =
+    winnerObj?.id ??
+    h?.winner_id ??
+    h?.user_id ??
+    h?.id ??
+    "";
+
+  const at = h?.at ? new Date(h.at).toLocaleString() : "";
+
+  let btn = "";
+  if (u) {
+    btn = <button class="btn mini js-telegram" data-user="${esc(u)}">Telegram</button>;
+  } else {
+    btn = `<button class="btn mini js-notice"
+              data-id="${esc(String(id))}"
+              data-name="${esc(String(w))}">
+              Notice
+            </button>`;
+  }
+
+  return `<div style="padding:10px 0; border-bottom:1px solid rgba(16,19,24,0.10)">
+    <div><b>${esc(String(p))}</b> — ${esc(String(w))} ${btn}</div>
+    <div style="font-size:12px; color:rgba(16,19,24,0.60)">${esc(String(at))}</div>
+  </div>`;
+})
   } catch (e) {
     showHistoryPanel();
     historyList.innerHTML = `<div class="small">Error: ${esc(
