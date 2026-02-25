@@ -649,8 +649,7 @@ async function loadHistoryUI() {
       ? list
           .map((h) => {
   // ✅ Support multiple server shapes (winner object OR flat fields)
-  const winnerObj = h?.winner  h?.member  h?.user || {};
-
+  const winnerObj = h?.winner ?? h?.member ?? h?.user ?? {};
   const p =
     h?.prize ??
     h?.prize_name ??
