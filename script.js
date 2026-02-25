@@ -711,7 +711,40 @@ async function loadHistoryUI() {
 membersBtn.addEventListener("click", loadMembersUI);
 historyBtn.addEventListener("click", loadHistoryUI);
 refreshMembersInSettingsBtn.addEventListener("click", loadMembersInSettings);
+// ✅ Winner History buttons (Telegram / Notice) - Event Delegation
+historyList.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
 
+  // Telegram button
+  if (btn.classList.contains("js-telegram")) {
+    const user = (btn.dataset.user || "").replace("@", "").trim();
+    if (!user) return;
+    window.open(`https://t.me/${user}`, "_blank");
+    return;
+  }
+
+  // Notice button
+  if (btn.classList.contains("js-notice")) {
+    const userId = btn.dataset.id;
+    const name = btn.dataset.name || "-";
+    if (!userId) return;
+
+    const text = `🎉 Lucky77 Notice
+
+${name}
+
+Winner ဖြစ်ပါက ဒီ DM မှာ ဆက်သွယ်ပါမယ် ✅`;
+
+    try {
+      const r = await apiPost("/notice", { user_id: userId, text });
+      if (r?.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
+      else alert("⚠️ DM မပို့နိုင်သေးပါ");
+    } catch (err) {
+      alert("Notice error: " + (err.message || err));
+    }
+  }
+});
 /* ===========================
    Restart Spin
 =========================== */
