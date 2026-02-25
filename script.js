@@ -684,20 +684,22 @@ async function loadHistoryUI() {
   const at = h?.at ? new Date(h.at).toLocaleString() : "";
 
   let btn = "";
-  if (u) {
-    btn = <button class="btn mini js-telegram" data-user="${esc(u)}">Telegram</button>;
-  } else {
-    btn = `<button class="btn mini js-notice"
-              data-id="${esc(String(id))}"
-              data-name="${esc(String(w))}">
-              Notice
-            </button>`;
-  }
+if (u) {
+  btn = <button class="btn mini js-telegram" data-user="${esc(u)}">Telegram</button>;
+} else {
+  btn = `<button class="btn mini js-notice"
+    data-id="${esc(String(id))}"
+    data-name="${esc(String(w))}">
+    Notice
+  </button>`;
+}
 
-  return `<div style="padding:10px 0; border-bottom:1px solid rgba(16,19,24,0.10)">
+return `
+  <div style="padding:10px 0; border-bottom:1px solid rgba(16,19,24,0.10)">
     <div><b>${esc(String(p))}</b> — ${esc(String(w))} ${btn}</div>
     <div style="font-size:12px; color:rgba(16,19,24,0.60)">${esc(String(at))}</div>
-  </div>`;
+  </div>
+`;
 })
   } catch (e) {
     showHistoryPanel();
