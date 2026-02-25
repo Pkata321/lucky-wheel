@@ -950,6 +950,24 @@ function init() {
 }
 
 init();
+document.addEventListener("click", (e) => {
+  const t = e.target;
+
+  // Telegram button (History)
+  if (t.classList.contains("js-telegram")) {
+    const u = t.getAttribute("data-user") || "";
+    if (u) {
+      window.open(`https://t.me/${u.replace("@", "")}`, "_blank");
+    }
+  }
+
+  // Notice button (History)
+  if (t.classList.contains("js-notice")) {
+    const id = t.getAttribute("data-id") || "";
+    const name = t.getAttribute("data-name") || "-";
+    window.__notice(id, name);
+  }
+});
 
 /* ===========================
    Utils
