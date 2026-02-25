@@ -88,7 +88,6 @@ const defaultSettings = {
   wheelAccent: "#d6b25e",
   wheelColorsText: "#ffffff\n#f1f5ff\n#fff4d6\n#e9eefc",
 
-  // builder prizes
   prizes: [
     { name: "10000Ks", times: 4 },
     { name: "5000Ks", times: 2 },
@@ -97,7 +96,6 @@ const defaultSettings = {
     { name: "1000Ks", times: 10 }
   ],
 
-  // images persisted as dataURL
   pageBgDataUrl: "",
   wheelBgDataUrl: "",
   topBannerDataUrl: "",
@@ -125,7 +123,6 @@ function applyThemeUI(uiColor, wheelAccent) {
   document.documentElement.style.setProperty("--ui", uiColor);
   document.documentElement.style.setProperty("--bg", uiColor);
   document.documentElement.style.setProperty("--gold", wheelAccent);
-  // keep text readable
   document.documentElement.style.setProperty("--text", "#101318");
 }
 
@@ -196,7 +193,7 @@ musicBtn.addEventListener("click", async () => {
   updateMusicBtn();
 });
 
-// gambling-ish spin sound (WebAudio ticks)
+// tick sound (WebAudio)
 let audioCtx = null;
 function tickSound(freq = 900, dur = 0.02, gain = 0.06) {
   try {
@@ -310,7 +307,6 @@ function renderPrizeBuilder(prizesArr) {
     prizeBuilder.appendChild(row);
   });
 
-  // Add row button
   const addBtn = document.createElement("button");
   addBtn.className = "btn";
   addBtn.textContent = "+ Add Prize";
@@ -322,7 +318,6 @@ function renderPrizeBuilder(prizesArr) {
   });
   prizeBuilder.appendChild(addBtn);
 
-  // events
   prizeBuilder.querySelectorAll("button[data-act]").forEach((b) => {
     b.addEventListener("click", () => {
       const i = Number(b.dataset.i);
@@ -382,7 +377,6 @@ function drawWheel() {
 
   const slice = (Math.PI * 2) / wheelPrizes.length;
 
-  // outer stroke
   ctx.beginPath();
   ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
   ctx.strokeStyle = "rgba(214,178,94,0.45)";
@@ -416,7 +410,6 @@ function drawWheel() {
     ctx.restore();
   }
 
-  // center
   ctx.beginPath();
   ctx.arc(cx, cy, 80, 0, Math.PI * 2);
   ctx.fillStyle = "rgba(255,255,255,0.75)";
@@ -455,9 +448,6 @@ function showWinnerCard(prize, winnerObj) {
   const hasName = !!(winnerObj.name && String(winnerObj.name).trim());
   const idOnly = !hasUsername && !hasName;
 
-  // buttons rule:
-  // - if username exists => Telegram direct open chat
-  // - if id-only => Notice DM (only works if dm_ready)
   contactBtn.style.display = hasUsername ? "inline-block" : "none";
   noticeBtn.style.display = idOnly ? "inline-block" : "none";
 
@@ -468,8 +458,6 @@ function showWinnerCard(prize, winnerObj) {
     : "✅ Username ရှိလို့ Telegram အကောင့်ကို တန်းဖွင့်နိုင်ပါတယ်";
 
   winnerCard.classList.remove("hidden");
-
-  // effect
   winChime();
 }
 function hideWinnerCard() {
@@ -638,69 +626,79 @@ async function loadMembersInSettings() {
   }
 }
 
+/* ===========================
+   History UI (FIXED)
+=========================== */
 async function loadHistoryUI() {
   try {
     const data = await apiGet("/history");
     if (!data?.ok) throw new Error(data?.error || "history error");
+
     const list = Array.isArray(data.history) ? data.history : [];
     showHistoryPanel();
 
     historyList.innerHTML = list.length
       ? list
           .map((h) => {
-  // ✅ Support multiple server shapes (winner object OR flat fields)
-  const winnerObj = h?.winner ?? h?.member ?? h?.user ?? {};
-  const p =
-    h?.prize ??
-    h?.prize_name ??
-    h?.prizeName ??
-    h?.item ??
-    "-";
+            const winnerObj = h?.winner ?? h?.member ?? h?.user ?? {};
 
-  const w =
-    winnerObj?.display ??
-    winnerObj?.name ??
-    h?.winner_display ??
-    h?.winner_name ??
-    h?.display ??
-    h?.name ??
-    "-";
+            const p =
+              h?.prize ??
+              h?.prize_name ??
+              h?.prizeName ??
+              h?.item ??
+              "-";
 
-  const usernameRaw =
-    winnerObj?.username ??
-    h?.winner_username ??
-    h?.username ??
-    "";
+            const w =
+              winnerObj?.display ??
+              winnerObj?.name ??
+              h?.winner_display ??
+              h?.winner_name ??
+              h?.display ??
+              h?.name ??
+              "-";
 
-  const u = String(usernameRaw || "").replace("@", "").trim();
+            const usernameRaw =
+              winnerObj?.username ??
+              h?.winner_username ??
+              h?.username ??
+              "";
 
-  const id =
-    winnerObj?.id ??
-    h?.winner_id ??
-    h?.user_id ??
-    h?.id ??
-    "";
+            const u = String(usernameRaw || "").replace("@", "").trim();
 
-  const at = h?.at ? new Date(h.at).toLocaleString() : "";
+            const id =
+              winnerObj?.id ??
+              h?.winner_id ??
+              h?.user_id ??
+              h?.id ??
+              "";
 
-  let btn = "";
-if (u) {
-  btn = <button class="btn mini js-telegram" data-user="${esc(u)}">Telegram</button>;
-} else {
-  btn = `<button class="btn mini js-notice"
-    data-id="${esc(String(id))}"
-    data-name="${esc(String(w))}">
-    Notice
-  </button>`;
-}
+            const at = h?.at ? new Date(h.at).toLocaleString() : "";
 
-return `
-  <div style="padding:10px 0; border-bottom:1px solid rgba(16,19,24,0.10)">
-    <div><b>${esc(String(p))}</b> — ${esc(String(w))} ${btn}</div>
-    <div style="font-size:12px; color:rgba(16,19,24,0.60)">${esc(String(at))}</div>
-  </div>
-`;
-})
+            let btn = "";
+            if (u) {
+              btn = `<button class="btn mini js-telegram" data-user="${esc(
+                u
+              )}">Telegram</button>`;
+            } else {
+              btn = `<button class="btn mini js-notice"
+                        data-id="${esc(String(id))}"
+                        data-name="${esc(String(w))}">
+                        Notice
+                     </button>`;
+            }
+
+            return `
+              <div style="padding:10px 0; border-bottom:1px solid rgba(16,19,24,0.10)">
+                <div><b>${esc(String(p))}</b> — ${esc(String(w))} ${btn}</div>
+                <div style="font-size:12px; color:rgba(16,19,24,0.60)">${esc(
+                  String(at)
+                )}</div>
+              </div>
+            `;
+          })
+          .join("")
+      : `<div class="small">No winners yet</div>`;
   } catch (e) {
     showHistoryPanel();
     historyList.innerHTML = `<div class="small">Error: ${esc(
@@ -712,12 +710,12 @@ return `
 membersBtn.addEventListener("click", loadMembersUI);
 historyBtn.addEventListener("click", loadHistoryUI);
 refreshMembersInSettingsBtn.addEventListener("click", loadMembersInSettings);
-// ✅ Winner History buttons (Telegram / Notice) - Event Delegation
+
+// ✅ Winner History buttons (Telegram / Notice) - Event Delegation (ONLY ONE PLACE)
 historyList.addEventListener("click", async (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
 
-  // Telegram button
   if (btn.classList.contains("js-telegram")) {
     const user = (btn.dataset.user || "").replace("@", "").trim();
     if (!user) return;
@@ -725,7 +723,6 @@ historyList.addEventListener("click", async (e) => {
     return;
   }
 
-  // Notice button
   if (btn.classList.contains("js-notice")) {
     const userId = btn.dataset.id;
     const name = btn.dataset.name || "-";
@@ -746,6 +743,7 @@ Winner ဖြစ်ပါက ဒီ DM မှာ ဆက်သွယ်ပါမ�
     }
   }
 });
+
 /* ===========================
    Restart Spin
 =========================== */
@@ -776,7 +774,6 @@ async function spin() {
   spinning = true;
   spinBtn.disabled = true;
 
-  // music if ON
   if (musicOn && bgMusic.src) bgMusic.play().catch(() => {});
 
   const extraSpins = 7 + Math.random() * 6;
@@ -799,7 +796,6 @@ async function spin() {
     currentAngle = startAngle + (finalAngle - startAngle) * eased;
     drawWheel();
 
-    // tick sound during spin
     const nt = Math.floor(eased * 60);
     if (nt !== tickT) {
       tickT = nt;
@@ -809,10 +805,8 @@ async function spin() {
     if (t < 1) {
       requestAnimationFrame(animate);
     } else {
-      // purely UI next text
       const prizeFromWheel = getPointerPrize();
       nextPrizeText.textContent = `${prizeFromWheel} Winner`;
-
       finalizeSpinFromServer();
     }
   }
@@ -867,10 +861,8 @@ saveBtn.addEventListener("click", async () => {
 
   sliceColors = parseWheelColors(s.wheelColorsText);
 
-  // Build prizeText from stepper
   const prizeText = buildPrizeText(s.prizes);
 
-  // wheel display uses expanded
   wheelPrizes = expandPrizeText(prizeText);
   drawWheel();
   nextPrizeText.textContent = wheelPrizes.length
@@ -895,7 +887,6 @@ resetBtn.addEventListener("click", () => {
   alert("Reset done ✅");
 });
 
-// Upload handlers (persist images)
 pageBgFile.addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
@@ -989,7 +980,6 @@ function init() {
 
   renderPrizeBuilder(s.prizes || structuredClone(defaultSettings.prizes));
 
-  // Wheel
   sliceColors = parseWheelColors(s.wheelColorsText);
   const prizeText = buildPrizeText(s.prizes || []);
   wheelPrizes = expandPrizeText(prizeText);
@@ -1005,24 +995,6 @@ function init() {
 }
 
 init();
-document.addEventListener("click", (e) => {
-  const t = e.target;
-
-  // Telegram button (History)
-  if (t.classList.contains("js-telegram")) {
-    const u = t.getAttribute("data-user") || "";
-    if (u) {
-      window.open(`https://t.me/${u.replace("@", "")}`, "_blank");
-    }
-  }
-
-  // Notice button (History)
-  if (t.classList.contains("js-notice")) {
-    const id = t.getAttribute("data-id") || "";
-    const name = t.getAttribute("data-name") || "-";
-    window.__notice(id, name);
-  }
-});
 
 /* ===========================
    Utils
