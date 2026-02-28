@@ -252,7 +252,7 @@ async function apiPost(path, body) {
 }
 
 /* ===========================
-   Prize Builder (Stepper)
+   Prize Builder (Stepper) + ✅ Remove
 =========================== */
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
@@ -282,6 +282,7 @@ function renderPrizeBuilder(prizesArr) {
       <button data-act="dec" data-i="${idx}">-</button>
       <input data-k="times" data-i="${idx}" type="number" min="1" max="9999" value="${clamp(Number(p.times || 1), 1, 9999)}">
       <button data-act="inc" data-i="${idx}">+</button>
+      <button class="btn mini danger" data-act="remove" data-i="${idx}" title="Remove">Remove</button>
     `;
 
     row.appendChild(left);
@@ -305,6 +306,17 @@ function renderPrizeBuilder(prizesArr) {
       const i = Number(b.dataset.i);
       const act = b.dataset.act;
       const s = loadSettings();
+
+      if (!s.prizes[i]) return;
+
+      if (act === "remove") {
+        s.prizes.splice(i, 1);
+        if (s.prizes.length === 0) s.prizes.push({ name: "", times: 1 });
+        saveSettingsLocal(s);
+        renderPrizeBuilder(s.prizes);
+        return;
+      }
+
       const cur = clamp(Number(s.prizes[i]?.times || 1), 1, 9999);
       s.prizes[i].times = clamp(cur + (act === "inc" ? 1 : -1), 1, 9999);
       saveSettingsLocal(s);
@@ -338,7 +350,6 @@ function parseWheelColors(text) {
   return colors.length ? colors : ["#ffffff", "#f1f5ff"];
 }
 
-// ✅ UI: unique prizes only (ignore times)
 function uniquePrizesFromPrizeText(prizeText) {
   const lines = String(prizeText || "").split("\n").map((x) => x.trim()).filter(Boolean);
   const set = new Set();
@@ -430,7 +441,6 @@ function showWinnerModal(prize, winnerObj) {
   winnerTitleText.textContent = String(prize || "—");
   winnerNameText.textContent = display;
 
-  // ✅ button rules
   contactBtn.style.display = hasUsername ? "inline-flex" : "none";
   noticeBtn.style.display = hasUsername ? "none" : "inline-flex";
 
@@ -463,7 +473,6 @@ noticeBtn.addEventListener("click", async () => {
   const w = lastWinner.winner;
   const prize = lastWinner.prize;
 
-  // ✅ if username exists, open telegram (rule)
   const username = String(w.username || "").replace("@", "").trim();
   if (username) {
     window.open(`https://t.me/${username}`, "_blank");
@@ -512,7 +521,6 @@ function contactButtonHTML(m) {
   const id = String(m.id || "");
   const name = String(m.display || m.name || "-");
 
-  // ✅ rule: if username exists => open telegram (even if click notice)
   if (username) {
     return `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`;
   }
@@ -581,7 +589,7 @@ async function loadMembersInSettings() {
 }
 
 /* ===========================
-   History UI (fixed + buttons)
+   History UI
 =========================== */
 async function loadHistoryUI() {
   showHistoryPanel();
@@ -596,7 +604,6 @@ async function loadHistoryUI() {
     historyList.innerHTML = list.length
       ? list
           .map((h) => {
-            // ✅ robust parse
             const winnerObj = h?.winner ?? h?.member ?? h?.user ?? {};
             const prize =
               h?.prize ?? h?.prize_name ?? h?.prizeName ?? h?.item ?? (h?.raw ? "-" : "-");
@@ -604,10 +611,8 @@ async function loadHistoryUI() {
             const display =
               winnerObj?.display ??
               winnerObj?.name ??
-              h?.winner_display ??
-              h?.winner_name ??
-              h?.display ??
-              h?.name ??
+              (winnerObj?.username ? "@" + String(winnerObj.username).replace("@", "") : "") ??
+              (winnerObj?.id ? String(winnerObj.id) : "") ??
               "-";
 
             const usernameRaw =
@@ -632,7 +637,6 @@ async function loadHistoryUI() {
 
             let btn = "";
             if (u) {
-              // ✅ rule: if username exists => open telegram
               btn = `<button class="btn mini js-telegram" data-user="${esc(u)}">Telegram</button>`;
             } else {
               btn = `<button class="btn mini js-notice"
@@ -663,7 +667,7 @@ async function loadHistoryUI() {
   }
 }
 
-/* ✅ Delegation for Members + History buttons */
+/* ✅ Delegation */
 document.addEventListener("click", async (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
@@ -677,12 +681,9 @@ document.addEventListener("click", async (e) => {
 
   if (btn.classList.contains("js-notice")) {
     const userId = btn.dataset.id;
-    const name = btn.dataset.name || "-";
     const prize = btn.dataset.prize || "";
-
     if (!userId) return;
 
-    // ✅ Notice -> bot auto DM template on server
     try {
       const r = await apiPost("/notice", { user_id: userId, prize });
       if (r?.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
@@ -709,7 +710,7 @@ restartSpinBtn.addEventListener("click", async () => {
 });
 
 /* ===========================
-   Spin (server prize first => no delay popup)
+   Spin
 =========================== */
 function calcAngleToLandOnPrize(prize) {
   const idx = wheelPrizes.indexOf(String(prize));
@@ -718,15 +719,12 @@ function calcAngleToLandOnPrize(prize) {
   const slice = (Math.PI * 2) / wheelPrizes.length;
   const pointerAngle = (Math.PI * 3) / 2;
 
-  // target center of slice
   const centerOffset = (idx + 0.5) * slice;
   let target = pointerAngle - centerOffset;
 
-  // random small inside slice (avoid border)
   const jitter = (Math.random() * 0.6 - 0.3) * (slice * 0.6);
   target += jitter;
 
-  // normalize
   while (target < 0) target += Math.PI * 2;
   while (target >= Math.PI * 2) target -= Math.PI * 2;
 
@@ -746,7 +744,6 @@ async function spin() {
   const oldText = spinBtn.textContent;
   spinBtn.textContent = "SPIN...";
 
-  // ✅ get server result first (so popup show instantly after stop)
   let result;
   try {
     result = await apiPost("/spin", {});
@@ -762,7 +759,6 @@ async function spin() {
   const prize = String(result.prize || "-");
   const winner = result.winner || {};
 
-  // if prize not in wheel (should not happen), fallback
   let targetAngle = calcAngleToLandOnPrize(prize);
   if (targetAngle === null) targetAngle = (Math.random() * Math.PI * 2);
 
@@ -771,7 +767,6 @@ async function spin() {
   const extraSpins = 7 + Math.random() * 6;
   const currentNorm = ((currentAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
 
-  // make finalAngle reach targetAngle after many spins
   const delta = ((targetAngle - currentNorm) + Math.PI * 2) % (Math.PI * 2);
   const finalAngle = currentAngle + extraSpins * Math.PI * 2 + delta;
 
@@ -799,7 +794,6 @@ async function spin() {
     if (t < 1) {
       requestAnimationFrame(animate);
     } else {
-      // ✅ stop => instantly show popup (no fetch delay)
       showWinnerModal(prize, winner);
       refreshPoolUI();
       spinning = false;
@@ -839,7 +833,6 @@ saveBtn.addEventListener("click", async () => {
 
   const prizeText = buildPrizeText(s.prizes);
 
-  // ✅ wheel UI = unique prizes only
   wheelPrizes = uniquePrizesFromPrizeText(prizeText);
   drawWheel();
 
@@ -937,13 +930,11 @@ function init() {
   sliceColors = parseWheelColors(s.wheelColorsText);
   const prizeText = buildPrizeText(s.prizes || []);
 
-  // ✅ UI wheel prizes unique
   wheelPrizes = uniquePrizesFromPrizeText(prizeText);
   drawWheel();
 
   updateMusicBtn();
 
-  // ✅ keep light: only pool on init
   refreshPoolUI();
 }
 init();
