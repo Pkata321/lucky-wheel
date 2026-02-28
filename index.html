@@ -3,11 +3,10 @@
 
   <head>
     <meta charset="UTF-8">
-    <title>Untitled</title>
+    <title>Lucky Spin Wheel</title>
     <link rel="stylesheet" href="./style.css">
-
   </head>
-    
+
   <body>
   <div class="bg" id="bgLayer"></div>
 
@@ -56,27 +55,10 @@
         <button class="btn" id="historyBtn">Winner History</button>
       </div>
 
-      <!-- Winner Card -->
-      <div id="winnerCard" class="winner-card hidden">
-        <div class="winner-top">
-          <div class="winner-title" id="winnerPrizeTitle">-</div>
-          <button class="btn mini" id="winnerCloseBtn">Close</button>
-        </div>
-
-        <div class="winner-name" id="winnerNameText">-</div>
-
-        <div class="winner-actions">
-          <button class="btn primary" id="contactBtn">Telegram</button>
-          <button class="btn" id="noticeBtn">Notice (DM)</button>
-        </div>
-
-        <div class="small" id="winnerHint" style="margin-top:8px;"></div>
-      </div>
-
       <!-- Members Panel -->
       <div id="membersPanel" class="panel hidden">
         <div class="panel-head">
-          <div class="panel-title">Telegram Member List</div>
+          <div class="panel-title" id="membersPanelTitle">Telegram Member List</div>
           <button class="btn mini" id="membersCloseBtn">Close</button>
         </div>
         <div class="panel-body" id="membersTable"></div>
@@ -99,6 +81,25 @@
     <div id="bottomBannerFallback" class="banner-fallback">
       Bottom Banner (Settings ထဲကနေ Upload ထည့်နိုင်ပါတယ်)
     </div>
+  </div>
+</div>
+
+<!-- ✅ Winner Popup Modal -->
+<div id="winnerOverlay" class="winner-overlay hidden">
+  <div id="winnerCard" class="winner-popup">
+    <div class="winner-top">
+      <div class="winner-title" id="winnerPrizeTitle">-</div>
+      <button class="btn mini" id="winnerCloseBtn">Close</button>
+    </div>
+
+    <div class="winner-name" id="winnerNameText">-</div>
+
+    <div class="winner-actions">
+      <button class="btn primary" id="contactBtn">Telegram</button>
+      <button class="btn" id="noticeBtn">Notice</button>
+    </div>
+
+    <div class="small" id="winnerHint" style="margin-top:8px;"></div>
   </div>
 </div>
 
@@ -189,8 +190,7 @@
     ✅ Prize/Color/Image settings တွေက LocalStorage ထဲမှာသိမ်းထားပါတယ်။
   </p>
 </div>
-    <script  src="./script.js"></script>
 
-  </body>
-  
+<script src="./script.js"></script>
+</body>
 </html>
