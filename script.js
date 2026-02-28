@@ -71,6 +71,42 @@ const winnerCloseBtn = document.getElementById("winnerCloseBtn");
 const winnerHint = document.getElementById("winnerHint");
 
 /* ===========================
+   Loading Overlay (no stuck loading)
+=========================== */
+let loadingEl = null;
+function ensureLoadingEl() {
+  if (loadingEl) return loadingEl;
+  loadingEl = document.createElement("div");
+  loadingEl.id = "loadingOverlay";
+  loadingEl.className = "loading hidden";
+  loadingEl.innerHTML = `
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <div class="loading-text" id="loadingText">Loading...</div>
+      <button class="btn mini" id="loadingCancelBtn" style="margin-top:10px;">Cancel</button>
+    </div>
+  `;
+  document.body.appendChild(loadingEl);
+  loadingEl.querySelector("#loadingCancelBtn").addEventListener("click", hideLoading);
+  return loadingEl;
+}
+let activeAbort = null;
+function showLoading(text = "Loading...") {
+  const el = ensureLoadingEl();
+  el.classList.remove("hidden");
+  const t = el.querySelector("#loadingText");
+  if (t) t.textContent = text;
+}
+function hideLoading() {
+  const el = ensureLoadingEl();
+  el.classList.add("hidden");
+  if (activeAbort) {
+    try { activeAbort.abort(); } catch {}
+  }
+  activeAbort = null;
+}
+
+/* ===========================
    Music
 =========================== */
 const musicBtn = document.getElementById("musicBtn");
@@ -123,7 +159,9 @@ function winChime() {
 /* ===========================
    Storage
 =========================== */
-const STORAGE_KEY = "lucky77_codepen_pro_v1";
+const STORAGE_KEY = "lucky77_vercel_v2";
+const CACHE_MEMBERS_KEY = "lucky77_cache_members";
+const CACHE_HISTORY_KEY = "lucky77_cache_history";
 
 const defaultSettings = {
   apiBase: DEFAULT_API_BASE,
@@ -147,18 +185,36 @@ const defaultSettings = {
   bottomBannerDataUrl: "",
 };
 
+function clone(x) {
+  try { return structuredClone(x); } catch { return JSON.parse(JSON.stringify(x)); }
+}
+
 function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return structuredClone(defaultSettings);
+    if (!raw) return clone(defaultSettings);
     const data = JSON.parse(raw);
-    return { ...structuredClone(defaultSettings), ...data };
+    return { ...clone(defaultSettings), ...data };
   } catch {
-    return structuredClone(defaultSettings);
+    return clone(defaultSettings);
   }
 }
 function saveSettingsLocal(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function saveCache(key, value) {
+  try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), value })); } catch {}
+}
+function readCache(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    return obj?.value ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /* ===========================
@@ -223,7 +279,7 @@ settingsBtn.addEventListener("click", openSettings);
 closeSettingsBtn.addEventListener("click", closeSettings);
 
 /* ===========================
-   API Helpers
+   API Helpers (timeout + no stuck loading)
 =========================== */
 function getApiBase() {
   const s = loadSettings();
@@ -234,25 +290,52 @@ function getApiKey() {
   return s.apiKey || DEFAULT_API_KEY;
 }
 
-async function apiGet(path) {
-  const base = getApiBase();
-  const key = getApiKey();
-  const r = await fetch(`${base}${path}?key=${encodeURIComponent(key)}`);
-  return r.json();
+async function fetchJsonWithTimeout(url, opt = {}, timeoutMs = 8000) {
+  const ctrl = new AbortController();
+  activeAbort = ctrl;
+  const id = setTimeout(() => ctrl.abort(), timeoutMs);
+
+  try {
+    const r = await fetch(url, { ...opt, signal: ctrl.signal });
+    const text = await r.text();
+    let json = null;
+    try { json = JSON.parse(text); } catch { json = { ok: false, error: "Invalid JSON", raw: text?.slice(0, 250) }; }
+    if (!r.ok && json && json.ok !== true) {
+      return { ok: false, error: json?.error || `HTTP ${r.status}` };
+    }
+    return json;
+  } catch (e) {
+    return { ok: false, error: e?.name === "AbortError" ? "Timeout/Cancelled" : (e?.message || String(e)) };
+  } finally {
+    clearTimeout(id);
+    activeAbort = null;
+  }
 }
-async function apiPost(path, body) {
+
+async function apiGet(path, timeoutMs = 8000) {
   const base = getApiBase();
   const key = getApiKey();
-  const r = await fetch(`${base}${path}?key=${encodeURIComponent(key)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": key },
-    body: JSON.stringify(body || {}),
-  });
-  return r.json();
+  const url = `${base}${path}?key=${encodeURIComponent(key)}`;
+  return fetchJsonWithTimeout(url, {}, timeoutMs);
+}
+
+async function apiPost(path, body, timeoutMs = 12000) {
+  const base = getApiBase();
+  const key = getApiKey();
+  const url = `${base}${path}?key=${encodeURIComponent(key)}`;
+  return fetchJsonWithTimeout(
+    url,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": key },
+      body: JSON.stringify(body || {}),
+    },
+    timeoutMs
+  );
 }
 
 /* ===========================
-   Prize Builder (Stepper) + ✅ Remove
+   Prize Builder (Stepper) + Add/Remove Prize
 =========================== */
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
@@ -279,10 +362,10 @@ function renderPrizeBuilder(prizesArr) {
     const right = document.createElement("div");
     right.className = "stepper";
     right.innerHTML = `
-      <button data-act="dec" data-i="${idx}">-</button>
+      <button data-act="dec" data-i="${idx}" title="-1">-</button>
       <input data-k="times" data-i="${idx}" type="number" min="1" max="9999" value="${clamp(Number(p.times || 1), 1, 9999)}">
-      <button data-act="inc" data-i="${idx}">+</button>
-      <button class="btn mini danger" data-act="remove" data-i="${idx}" title="Remove">Remove</button>
+      <button data-act="inc" data-i="${idx}" title="+1">+</button>
+      <button class="btn mini danger" data-act="remove" data-i="${idx}" title="Remove Prize">Remove</button>
     `;
 
     row.appendChild(left);
@@ -306,7 +389,6 @@ function renderPrizeBuilder(prizesArr) {
       const i = Number(b.dataset.i);
       const act = b.dataset.act;
       const s = loadSettings();
-
       if (!s.prizes[i]) return;
 
       if (act === "remove") {
@@ -330,6 +412,7 @@ function renderPrizeBuilder(prizesArr) {
       const k = String(inp.dataset.k);
       const s = loadSettings();
       if (!s.prizes[i]) return;
+
       if (k === "times") s.prizes[i].times = clamp(Number(inp.value || 1), 1, 9999);
       if (k === "name") s.prizes[i].name = String(inp.value || "");
       saveSettingsLocal(s);
@@ -479,13 +562,16 @@ noticeBtn.addEventListener("click", async () => {
     return;
   }
 
+  showLoading("Sending Notice (DM)...");
   try {
-    const r = await apiPost("/notice", { user_id: w.id, prize });
+    const r = await apiPost("/notice", { user_id: w.id, prize }, 10000);
     if (!r?.ok) throw new Error(r?.error || "notice failed");
     if (r.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
     else alert("⚠️ DM မပို့နိုင်သေးပါ။ User က Bot ကို Start မလုပ်သေးနိုင်ပါတယ်");
   } catch (e) {
     alert("Notice error: " + (e.message || e));
+  } finally {
+    hideLoading();
   }
 });
 
@@ -501,11 +587,11 @@ function hideHistoryPanel() { historyPanel.classList.add("hidden"); }
 historyCloseBtn.addEventListener("click", hideHistoryPanel);
 
 /* ===========================
-   Pool UI (light)
+   Pool UI (no stuck)
 =========================== */
 async function refreshPoolUI() {
   try {
-    const data = await apiGet("/pool");
+    const data = await apiGet("/pool", 6000);
     if (!data?.ok) throw new Error(data?.error || "pool error");
     poolText.textContent = `${data.count || 0} people in pool`;
   } catch {
@@ -514,12 +600,15 @@ async function refreshPoolUI() {
 }
 
 /* ===========================
-   Members UI
+   Members UI (show cache first)
 =========================== */
 function contactButtonHTML(m) {
   const username = m.username ? String(m.username).replace("@", "").trim() : "";
   const id = String(m.id || "");
   const name = String(m.display || m.name || "-");
+
+  // optional: inactive -> no action
+  if (m.active === false) return `<span class="small">inactive</span>`;
 
   if (username) {
     return `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`;
@@ -527,143 +616,182 @@ function contactButtonHTML(m) {
   return `<button class="btn mini js-notice" data-id="${esc(id)}" data-prize="" data-name="${esc(name)}">Notice</button>`;
 }
 
+function renderMembersTable(list) {
+  const rows = list
+    .map((m, i) => {
+      const username = m.username ? `@${String(m.username).replace("@", "")}` : "-";
+      const won = m.isWinner ? "✅" : "";
+      const status = (m.active === false) ? "❌ INACTIVE" : "✅ ACTIVE";
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${esc(m.display || "-")}</td>
+        <td>${esc(username)}</td>
+        <td>${esc(String(m.id || "-"))}</td>
+        <td>${won}</td>
+        <td>${status}</td>
+        <td>${contactButtonHTML(m)}</td>
+      </tr>`;
+    })
+    .join("");
+
+  membersTable.innerHTML = `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>No.</th><th>Name</th><th>Username</th><th>ID</th><th>Won</th><th>Status</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="7">No members yet</td></tr>`}</tbody>
+    </table>
+  `;
+}
+
 async function loadMembersUI() {
   showMembersPanel();
   membersTotalText.textContent = "";
-  membersTable.innerHTML = `<div class="small">Loading...</div>`;
 
+  // show cache instantly (no loading stuck)
+  const cached = readCache(CACHE_MEMBERS_KEY);
+  if (Array.isArray(cached)) {
+    membersTotalText.textContent = ` • Total: ${cached.length} (cached)`;
+    renderMembersTable(cached);
+  } else {
+    membersTable.innerHTML = `<div class="small">Loading...</div>`;
+  }
+
+  showLoading("Loading Members...");
   try {
-    const data = await apiGet("/members");
+    const data = await apiGet("/members", 10000);
     if (!data?.ok) throw new Error(data?.error || "members error");
 
     const list = Array.isArray(data.members) ? data.members : [];
     membersTotalText.textContent = ` • Total: ${list.length}`;
-
-    const rows = list
-      .map((m, i) => {
-        const username = m.username ? `@${String(m.username).replace("@", "")}` : "-";
-        const won = m.isWinner ? "✅" : "";
-        return `<tr>
-          <td>${i + 1}</td>
-          <td>${esc(m.display || "-")}</td>
-          <td>${esc(username)}</td>
-          <td>${esc(String(m.id || "-"))}</td>
-          <td>${won}</td>
-          <td>${contactButtonHTML(m)}</td>
-        </tr>`;
-      })
-      .join("");
-
-    membersTable.innerHTML = `
-      <table class="table">
-        <thead>
-          <tr>
-            <th>No.</th><th>Name</th><th>Username</th><th>ID</th><th>Won</th><th>Action</th>
-          </tr>
-        </thead>
-        <tbody>${rows || `<tr><td colspan="6">No members yet</td></tr>`}</tbody>
-      </table>
-    `;
+    renderMembersTable(list);
+    saveCache(CACHE_MEMBERS_KEY, list);
   } catch (e) {
-    membersTable.innerHTML = `<div class="small">Error: ${esc(e.message || e)}</div>`;
+    // keep cached UI; show small error message
+    membersTotalText.textContent = membersTotalText.textContent || "";
+    membersTable.insertAdjacentHTML(
+      "afterbegin",
+      `<div class="small" style="margin-bottom:8px;">⚠️ ${esc(e.message || e)}</div>`
+    );
+  } finally {
+    hideLoading();
   }
 }
 
 async function loadMembersInSettings() {
   membersInSettings.innerHTML = "Loading...";
   try {
-    const data = await apiGet("/members");
+    const data = await apiGet("/members", 9000);
     if (!data?.ok) throw new Error(data?.error || "members error");
     const list = Array.isArray(data.members) ? data.members : [];
     membersInSettings.innerHTML = list.length
       ? list
           .map((m, i) => {
             const u = m.username ? `@${String(m.username).replace("@", "")}` : "-";
-            return `${i + 1}. ${esc(m.display || "-")} (${esc(u)}) [${esc(String(m.id || "-"))}]`;
+            const st = (m.active === false) ? "INACTIVE" : "ACTIVE";
+            return `${i + 1}. ${esc(m.display || "-")} (${esc(u)}) [${esc(String(m.id || "-"))}] • ${st}`;
           })
           .join("<br>")
       : "No members yet";
+    saveCache(CACHE_MEMBERS_KEY, list);
   } catch (e) {
     membersInSettings.innerHTML = `Error: ${esc(e.message || e)}`;
   }
 }
 
 /* ===========================
-   History UI
+   History UI (show cache first)
 =========================== */
+function renderHistory(list) {
+  historyList.innerHTML = list.length
+    ? list
+        .map((h) => {
+          const winnerObj = h?.winner ?? h?.member ?? h?.user ?? {};
+          const prize =
+            h?.prize ?? h?.prize_name ?? h?.prizeName ?? h?.item ?? (h?.raw ? "-" : "-");
+
+          const display =
+            winnerObj?.display ??
+            winnerObj?.name ??
+            (winnerObj?.username ? "@" + String(winnerObj.username).replace("@", "") : "") ??
+            (winnerObj?.id ? String(winnerObj.id) : "") ??
+            "-";
+
+          const usernameRaw =
+            winnerObj?.username ??
+            h?.winner_username ??
+            h?.username ??
+            "";
+
+          const u = String(usernameRaw || "").replace("@", "").trim();
+
+          const id =
+            winnerObj?.id ??
+            h?.winner_id ??
+            h?.user_id ??
+            h?.id ??
+            "";
+
+          const at = h?.at ? new Date(h.at).toLocaleString() : "";
+
+          const showUser = u ? `@${u}` : "-";
+          const showId = id ? String(id) : "-";
+
+          let btn = "";
+          if (u) {
+            btn = `<button class="btn mini js-telegram" data-user="${esc(u)}">Telegram</button>`;
+          } else {
+            btn = `<button class="btn mini js-notice"
+                      data-id="${esc(String(showId))}"
+                      data-prize="${esc(String(prize || ""))}"
+                      data-name="${esc(String(display))}">
+                      Notice
+                   </button>`;
+          }
+
+          return `
+            <div class="hist-row">
+              <div class="hist-main">
+                <b>${esc(String(prize))}</b>
+                <span>${esc(String(display))}</span>
+                <span class="small">(${esc(String(showUser))})</span>
+                <span class="small">[${esc(String(showId))}]</span>
+                ${btn}
+              </div>
+              <div class="hist-time">${esc(String(at))}</div>
+            </div>
+          `;
+        })
+        .join("")
+    : `<div class="small">No winners yet</div>`;
+}
+
 async function loadHistoryUI() {
   showHistoryPanel();
-  historyList.innerHTML = `<div class="small">Loading...</div>`;
 
+  const cached = readCache(CACHE_HISTORY_KEY);
+  if (Array.isArray(cached)) {
+    renderHistory(cached);
+  } else {
+    historyList.innerHTML = `<div class="small">Loading...</div>`;
+  }
+
+  showLoading("Loading History...");
   try {
-    const data = await apiGet("/history");
+    const data = await apiGet("/history", 10000);
     if (!data?.ok) throw new Error(data?.error || "history error");
-
     const list = Array.isArray(data.history) ? data.history : [];
-
-    historyList.innerHTML = list.length
-      ? list
-          .map((h) => {
-            const winnerObj = h?.winner ?? h?.member ?? h?.user ?? {};
-            const prize =
-              h?.prize ?? h?.prize_name ?? h?.prizeName ?? h?.item ?? (h?.raw ? "-" : "-");
-
-            const display =
-              winnerObj?.display ??
-              winnerObj?.name ??
-              (winnerObj?.username ? "@" + String(winnerObj.username).replace("@", "") : "") ??
-              (winnerObj?.id ? String(winnerObj.id) : "") ??
-              "-";
-
-            const usernameRaw =
-              winnerObj?.username ??
-              h?.winner_username ??
-              h?.username ??
-              "";
-
-            const u = String(usernameRaw || "").replace("@", "").trim();
-
-            const id =
-              winnerObj?.id ??
-              h?.winner_id ??
-              h?.user_id ??
-              h?.id ??
-              "";
-
-            const at = h?.at ? new Date(h.at).toLocaleString() : "";
-
-            const showUser = u ? `@${u}` : "-";
-            const showId = id ? String(id) : "-";
-
-            let btn = "";
-            if (u) {
-              btn = `<button class="btn mini js-telegram" data-user="${esc(u)}">Telegram</button>`;
-            } else {
-              btn = `<button class="btn mini js-notice"
-                        data-id="${esc(String(showId))}"
-                        data-prize="${esc(String(prize || ""))}"
-                        data-name="${esc(String(display))}">
-                        Notice
-                     </button>`;
-            }
-
-            return `
-              <div class="hist-row">
-                <div class="hist-main">
-                  <b>${esc(String(prize))}</b>
-                  <span>${esc(String(display))}</span>
-                  <span class="small">(${esc(String(showUser))})</span>
-                  <span class="small">[${esc(String(showId))}]</span>
-                  ${btn}
-                </div>
-                <div class="hist-time">${esc(String(at))}</div>
-              </div>
-            `;
-          })
-          .join("")
-      : `<div class="small">No winners yet</div>`;
+    renderHistory(list);
+    saveCache(CACHE_HISTORY_KEY, list);
   } catch (e) {
-    historyList.innerHTML = `<div class="small">Error: ${esc(e.message || e)}</div>`;
+    historyList.insertAdjacentHTML(
+      "afterbegin",
+      `<div class="small" style="margin-bottom:8px;">⚠️ ${esc(e.message || e)}</div>`
+    );
+  } finally {
+    hideLoading();
   }
 }
 
@@ -684,28 +812,36 @@ document.addEventListener("click", async (e) => {
     const prize = btn.dataset.prize || "";
     if (!userId) return;
 
+    showLoading("Sending Notice (DM)...");
     try {
-      const r = await apiPost("/notice", { user_id: userId, prize });
+      const r = await apiPost("/notice", { user_id: userId, prize }, 10000);
       if (r?.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
       else alert("⚠️ DM မပို့နိုင်သေးပါ");
     } catch (err) {
       alert("Notice error: " + (err.message || err));
+    } finally {
+      hideLoading();
     }
   }
 });
 
 /* ===========================
-   Restart Spin
+   Restart Spin (no stuck)
 =========================== */
 restartSpinBtn.addEventListener("click", async () => {
+  showLoading("Restarting Spin...");
+  restartSpinBtn.disabled = true;
   try {
-    const data = await apiPost("/restart-spin", {});
+    const data = await apiPost("/restart-spin", {}, 12000);
     if (!data?.ok) throw new Error(data?.error || "restart error");
     hideWinnerModal();
     await refreshPoolUI();
     alert("Restart Spin ✅");
   } catch (e) {
     alert("Restart error: " + (e.message || e));
+  } finally {
+    restartSpinBtn.disabled = false;
+    hideLoading();
   }
 });
 
@@ -745,22 +881,26 @@ async function spin() {
   spinBtn.textContent = "SPIN...";
 
   let result;
+  showLoading("Spinning...");
   try {
-    result = await apiPost("/spin", {});
+    result = await apiPost("/spin", {}, 12000);
     if (!result?.ok) throw new Error(result?.error || "spin error");
   } catch (e) {
     spinning = false;
     spinBtn.disabled = false;
     spinBtn.textContent = oldText;
+    hideLoading();
     alert("Spin error: " + (e.message || e));
     return;
+  } finally {
+    hideLoading();
   }
 
   const prize = String(result.prize || "-");
   const winner = result.winner || {};
 
   let targetAngle = calcAngleToLandOnPrize(prize);
-  if (targetAngle === null) targetAngle = (Math.random() * Math.PI * 2);
+  if (targetAngle === null) targetAngle = Math.random() * Math.PI * 2;
 
   if (musicOn && bgMusic.src) bgMusic.play().catch(() => {});
 
@@ -810,7 +950,7 @@ spinBtn.addEventListener("click", spin);
    Save / Reset / Upload
 =========================== */
 async function pushPrizeConfigToRender(prizeText) {
-  const r = await apiPost("/config/prizes", { prizeText });
+  const r = await apiPost("/config/prizes", { prizeText }, 12000);
   if (!r?.ok) throw new Error(r?.error || "config/prizes error");
   return r;
 }
@@ -828,28 +968,32 @@ saveBtn.addEventListener("click", async () => {
   saveSettingsLocal(s);
 
   applyThemeUI(s.uiColor, s.wheelAccent);
-
   sliceColors = parseWheelColors(s.wheelColorsText);
 
   const prizeText = buildPrizeText(s.prizes);
-
   wheelPrizes = uniquePrizesFromPrizeText(prizeText);
   drawWheel();
 
-  closeSettings();
+  // ✅ prevent double click stuck
+  saveBtn.disabled = true;
+  showLoading("Saving Settings + Uploading Prizes...");
 
   try {
     await pushPrizeConfigToRender(prizeText);
     await refreshPoolUI();
+    closeSettings();
     alert("Save ✅");
   } catch (e) {
     alert("Save to Render error: " + (e.message || e));
+  } finally {
+    saveBtn.disabled = false;
+    hideLoading();
   }
 });
 
 resetBtn.addEventListener("click", () => {
   if (!confirm("Reset settings လုပ်မလား?")) return;
-  saveSettingsLocal(structuredClone(defaultSettings));
+  saveSettingsLocal(clone(defaultSettings));
   init();
   alert("Reset done ✅");
 });
@@ -925,7 +1069,7 @@ function init() {
   applyBanner(s.topBannerDataUrl || "", topBannerImg, topBannerFallback);
   applyBanner(s.bottomBannerDataUrl || "", bottomBannerImg, bottomBannerFallback);
 
-  renderPrizeBuilder(s.prizes || structuredClone(defaultSettings.prizes));
+  renderPrizeBuilder(s.prizes || clone(defaultSettings.prizes));
 
   sliceColors = parseWheelColors(s.wheelColorsText);
   const prizeText = buildPrizeText(s.prizes || []);
@@ -934,7 +1078,6 @@ function init() {
   drawWheel();
 
   updateMusicBtn();
-
   refreshPoolUI();
 }
 init();
