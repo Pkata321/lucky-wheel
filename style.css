@@ -270,42 +270,6 @@ body {
   min-width: 160px;
 }
 
-.winner-card {
-  border-radius: 18px;
-  border: 1px solid rgba(214, 178, 94, 0.35);
-  background: radial-gradient(
-    700px 500px at 50% 10%,
-    rgba(214, 178, 94, 0.12),
-    rgba(255, 255, 255, 0.82)
-  );
-  padding: 12px;
-}
-.winner-card.hidden {
-  display: none;
-}
-.winner-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.winner-title {
-  font-weight: 1000;
-  color: var(--gold);
-  letter-spacing: 0.5px;
-}
-.winner-name {
-  margin-top: 8px;
-  font-size: 20px;
-  font-weight: 1000;
-}
-.winner-actions {
-  margin-top: 10px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
 .panel {
   border-radius: 18px;
   border: 1px solid rgba(16, 19, 24, 0.1);
@@ -463,6 +427,60 @@ textarea {
   background: rgba(255, 255, 255, 0.9);
   font-weight: 1000;
   cursor: pointer;
+}
+
+/* ✅ Winner Popup + Effect */
+.winner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+}
+.winner-overlay.hidden { display: none; }
+
+.winner-popup {
+  width: min(520px, 92vw);
+  border-radius: 18px;
+  border: 1px solid rgba(214, 178, 94, 0.35);
+  background: radial-gradient(
+    700px 500px at 50% 10%,
+    rgba(214, 178, 94, 0.18),
+    rgba(255, 255, 255, 0.94)
+  );
+  padding: 14px;
+  box-shadow: 0 30px 120px rgba(0, 0, 0, 0.30);
+  animation: popIn 0.22s ease-out;
+}
+
+@keyframes popIn {
+  from { transform: translateY(10px) scale(0.98); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.winner-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.winner-title {
+  font-weight: 1000;
+  color: var(--gold);
+  letter-spacing: 0.5px;
+}
+.winner-name {
+  margin-top: 10px;
+  font-size: 22px;
+  font-weight: 1000;
+}
+.winner-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 700px) {
