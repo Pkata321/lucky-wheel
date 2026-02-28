@@ -51,11 +51,14 @@ const historyBtn = document.getElementById("historyBtn");
 const membersPanel = document.getElementById("membersPanel");
 const membersCloseBtn = document.getElementById("membersCloseBtn");
 const membersTable = document.getElementById("membersTable");
+const membersPanelTitle = document.getElementById("membersPanelTitle");
 
 const historyPanel = document.getElementById("historyPanel");
 const historyCloseBtn = document.getElementById("historyCloseBtn");
 const historyList = document.getElementById("historyList");
 
+/* ✅ Winner Popup */
+const winnerOverlay = document.getElementById("winnerOverlay");
 const winnerCard = document.getElementById("winnerCard");
 const winnerPrizeTitle = document.getElementById("winnerPrizeTitle");
 const winnerNameText = document.getElementById("winnerNameText");
@@ -345,6 +348,26 @@ function renderPrizeBuilder(prizesArr) {
 }
 
 /* ===========================
+   ✅ Prize UNIQUE (Wheel show 1 time only)
+=========================== */
+function uniquePrizeNames(prizesArr) {
+  const seen = new Set();
+  const out = [];
+  (prizesArr || []).forEach((p) => {
+    const name = String(p?.name || "").trim();
+    if (!name) return;
+    if (seen.has(name)) return;
+    seen.add(name);
+    out.push(name);
+  });
+  return out;
+}
+function nextPrizeLabelFromSettings(prizesArr) {
+  const u = uniquePrizeNames(prizesArr);
+  return u.length ? `${u[0]} Winner` : "-";
+}
+
+/* ===========================
    Wheel drawing
 =========================== */
 let wheelPrizes = [];
@@ -432,39 +455,44 @@ function getPointerPrize() {
 }
 
 /* ===========================
-   Winner UI + Contact Rules
+   Winner UI + Contact Rules (UPDATED)
 =========================== */
 let lastWinner = null;
 
-function showWinnerCard(prize, winnerObj) {
+function showWinnerPopup(prize, winnerObj) {
   lastWinner = { prize, winner: winnerObj };
 
-  winnerPrizeTitle.textContent = `${prize} Winner`;
-  winnerNameText.textContent = winnerObj.display || "-";
+  winnerPrizeTitle.textContent = `🎉 WINNER — ${prize}`;
+  winnerNameText.textContent = winnerObj.display || winnerObj.name || (winnerObj.username ? `@${winnerObj.username}` : winnerObj.id) || "-";
 
-  const hasUsername = !!(
-    winnerObj.username && String(winnerObj.username).trim()
-  );
+  const hasUsername = !!(winnerObj.username && String(winnerObj.username).trim());
   const hasName = !!(winnerObj.name && String(winnerObj.name).trim());
   const idOnly = !hasUsername && !hasName;
 
+  // Telegram button: only works if username exists
   contactBtn.style.display = hasUsername ? "inline-block" : "none";
-  noticeBtn.style.display = idOnly ? "inline-block" : "none";
 
-  winnerHint.textContent = idOnly
-    ? winnerObj.dm_ready
-      ? "✅ DM Enable ဖြစ်ပြီးသားပါ။ Notice နှိပ်ရင် DM ပို့မယ်"
-      : "⚠️ DM Enable မဖြစ်သေးပါ (Start Bot Register လုပ်ရန်လိုပါသည်)"
-    : "✅ Username ရှိလို့ Telegram အကောင့်ကို တန်းဖွင့်နိုင်ပါတယ်";
+  // Notice button: always show (username => open telegram chat, id-only => DM notice)
+  noticeBtn.style.display = "inline-block";
+  noticeBtn.textContent = hasUsername ? "Telegram" : "Notice (DM)";
 
-  winnerCard.classList.remove("hidden");
+  winnerHint.textContent = hasUsername
+    ? "✅ Username ရှိလို့ Telegram ကိုတန်းဖွင့်နိုင်ပါတယ်"
+    : (winnerObj.dm_ready
+        ? "✅ DM Enable ဖြစ်ပြီးသားပါ — Notice နှိပ်ရင် DM ပို့မယ်"
+        : "⚠️ DM Enable မဖြစ်သေးပါ — User က Bot ကို Start/Register လုပ်ရမယ်");
+
+  winnerOverlay.classList.remove("hidden");
   winChime();
 }
-function hideWinnerCard() {
-  winnerCard.classList.add("hidden");
+function hideWinnerPopup() {
+  winnerOverlay.classList.add("hidden");
   lastWinner = null;
 }
-winnerCloseBtn.addEventListener("click", hideWinnerCard);
+winnerCloseBtn.addEventListener("click", hideWinnerPopup);
+winnerOverlay.addEventListener("click", (e) => {
+  if (e.target === winnerOverlay) hideWinnerPopup();
+});
 
 contactBtn.addEventListener("click", () => {
   if (!lastWinner) return;
@@ -474,24 +502,35 @@ contactBtn.addEventListener("click", () => {
   window.open(`https://t.me/${username}`, "_blank");
 });
 
+function buildCongratsText(prize) {
+  return (
+`Congratulation 🥳🥳🥳ပါအကိုရှင့်
+လက်ကီး77 ရဲ့ လစဉ်ဗလာမပါလက်ကီးဝှီး အစီစဉ်မှာ ယူနစ် ${prize} ကံထူးသွားပါတယ်ရှင့်☘️
+ဂိမ်းယူနစ်လေး ထည့်ပေးဖို့ အကို့ဂိမ်းအကောင့်လေး ပို့ပေးပါရှင့်`
+  );
+}
+
 noticeBtn.addEventListener("click", async () => {
   if (!lastWinner) return;
+
   const w = lastWinner.winner;
   const prize = lastWinner.prize;
 
-  const text = `🎉 Congratulations!
+  // ✅ If username exists => open telegram
+  if (w.username && String(w.username).trim()) {
+    const username = String(w.username).replace("@", "");
+    window.open(`https://t.me/${username}`, "_blank");
+    return;
+  }
 
-Winner: ${w.display}
-Prize: ${prize}
-
-Lucky77 မှ ဆုချီးမြှင့်ရန် ဆက်သွယ်ပါမယ် ✅`;
+  // ✅ If no username => DM notice via Render /notice
+  const text = buildCongratsText(prize);
 
   try {
     const r = await apiPost("/notice", { user_id: w.id, text });
     if (!r?.ok) throw new Error(r?.error || "notice failed");
     if (r.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
-    else
-      alert("⚠️ DM မပို့နိုင်သေးပါ။ User က Bot ကို Start မလုပ်သေးနိုင်ပါတယ်");
+    else alert("⚠️ DM မပို့နိုင်သေးပါ။ User က Bot ကို Start မလုပ်သေးနိုင်ပါတယ်");
   } catch (e) {
     alert("Notice error: " + (e.message || e));
   }
@@ -531,33 +570,23 @@ async function refreshPoolUI() {
 
 function contactButtonHTML(m) {
   const username = m.username ? String(m.username).replace("@", "") : "";
-  const hasName = !!(m.name && String(m.name).trim());
-  const idOnly = !username && !hasName;
-
+  const prizeDummy = ""; // (member list မလို)
   if (username) {
-    return `<button class="btn mini" onclick="window.open('https://t.me/${esc(
-      username
-    )}','_blank')">Telegram</button>`;
+    return `<button class="btn mini" onclick="window.open('https://t.me/${esc(username)}','_blank')">Telegram</button>`;
   }
-  if (idOnly) {
-    return `<button class="btn mini" onclick="window.__notice('${esc(
-      String(m.id)
-    )}','${esc(m.display)}')">Notice</button>`;
-  }
-  return `<span class="small">-</span>`;
+  return `<button class="btn mini" onclick="window.__notice('${esc(String(m.id))}','${esc(m.display)}','${esc(prizeDummy)}')">Notice</button>`;
 }
 
-window.__notice = async (userId, disp) => {
-  const text = `🎉 Lucky77 Notice
+window.__notice = async (userId, disp, prize) => {
+  // member list ထဲက notice ဆို prize မရှိနိုင် → generic
+  const text = prize
+    ? buildCongratsText(prize)
+    : `Lucky77 Notice\n\n${disp}\n\nBot ကို Start/Register လုပ်ပြီး ဒီ DM မှာ ဆက်သွယ်ပါ ✅`;
 
-${disp}
-
-Winner ဖြစ်ပါက ဒီ DM မှာ ဆက်သွယ်ပါမယ် ✅`;
   try {
     const r = await apiPost("/notice", { user_id: userId, text });
     if (r.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
-    else
-      alert("⚠️ DM မပို့နိုင်သေးပါ။ User က Bot ကို Start မလုပ်သေးနိုင်ပါတယ်");
+    else alert("⚠️ DM မပို့နိုင်သေးပါ။ User က Bot ကို Start မလုပ်သေးနိုင်ပါတယ်");
   } catch (e) {
     alert("Notice error: " + (e.message || e));
   }
@@ -571,6 +600,9 @@ async function loadMembersUI() {
     showMembersPanel();
 
     const list = Array.isArray(data.members) ? data.members : [];
+    const total = Number(data.total ?? list.length ?? 0);
+    membersPanelTitle.textContent = `Telegram Member List — Total: ${total}`;
+
     const rows = list
       .map((m, i) => {
         const username = m.username
@@ -589,6 +621,7 @@ async function loadMembersUI() {
       .join("");
 
     membersTable.innerHTML = `
+      <div class="small" style="margin-bottom:8px;"><b>Total Members:</b> ${esc(String(total))}</div>
       <table class="table">
         <thead>
           <tr>
@@ -627,7 +660,7 @@ async function loadMembersInSettings() {
 }
 
 /* ===========================
-   History UI (FIXED)
+   History UI (Winner name show + Notice beside name)
 =========================== */
 async function loadHistoryUI() {
   try {
@@ -641,22 +674,22 @@ async function loadHistoryUI() {
       ? list
           .map((h) => {
             const winnerObj = h?.winner ?? h?.member ?? h?.user ?? {};
-
-            const p =
+            const prize =
               h?.prize ??
               h?.prize_name ??
               h?.prizeName ??
               h?.item ??
               "-";
 
-            const w =
+            const display =
               winnerObj?.display ??
               winnerObj?.name ??
+              (winnerObj?.username ? `@${String(winnerObj.username).replace("@","")}` : "") ??
               h?.winner_display ??
               h?.winner_name ??
               h?.display ??
               h?.name ??
-              "-";
+              (winnerObj?.id ? String(winnerObj.id) : "-");
 
             const usernameRaw =
               winnerObj?.username ??
@@ -675,25 +708,26 @@ async function loadHistoryUI() {
 
             const at = h?.at ? new Date(h.at).toLocaleString() : "";
 
+            // ✅ beside name: username -> Telegram btn, else Notice btn
             let btn = "";
             if (u) {
-              btn = `<button class="btn mini js-telegram" data-user="${esc(
-                u
-              )}">Telegram</button>`;
+              btn = `<button class="btn mini js-telegram" data-user="${esc(u)}">Telegram</button>`;
             } else {
               btn = `<button class="btn mini js-notice"
                         data-id="${esc(String(id))}"
-                        data-name="${esc(String(w))}">
+                        data-name="${esc(String(display))}"
+                        data-prize="${esc(String(prize))}">
                         Notice
                      </button>`;
             }
 
             return `
               <div style="padding:10px 0; border-bottom:1px solid rgba(16,19,24,0.10)">
-                <div><b>${esc(String(p))}</b> — ${esc(String(w))} ${btn}</div>
-                <div style="font-size:12px; color:rgba(16,19,24,0.60)">${esc(
-                  String(at)
-                )}</div>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                  <div><b>${esc(String(prize))}</b> — ${esc(String(display))}</div>
+                  <div>${btn}</div>
+                </div>
+                <div style="font-size:12px; color:rgba(16,19,24,0.60)">${esc(String(at))}</div>
               </div>
             `;
           })
@@ -711,7 +745,7 @@ membersBtn.addEventListener("click", loadMembersUI);
 historyBtn.addEventListener("click", loadHistoryUI);
 refreshMembersInSettingsBtn.addEventListener("click", loadMembersInSettings);
 
-// ✅ Winner History buttons (Telegram / Notice) - Event Delegation (ONLY ONE PLACE)
+// ✅ Winner History buttons (Telegram / Notice)
 historyList.addEventListener("click", async (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
@@ -725,19 +759,15 @@ historyList.addEventListener("click", async (e) => {
 
   if (btn.classList.contains("js-notice")) {
     const userId = btn.dataset.id;
-    const name = btn.dataset.name || "-";
+    const prize = btn.dataset.prize || "-";
     if (!userId) return;
 
-    const text = `🎉 Lucky77 Notice
-
-${name}
-
-Winner ဖြစ်ပါက ဒီ DM မှာ ဆက်သွယ်ပါမယ် ✅`;
+    const text = buildCongratsText(prize);
 
     try {
       const r = await apiPost("/notice", { user_id: userId, text });
       if (r?.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
-      else alert("⚠️ DM မပို့နိုင်သေးပါ");
+      else alert("⚠️ DM မပို့နိုင်သေးပါ။ User က Bot ကို Start မလုပ်သေးနိုင်ပါတယ်");
     } catch (err) {
       alert("Notice error: " + (err.message || err));
     }
@@ -751,7 +781,7 @@ restartSpinBtn.addEventListener("click", async () => {
   try {
     const data = await apiPost("/restart-spin", {});
     if (!data?.ok) throw new Error(data?.error || "restart error");
-    hideWinnerCard();
+    hideWinnerPopup();
     await refreshPoolUI();
     await loadMembersInSettings();
     alert("Restart Spin ✅");
@@ -821,7 +851,7 @@ async function finalizeSpinFromServer() {
     const prize = data.prize || "-";
     const winner = data.winner || {};
 
-    showWinnerCard(prize, winner);
+    showWinnerPopup(prize, winner);
     nextPrizeText.textContent = `${prize} Winner`;
 
     await refreshPoolUI();
@@ -861,13 +891,14 @@ saveBtn.addEventListener("click", async () => {
 
   sliceColors = parseWheelColors(s.wheelColorsText);
 
+  // ✅ Render server needs times bag => keep original prizeText
   const prizeText = buildPrizeText(s.prizes);
 
-  wheelPrizes = expandPrizeText(prizeText);
+  // ✅ Wheel display must be unique (no 3time/4time duplicates)
+  wheelPrizes = uniquePrizeNames(s.prizes);
   drawWheel();
-  nextPrizeText.textContent = wheelPrizes.length
-    ? `${wheelPrizes[0]} Winner`
-    : "-";
+
+  nextPrizeText.textContent = nextPrizeLabelFromSettings(s.prizes);
 
   closeSettings();
 
@@ -932,29 +963,6 @@ bgSongFile.addEventListener("change", (e) => {
 });
 
 /* ===========================
-   Prize Expand (UI)
-=========================== */
-function expandPrizeText(prizeText) {
-  const lines = String(prizeText || "")
-    .split("\n")
-    .map((x) => x.trim())
-    .filter(Boolean);
-
-  const expanded = [];
-  for (const line of lines) {
-    let m = line.match(/^(.+?)\s+(\d+)\s*time$/i);
-    if (!m) m = line.match(/^(.+?)\s+(\d+)$/i);
-    if (!m) continue;
-
-    const prize = m[1].trim();
-    const times = parseInt(m[2], 10);
-    if (!prize || !Number.isFinite(times) || times <= 0) continue;
-    for (let i = 0; i < times; i++) expanded.push(prize);
-  }
-  return expanded;
-}
-
-/* ===========================
    Init
 =========================== */
 function init() {
@@ -981,13 +989,13 @@ function init() {
   renderPrizeBuilder(s.prizes || structuredClone(defaultSettings.prizes));
 
   sliceColors = parseWheelColors(s.wheelColorsText);
-  const prizeText = buildPrizeText(s.prizes || []);
-  wheelPrizes = expandPrizeText(prizeText);
+
+  // ✅ unique only
+  wheelPrizes = uniquePrizeNames(s.prizes || []);
   drawWheel();
 
-  nextPrizeText.textContent = wheelPrizes.length
-    ? `${wheelPrizes[0]} Winner`
-    : "-";
+  nextPrizeText.textContent = nextPrizeLabelFromSettings(s.prizes);
+
   updateMusicBtn();
 
   refreshPoolUI();
