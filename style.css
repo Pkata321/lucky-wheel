@@ -429,58 +429,90 @@ textarea {
   cursor: pointer;
 }
 
-/* ✅ Winner Popup + Effect */
-.winner-overlay {
+/* ===========================
+   ✅ WINNER MODAL (BIG SQUARE POPUP)
+=========================== */
+.modal {
   position: fixed;
   inset: 0;
   z-index: 99999;
   display: grid;
   place-items: center;
-  background: rgba(0, 0, 0, 0.45);
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(4px);
 }
-.winner-overlay.hidden { display: none; }
+.modal.hidden {
+  display: none;
+}
 
-.winner-popup {
-  width: min(520px, 92vw);
+.modal-card {
+  width: min(560px, 94vw);
   border-radius: 18px;
-  border: 1px solid rgba(214, 178, 94, 0.35);
-  background: radial-gradient(
-    700px 500px at 50% 10%,
-    rgba(214, 178, 94, 0.18),
-    rgba(255, 255, 255, 0.94)
-  );
-  padding: 14px;
-  box-shadow: 0 30px 120px rgba(0, 0, 0, 0.30);
-  animation: popIn 0.22s ease-out;
+  border: 2px solid rgba(214, 178, 94, 0.55);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 30px 120px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  animation: popIn 0.18s ease-out;
 }
-
 @keyframes popIn {
-  from { transform: translateY(10px) scale(0.98); opacity: 0; }
-  to   { transform: translateY(0) scale(1); opacity: 1; }
+  from { transform: scale(0.92); opacity: 0.0; }
+  to   { transform: scale(1); opacity: 1; }
 }
 
-.winner-top {
+.modal-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  padding: 12px 14px;
+  background: radial-gradient(
+    600px 260px at 50% 10%,
+    rgba(214, 178, 94, 0.18),
+    rgba(255, 255, 255, 0.92)
+  );
+  border-bottom: 1px solid rgba(16, 19, 24, 0.10);
 }
-.winner-title {
+
+.modal-title {
   font-weight: 1000;
-  color: var(--gold);
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
+  color: rgba(16, 19, 24, 0.85);
 }
-.winner-name {
+
+.modal-body {
+  padding: 18px 16px 16px;
+}
+
+.modal-winner-label {
+  font-weight: 1000;
+  letter-spacing: 0.6px;
+  color: rgba(16, 19, 24, 0.65);
+}
+
+.modal-winner-name {
   margin-top: 10px;
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 1000;
+  line-height: 1.15;
+  color: #101318;
 }
-.winner-actions {
-  margin-top: 12px;
+
+.modal-sub {
+  margin-top: 8px;
+  font-weight: 900;
+  color: rgba(16, 19, 24, 0.62);
+}
+
+.modal-actions {
+  margin-top: 14px;
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+.modal-actions .btn {
+  flex: 1;
+  min-width: 160px;
 }
 
 @media (max-width: 700px) {
