@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
   <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Lucky Spin Wheel</title>
-    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./style.css" />
   </head>
-    
+
   <body>
     <div class="bg" id="bgLayer"></div>
 
@@ -25,7 +24,7 @@
 
       <!-- Top Banner -->
       <div class="banner-img">
-        <img id="topBannerImg" alt="Top Banner" style="display:none;">
+        <img id="topBannerImg" alt="Top Banner" style="display: none" />
         <div id="topBannerFallback" class="banner-fallback">
           Top Banner (Settings ထဲကနေ Upload ထည့်နိုင်ပါတယ်)
         </div>
@@ -39,10 +38,7 @@
             <button id="spinBtn" class="spin-btn">SPIN</button>
           </div>
 
-          <div class="info-row">
-            <div class="label">NEXT PRIZE</div>
-            <div id="nextPrizeText">-</div>
-          </div>
+          <!-- ✅ NEXT PRIZE removed -->
 
           <div class="info-row">
             <div class="label">POOL</div>
@@ -58,7 +54,10 @@
           <!-- Members Panel -->
           <div id="membersPanel" class="panel hidden">
             <div class="panel-head">
-              <div class="panel-title">Telegram Member List</div>
+              <div class="panel-title">
+                Telegram Member List
+                <span class="panel-total" id="membersTotalText"></span>
+              </div>
               <button class="btn mini" id="membersCloseBtn">Close</button>
             </div>
             <div class="panel-body" id="membersTable"></div>
@@ -77,32 +76,35 @@
 
       <!-- Bottom Banner -->
       <div class="banner-img">
-        <img id="bottomBannerImg" alt="Bottom Banner" style="display:none;">
+        <img id="bottomBannerImg" alt="Bottom Banner" style="display: none" />
         <div id="bottomBannerFallback" class="banner-fallback">
           Bottom Banner (Settings ထဲကနေ Upload ထည့်နိုင်ပါတယ်)
         </div>
       </div>
     </div>
 
-    <!-- ✅ WINNER POPUP MODAL (BIG SQUARE) -->
-    <div id="winnerModal" class="modal hidden">
+    <!-- ✅ BIG WINNER POPUP (Modal) -->
+    <div id="winnerModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" id="winnerBackdrop"></div>
       <div class="modal-card">
         <div class="modal-head">
-          <div class="modal-title" id="modalPrizeTitle">Winner</div>
-          <button class="btn mini" id="modalCloseBtn">Close</button>
+          <div class="modal-badge" id="winnerPrizeTitle">WINNER</div>
+          <button class="btn mini" id="winnerCloseBtn">Close</button>
         </div>
 
-        <div class="modal-body">
-          <div class="modal-winner-label">____Winner</div>
-          <div class="modal-winner-name" id="modalWinnerName">-</div>
-          <div class="modal-sub" id="modalWinnerSub">-</div>
+        <div class="modal-title" id="winnerTitleText">—</div>
+        <div class="modal-name" id="winnerNameText">—</div>
 
-          <div class="modal-actions">
-            <button class="btn primary" id="modalTelegramBtn">Telegram</button>
-            <button class="btn" id="modalNoticeBtn">Notice (DM)</button>
-          </div>
+        <div class="modal-actions">
+          <button class="btn primary" id="contactBtn">Telegram</button>
+          <button class="btn" id="noticeBtn">Notice (DM)</button>
+        </div>
 
-          <div class="small" id="modalHint" style="margin-top:10px;"></div>
+        <div class="small" id="winnerHint" style="margin-top: 10px"></div>
+
+        <div class="fx">
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
         </div>
       </div>
     </div>
@@ -116,19 +118,19 @@
 
       <div class="field">
         <label>Render API</label>
-        <input id="apiBaseInput" type="text" placeholder="https://lucky77-wheel-bot.onrender.com">
+        <input id="apiBaseInput" type="text" placeholder="https://lucky77-wheel-bot.onrender.com" />
         <small class="small">Render URL ကို ၁ခါပဲထည့်ပြီး Save လုပ်ပါ</small>
       </div>
 
       <div class="field">
         <label>API Key</label>
-        <input id="apiKeyInput" type="text" placeholder="Lucky77_luckywheel_77">
+        <input id="apiKeyInput" type="text" placeholder="Lucky77_luckywheel_77" />
       </div>
 
       <div class="field">
         <label>Prize List + Prize Turn (Stepper)</label>
         <div id="prizeBuilder"></div>
-        <div class="small" style="margin-top:6px;">
+        <div class="small" style="margin-top: 6px">
           ✅ Prize + time ကို stepper နဲ့ချိန်ပြီး Save လုပ်တာနဲ့ Render ထဲကိုလည်းသိမ်းမယ်
         </div>
       </div>
@@ -181,7 +183,7 @@
       <div class="field">
         <label>Member List (Preview)</label>
         <button class="btn" id="refreshMembersInSettingsBtn">Refresh Members</button>
-        <div id="membersInSettings" class="small" style="margin-top:8px; max-height:220px; overflow:auto;"></div>
+        <div id="membersInSettings" class="small" style="margin-top: 8px; max-height: 220px; overflow: auto"></div>
       </div>
 
       <div class="drawer-actions">
@@ -190,12 +192,11 @@
       </div>
 
       <p class="hint">
-        ⚠️ Banner/MP3 Upload တွေက refresh လုပ်ရင် ပြန်ရွေးရနိုင်ပါတယ် (browser security). <br>
+        ⚠️ Banner/MP3 Upload တွေက refresh လုပ်ရင် ပြန်ရွေးရနိုင်ပါတယ် (browser security). <br />
         ✅ Prize/Color/Image settings တွေက LocalStorage ထဲမှာသိမ်းထားပါတယ်။
       </p>
     </div>
 
     <script src="./script.js"></script>
   </body>
-  
 </html>
