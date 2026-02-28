@@ -1,7 +1,7 @@
 "use strict";
 
 /* ===========================
-   HARD DEFAULTS (you can change in Settings)
+   HARD DEFAULTS
 =========================== */
 const DEFAULT_API_BASE = "https://lucky77-wheel-bot.onrender.com";
 const DEFAULT_API_KEY = "Lucky77_luckywheel_77";
@@ -13,7 +13,6 @@ const wheelCanvas = document.getElementById("wheel");
 const ctx = wheelCanvas.getContext("2d");
 
 const spinBtn = document.getElementById("spinBtn");
-const nextPrizeText = document.getElementById("nextPrizeText");
 const poolText = document.getElementById("poolText");
 
 const drawer = document.getElementById("drawer");
@@ -51,31 +50,75 @@ const historyBtn = document.getElementById("historyBtn");
 const membersPanel = document.getElementById("membersPanel");
 const membersCloseBtn = document.getElementById("membersCloseBtn");
 const membersTable = document.getElementById("membersTable");
+const membersTotalText = document.getElementById("membersTotalText");
 
 const historyPanel = document.getElementById("historyPanel");
 const historyCloseBtn = document.getElementById("historyCloseBtn");
 const historyList = document.getElementById("historyList");
 
+const refreshMembersInSettingsBtn = document.getElementById("refreshMembersInSettingsBtn");
+const membersInSettings = document.getElementById("membersInSettings");
+
+/* ✅ Winner Modal */
+const winnerModal = document.getElementById("winnerModal");
+const winnerBackdrop = document.getElementById("winnerBackdrop");
+const winnerPrizeTitle = document.getElementById("winnerPrizeTitle");
+const winnerTitleText = document.getElementById("winnerTitleText");
+const winnerNameText = document.getElementById("winnerNameText");
+const contactBtn = document.getElementById("contactBtn");
+const noticeBtn = document.getElementById("noticeBtn");
+const winnerCloseBtn = document.getElementById("winnerCloseBtn");
+const winnerHint = document.getElementById("winnerHint");
+
+/* ===========================
+   Music
+=========================== */
 const musicBtn = document.getElementById("musicBtn");
 const bgMusic = new Audio();
 bgMusic.loop = true;
 bgMusic.volume = 0.55;
 let musicOn = false;
 
-const refreshMembersInSettingsBtn = document.getElementById(
-  "refreshMembersInSettingsBtn"
-);
-const membersInSettings = document.getElementById("membersInSettings");
+function updateMusicBtn() {
+  musicBtn.textContent = musicOn ? "🎵 Music: ON" : "🎵 Music: OFF";
+  musicBtn.classList.toggle("primary", musicOn);
+}
+musicBtn.addEventListener("click", async () => {
+  musicOn = !musicOn;
+  if (musicOn) {
+    if (bgMusic.src) {
+      try { await bgMusic.play(); } catch {}
+    } else {
+      alert("Settings ထဲမှာ MP3 Upload လုပ်ပါ");
+      musicOn = false;
+    }
+  } else {
+    bgMusic.pause();
+  }
+  updateMusicBtn();
+});
 
-/* ✅ Winner Modal DOM */
-const winnerModal = document.getElementById("winnerModal");
-const modalPrizeTitle = document.getElementById("modalPrizeTitle");
-const modalWinnerName = document.getElementById("modalWinnerName");
-const modalWinnerSub = document.getElementById("modalWinnerSub");
-const modalTelegramBtn = document.getElementById("modalTelegramBtn");
-const modalNoticeBtn = document.getElementById("modalNoticeBtn");
-const modalCloseBtn = document.getElementById("modalCloseBtn");
-const modalHint = document.getElementById("modalHint");
+// tick sound (WebAudio)
+let audioCtx = null;
+function tickSound(freq = 900, dur = 0.02, gain = 0.06) {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = "square";
+    o.frequency.value = freq;
+    g.gain.value = gain;
+    o.connect(g);
+    g.connect(audioCtx.destination);
+    o.start();
+    o.stop(audioCtx.currentTime + dur);
+  } catch {}
+}
+function winChime() {
+  tickSound(880, 0.05, 0.08);
+  setTimeout(() => tickSound(1320, 0.06, 0.08), 80);
+  setTimeout(() => tickSound(1760, 0.08, 0.08), 180);
+}
 
 /* ===========================
    Storage
@@ -95,13 +138,13 @@ const defaultSettings = {
     { name: "5000Ks", times: 2 },
     { name: "3000Ks", times: 3 },
     { name: "2000Ks", times: 5 },
-    { name: "1000Ks", times: 10 }
+    { name: "1000Ks", times: 10 },
   ],
 
   pageBgDataUrl: "",
   wheelBgDataUrl: "",
   topBannerDataUrl: "",
-  bottomBannerDataUrl: ""
+  bottomBannerDataUrl: "",
 };
 
 function loadSettings() {
@@ -172,62 +215,10 @@ function applyWheelBg(dataUrl) {
 }
 
 /* ===========================
-   Music
-=========================== */
-function updateMusicBtn() {
-  musicBtn.textContent = musicOn ? "🎵 Music: ON" : "🎵 Music: OFF";
-  musicBtn.classList.toggle("primary", musicOn);
-}
-musicBtn.addEventListener("click", async () => {
-  musicOn = !musicOn;
-  if (musicOn) {
-    if (bgMusic.src) {
-      try {
-        await bgMusic.play();
-      } catch {}
-    } else {
-      alert("Settings ထဲမှာ MP3 Upload လုပ်ပါ");
-      musicOn = false;
-    }
-  } else {
-    bgMusic.pause();
-  }
-  updateMusicBtn();
-});
-
-// tick sound (WebAudio)
-let audioCtx = null;
-function tickSound(freq = 900, dur = 0.02, gain = 0.06) {
-  try {
-    audioCtx =
-      audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.type = "square";
-    o.frequency.value = freq;
-    g.gain.value = gain;
-    o.connect(g);
-    g.connect(audioCtx.destination);
-    o.start();
-    o.stop(audioCtx.currentTime + dur);
-  } catch {}
-}
-function winChime() {
-  tickSound(880, 0.05, 0.08);
-  setTimeout(() => tickSound(1320, 0.06, 0.08), 80);
-  setTimeout(() => tickSound(1760, 0.08, 0.08), 180);
-}
-
-/* ===========================
    Drawer
 =========================== */
-function openSettings() {
-  drawer.classList.add("open");
-}
-function closeSettings() {
-  drawer.classList.remove("open");
-}
-
+function openSettings() { drawer.classList.add("open"); }
+function closeSettings() { drawer.classList.remove("open"); }
 settingsBtn.addEventListener("click", openSettings);
 closeSettingsBtn.addEventListener("click", closeSettings);
 
@@ -255,7 +246,7 @@ async function apiPost(path, body) {
   const r = await fetch(`${base}${path}?key=${encodeURIComponent(key)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": key },
-    body: JSON.stringify(body || {})
+    body: JSON.stringify(body || {}),
   });
   return r.json();
 }
@@ -263,17 +254,12 @@ async function apiPost(path, body) {
 /* ===========================
    Prize Builder (Stepper)
 =========================== */
-function clamp(n, a, b) {
-  return Math.max(a, Math.min(b, n));
-}
+function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
 function buildPrizeText(prizesArr) {
   return prizesArr
     .filter((p) => p && String(p.name || "").trim())
-    .map(
-      (p) =>
-        `${String(p.name).trim()} ${clamp(Number(p.times || 1), 1, 9999)}time`
-    )
+    .map((p) => `${String(p.name).trim()} ${clamp(Number(p.times || 1), 1, 9999)}time`)
     .join("\n");
 }
 
@@ -287,20 +273,14 @@ function renderPrizeBuilder(prizesArr) {
     const left = document.createElement("div");
     left.innerHTML = `
       <div class="pname">Prize</div>
-      <input data-k="name" data-i="${idx}" value="${esc(
-      p.name || ""
-    )}" placeholder="10000Ks">
+      <input data-k="name" data-i="${idx}" value="${esc(p.name || "")}" placeholder="10000Ks">
     `;
 
     const right = document.createElement("div");
     right.className = "stepper";
     right.innerHTML = `
       <button data-act="dec" data-i="${idx}">-</button>
-      <input data-k="times" data-i="${idx}" type="number" min="1" max="9999" value="${clamp(
-      Number(p.times || 1),
-      1,
-      9999
-    )}">
+      <input data-k="times" data-i="${idx}" type="number" min="1" max="9999" value="${clamp(Number(p.times || 1), 1, 9999)}">
       <button data-act="inc" data-i="${idx}">+</button>
     `;
 
@@ -338,8 +318,7 @@ function renderPrizeBuilder(prizesArr) {
       const k = String(inp.dataset.k);
       const s = loadSettings();
       if (!s.prizes[i]) return;
-      if (k === "times")
-        s.prizes[i].times = clamp(Number(inp.value || 1), 1, 9999);
+      if (k === "times") s.prizes[i].times = clamp(Number(inp.value || 1), 1, 9999);
       if (k === "name") s.prizes[i].name = String(inp.value || "");
       saveSettingsLocal(s);
     });
@@ -347,27 +326,7 @@ function renderPrizeBuilder(prizesArr) {
 }
 
 /* ===========================
-   ✅ Wheel prizes should be UNIQUE (no 3time/4time duplicates on wheel)
-=========================== */
-function uniquePrizeNames(prizesArr) {
-  const seen = new Set();
-  const out = [];
-  (prizesArr || []).forEach((p) => {
-    const name = String(p?.name || "").trim();
-    if (!name) return;
-    if (seen.has(name)) return;
-    seen.add(name);
-    out.push(name);
-  });
-  return out;
-}
-function nextPrizeLabelFromSettings(prizesArr) {
-  const u = uniquePrizeNames(prizesArr);
-  return u.length ? `${u[0]} Winner` : "-";
-}
-
-/* ===========================
-   Wheel drawing
+   Wheel drawing (UNIQUE prizes only)
 =========================== */
 let wheelPrizes = [];
 let sliceColors = [];
@@ -375,11 +334,23 @@ let currentAngle = 0;
 let spinning = false;
 
 function parseWheelColors(text) {
-  const colors = String(text || "")
-    .split("\n")
-    .map((x) => x.trim())
-    .filter(Boolean);
+  const colors = String(text || "").split("\n").map((x) => x.trim()).filter(Boolean);
   return colors.length ? colors : ["#ffffff", "#f1f5ff"];
+}
+
+// ✅ UI: unique prizes only (ignore times)
+function uniquePrizesFromPrizeText(prizeText) {
+  const lines = String(prizeText || "").split("\n").map((x) => x.trim()).filter(Boolean);
+  const set = new Set();
+  for (const line of lines) {
+    let m = line.match(/^(.+?)\s+(\d+)\s*time$/i);
+    if (!m) m = line.match(/^(.+?)\s+(\d+)$/i);
+    if (!m) continue;
+    const prize = m[1].trim();
+    if (!prize) continue;
+    set.add(prize);
+  }
+  return Array.from(set);
 }
 
 function drawWheel() {
@@ -441,116 +412,66 @@ function drawWheel() {
   ctx.stroke();
 }
 
-function getPointerPrize() {
-  const slice = (Math.PI * 2) / wheelPrizes.length;
-  let a = currentAngle % (Math.PI * 2);
-  if (a < 0) a += Math.PI * 2;
-  const pointerAngle = (Math.PI * 3) / 2;
-  let index = Math.floor(
-    ((pointerAngle - a + Math.PI * 2) % (Math.PI * 2)) / slice
-  );
-  index = index % wheelPrizes.length;
-  return wheelPrizes[index];
-}
-
 /* ===========================
-   ✅ Winner Popup Modal + Rules
-   - Username ရှိ => Telegram button တစ်ခုပဲ
-   - Username မရှိ => Notice button တစ်ခုပဲ
-   - Spin ရပ်တာနဲ့ popup ချက်ချင်းပေါ် (Loading...)
+   Winner Modal
 =========================== */
 let lastWinner = null;
 
-function getDisplayWinner(w) {
-  const name = String(w?.name || "").trim();
-  const u = String(w?.username || "").replace("@", "").trim();
-  if (name) return name;
-  if (u) return `@${u}`;
-  return String(w?.id || "-");
-}
-
-function openWinnerModal() {
-  winnerModal.classList.remove("hidden");
-}
-function closeWinnerModal() {
-  winnerModal.classList.add("hidden");
-  lastWinner = null;
-}
-modalCloseBtn.addEventListener("click", closeWinnerModal);
-
-// click outside close
-winnerModal.addEventListener("click", (e) => {
-  if (e.target === winnerModal) closeWinnerModal();
-});
-
-function showWinnerModalLoading(pointerPrize) {
-  lastWinner = null;
-  modalPrizeTitle.textContent = `${pointerPrize} Winner`;
-  modalWinnerName.textContent = "Loading...";
-  modalWinnerSub.textContent = "Please wait...";
-  modalHint.textContent = "";
-
-  modalTelegramBtn.style.display = "none";
-  modalNoticeBtn.style.display = "none";
-
-  openWinnerModal();
-}
-
-function buildCongratsTextMM(winnerDisplay, prize) {
-  // user requested Burmese congrat message
-  return (
-`Congratulation 🥳🥳🥳ပါအကိုရှင့်
-လက်ကီး77 ရဲ့ လစဉ်ဗလာမပါလက်ကီးဝှီး အစီစဉ်မှာ ယူနစ် ${prize} ကံထူးသွားပါတယ်ရှင့်☘️
-ဂိမ်းယူနစ်လေး ထည့်ပေးဖို့ အကို့ဂိမ်းအကောင့်လေး ပို့ပေးပါရှင့်`
-  );
-}
-
-function showWinnerModalFinal(prize, winnerObj) {
+function showWinnerModal(prize, winnerObj) {
   lastWinner = { prize, winner: winnerObj };
 
-  const display = getDisplayWinner(winnerObj);
-  const u = String(winnerObj?.username || "").replace("@", "").trim();
-  const hasUsername = !!u;
+  const username = String(winnerObj.username || "").replace("@", "").trim();
+  const hasUsername = !!username;
 
-  modalPrizeTitle.textContent = `${prize} Winner`;
-  modalWinnerName.textContent = display;
+  const name = String(winnerObj.name || "").trim();
+  const display = String(winnerObj.display || name || (username ? `@${username}` : String(winnerObj.id || "-")));
 
-  const id = String(winnerObj?.id || "-");
-  modalWinnerSub.textContent = hasUsername ? `@${u}  |  ID: ${id}` : `ID: ${id}`;
+  winnerPrizeTitle.textContent = "WINNER";
+  winnerTitleText.textContent = String(prize || "—");
+  winnerNameText.textContent = display;
 
-  // buttons
-  if (hasUsername) {
-    modalTelegramBtn.style.display = "inline-block";
-    modalNoticeBtn.style.display = "none";
-    modalHint.textContent = "✅ Username ရှိလို့ Telegram ကိုတန်းဖွင့်နိုင်ပါတယ်";
-  } else {
-    modalTelegramBtn.style.display = "none";
-    modalNoticeBtn.style.display = "inline-block";
-    modalHint.textContent = winnerObj?.dm_ready
-      ? "✅ DM Enable ဖြစ်ပြီးသားပါ။ Notice နှိပ်ရင် DM ပို့မယ်"
-      : "⚠️ DM Enable မဖြစ်သေးပါ (Start Bot Register လုပ်ရန်လိုပါသည်)";
-  }
+  // ✅ button rules
+  contactBtn.style.display = hasUsername ? "inline-flex" : "none";
+  noticeBtn.style.display = hasUsername ? "none" : "inline-flex";
 
+  winnerHint.textContent = hasUsername
+    ? "✅ Username ရှိလို့ Telegram အကောင့်ကို တန်းဖွင့်နိုင်ပါတယ်"
+    : "✅ Username မရှိလို့ Notice နှိပ်ရင် Bot က DM ပို့မယ်";
+
+  winnerModal.classList.remove("hidden");
+  winnerModal.setAttribute("aria-hidden", "false");
   winChime();
 }
 
-modalTelegramBtn.addEventListener("click", () => {
+function hideWinnerModal() {
+  winnerModal.classList.add("hidden");
+  winnerModal.setAttribute("aria-hidden", "true");
+  lastWinner = null;
+}
+winnerCloseBtn.addEventListener("click", hideWinnerModal);
+winnerBackdrop.addEventListener("click", hideWinnerModal);
+
+contactBtn.addEventListener("click", () => {
   if (!lastWinner) return;
-  const u = String(lastWinner.winner?.username || "").replace("@", "").trim();
+  const u = String(lastWinner.winner.username || "").replace("@", "").trim();
   if (!u) return;
   window.open(`https://t.me/${u}`, "_blank");
 });
 
-modalNoticeBtn.addEventListener("click", async () => {
+noticeBtn.addEventListener("click", async () => {
   if (!lastWinner) return;
   const w = lastWinner.winner;
   const prize = lastWinner.prize;
-  const disp = getDisplayWinner(w);
 
-  const text = buildCongratsTextMM(disp, prize);
+  // ✅ if username exists, open telegram (rule)
+  const username = String(w.username || "").replace("@", "").trim();
+  if (username) {
+    window.open(`https://t.me/${username}`, "_blank");
+    return;
+  }
 
   try {
-    const r = await apiPost("/notice", { user_id: w.id, text });
+    const r = await apiPost("/notice", { user_id: w.id, prize });
     if (!r?.ok) throw new Error(r?.error || "notice failed");
     if (r.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
     else alert("⚠️ DM မပို့နိုင်သေးပါ။ User က Bot ကို Start မလုပ်သေးနိုင်ပါတယ်");
@@ -562,28 +483,17 @@ modalNoticeBtn.addEventListener("click", async () => {
 /* ===========================
    Panels
 =========================== */
-function showMembersPanel() {
-  membersPanel.classList.remove("hidden");
-}
-function hideMembersPanel() {
-  membersPanel.classList.add("hidden");
-}
+function showMembersPanel() { membersPanel.classList.remove("hidden"); }
+function hideMembersPanel() { membersPanel.classList.add("hidden"); }
 membersCloseBtn.addEventListener("click", hideMembersPanel);
 
-function showHistoryPanel() {
-  historyPanel.classList.remove("hidden");
-}
-function hideHistoryPanel() {
-  historyPanel.classList.add("hidden");
-}
+function showHistoryPanel() { historyPanel.classList.remove("hidden"); }
+function hideHistoryPanel() { historyPanel.classList.add("hidden"); }
 historyCloseBtn.addEventListener("click", hideHistoryPanel);
 
 /* ===========================
-   Member List UI
-   ✅ faster feel: open panel immediately + loading + cache (30s)
+   Pool UI (light)
 =========================== */
-let membersCache = { at: 0, data: null };
-
 async function refreshPoolUI() {
   try {
     const data = await apiGet("/pool");
@@ -594,49 +504,36 @@ async function refreshPoolUI() {
   }
 }
 
-function actionButtonHTML(m) {
-  const username = m.username ? String(m.username).replace("@", "") : "";
-  const hasName = !!(m.name && String(m.name).trim());
-  const idOnly = !username && !hasName;
+/* ===========================
+   Members UI
+=========================== */
+function contactButtonHTML(m) {
+  const username = m.username ? String(m.username).replace("@", "").trim() : "";
+  const id = String(m.id || "");
+  const name = String(m.display || m.name || "-");
 
+  // ✅ rule: if username exists => open telegram (even if click notice)
   if (username) {
     return `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`;
   }
-  // id-only => Notice
-  if (idOnly || m.id) {
-    return `<button class="btn mini js-notice"
-              data-id="${esc(String(m.id))}"
-              data-name="${esc(String(m.display || "-"))}">
-              Notice
-            </button>`;
-  }
-  return `<span class="small">-</span>`;
-}
-
-async function fetchMembersWithCache() {
-  const now = Date.now();
-  if (membersCache.data && now - membersCache.at < 30_000) return membersCache.data;
-  const data = await apiGet("/members");
-  membersCache = { at: now, data };
-  return data;
+  return `<button class="btn mini js-notice" data-id="${esc(id)}" data-prize="" data-name="${esc(name)}">Notice</button>`;
 }
 
 async function loadMembersUI() {
   showMembersPanel();
-  membersTable.innerHTML = `<div class="small">Loading members...</div>`;
+  membersTotalText.textContent = "";
+  membersTable.innerHTML = `<div class="small">Loading...</div>`;
 
   try {
-    const data = await fetchMembersWithCache();
+    const data = await apiGet("/members");
     if (!data?.ok) throw new Error(data?.error || "members error");
 
     const list = Array.isArray(data.members) ? data.members : [];
-    const total = list.length;
+    membersTotalText.textContent = ` • Total: ${list.length}`;
 
     const rows = list
       .map((m, i) => {
-        const username = m.username
-          ? `@${String(m.username).replace("@", "")}`
-          : "-";
+        const username = m.username ? `@${String(m.username).replace("@", "")}` : "-";
         const won = m.isWinner ? "✅" : "";
         return `<tr>
           <td>${i + 1}</td>
@@ -644,16 +541,12 @@ async function loadMembersUI() {
           <td>${esc(username)}</td>
           <td>${esc(String(m.id || "-"))}</td>
           <td>${won}</td>
-          <td>${actionButtonHTML(m)}</td>
+          <td>${contactButtonHTML(m)}</td>
         </tr>`;
       })
       .join("");
 
     membersTable.innerHTML = `
-      <div class="small" style="margin-bottom:10px; font-weight:900;">
-        ✅ Total Members: ${esc(String(total))}
-      </div>
-
       <table class="table">
         <thead>
           <tr>
@@ -664,25 +557,22 @@ async function loadMembersUI() {
       </table>
     `;
   } catch (e) {
-    membersTable.innerHTML = `<div class="small">Error: ${esc(
-      e.message || e
-    )}</div>`;
+    membersTable.innerHTML = `<div class="small">Error: ${esc(e.message || e)}</div>`;
   }
 }
 
 async function loadMembersInSettings() {
+  membersInSettings.innerHTML = "Loading...";
   try {
-    const data = await fetchMembersWithCache();
+    const data = await apiGet("/members");
     if (!data?.ok) throw new Error(data?.error || "members error");
     const list = Array.isArray(data.members) ? data.members : [];
     membersInSettings.innerHTML = list.length
       ? list
-          .map(
-            (m, i) =>
-              `${i + 1}. ${esc(m.display)} ${
-                m.username ? `(@${esc(String(m.username).replace("@",""))})` : ""
-              } [${esc(String(m.id))}]`
-          )
+          .map((m, i) => {
+            const u = m.username ? `@${String(m.username).replace("@", "")}` : "-";
+            return `${i + 1}. ${esc(m.display || "-")} (${esc(u)}) [${esc(String(m.id || "-"))}]`;
+          })
           .join("<br>")
       : "No members yet";
   } catch (e) {
@@ -691,29 +581,42 @@ async function loadMembersInSettings() {
 }
 
 /* ===========================
-   History UI
-   ✅ Must show: Prize + Name + Username + ID + (Telegram OR Notice)
+   History UI (fixed + buttons)
 =========================== */
 async function loadHistoryUI() {
   showHistoryPanel();
-  historyList.innerHTML = `<div class="small">Loading history...</div>`;
+  historyList.innerHTML = `<div class="small">Loading...</div>`;
 
   try {
     const data = await apiGet("/history");
     if (!data?.ok) throw new Error(data?.error || "history error");
 
     const list = Array.isArray(data.history) ? data.history : [];
+
     historyList.innerHTML = list.length
       ? list
           .map((h) => {
+            // ✅ robust parse
             const winnerObj = h?.winner ?? h?.member ?? h?.user ?? {};
-
             const prize =
-              h?.prize ??
-              h?.prize_name ??
-              h?.prizeName ??
-              h?.item ??
+              h?.prize ?? h?.prize_name ?? h?.prizeName ?? h?.item ?? (h?.raw ? "-" : "-");
+
+            const display =
+              winnerObj?.display ??
+              winnerObj?.name ??
+              h?.winner_display ??
+              h?.winner_name ??
+              h?.display ??
+              h?.name ??
               "-";
+
+            const usernameRaw =
+              winnerObj?.username ??
+              h?.winner_username ??
+              h?.username ??
+              "";
+
+            const u = String(usernameRaw || "").replace("@", "").trim();
 
             const id =
               winnerObj?.id ??
@@ -722,67 +625,45 @@ async function loadHistoryUI() {
               h?.id ??
               "";
 
-            const name =
-              String(winnerObj?.name || h?.winner_name || h?.name || "").trim();
-
-            const usernameRaw =
-              winnerObj?.username ??
-              h?.winner_username ??
-              h?.username ??
-              "";
-
-            const username = String(usernameRaw || "").replace("@", "").trim();
-
-            const display = name
-              ? name
-              : username
-                ? `@${username}`
-                : String(id || "-");
-
             const at = h?.at ? new Date(h.at).toLocaleString() : "";
 
-            const btn = username
-              ? `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`
-              : `<button class="btn mini js-notice"
-                    data-id="${esc(String(id))}"
-                    data-name="${esc(String(display))}"
-                    data-prize="${esc(String(prize))}">
-                    Notice
-                  </button>`;
+            const showUser = u ? `@${u}` : "-";
+            const showId = id ? String(id) : "-";
+
+            let btn = "";
+            if (u) {
+              // ✅ rule: if username exists => open telegram
+              btn = `<button class="btn mini js-telegram" data-user="${esc(u)}">Telegram</button>`;
+            } else {
+              btn = `<button class="btn mini js-notice"
+                        data-id="${esc(String(showId))}"
+                        data-prize="${esc(String(prize || ""))}"
+                        data-name="${esc(String(display))}">
+                        Notice
+                     </button>`;
+            }
 
             return `
-              <div style="padding:10px 0; border-bottom:1px solid rgba(16,19,24,0.10)">
-                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <div class="hist-row">
+                <div class="hist-main">
                   <b>${esc(String(prize))}</b>
                   <span>${esc(String(display))}</span>
-                  <span class="small">(${username ? "@" + esc(username) : "no username"})</span>
-                  <span class="small">ID: ${esc(String(id || "-"))}</span>
+                  <span class="small">(${esc(String(showUser))})</span>
+                  <span class="small">[${esc(String(showId))}]</span>
                   ${btn}
                 </div>
-                <div style="font-size:12px; color:rgba(16,19,24,0.60); margin-top:6px;">
-                  ${esc(String(at))}
-                </div>
+                <div class="hist-time">${esc(String(at))}</div>
               </div>
             `;
           })
           .join("")
       : `<div class="small">No winners yet</div>`;
   } catch (e) {
-    historyList.innerHTML = `<div class="small">Error: ${esc(
-      e.message || e
-    )}</div>`;
+    historyList.innerHTML = `<div class="small">Error: ${esc(e.message || e)}</div>`;
   }
 }
 
-membersBtn.addEventListener("click", loadMembersUI);
-historyBtn.addEventListener("click", loadHistoryUI);
-refreshMembersInSettingsBtn.addEventListener("click", async () => {
-  // force refresh cache
-  membersCache = { at: 0, data: null };
-  await loadMembersInSettings();
-});
-
-/* ✅ Event Delegation for Buttons (Members + History) */
+/* ✅ Delegation for Members + History buttons */
 document.addEventListener("click", async (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
@@ -797,13 +678,13 @@ document.addEventListener("click", async (e) => {
   if (btn.classList.contains("js-notice")) {
     const userId = btn.dataset.id;
     const name = btn.dataset.name || "-";
-    const prize = btn.dataset.prize || (lastWinner?.prize || "-");
+    const prize = btn.dataset.prize || "";
+
     if (!userId) return;
 
-    const text = buildCongratsTextMM(name, prize);
-
+    // ✅ Notice -> bot auto DM template on server
     try {
-      const r = await apiPost("/notice", { user_id: userId, text });
+      const r = await apiPost("/notice", { user_id: userId, prize });
       if (r?.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
       else alert("⚠️ DM မပို့နိုင်သေးပါ");
     } catch (err) {
@@ -819,11 +700,8 @@ restartSpinBtn.addEventListener("click", async () => {
   try {
     const data = await apiPost("/restart-spin", {});
     if (!data?.ok) throw new Error(data?.error || "restart error");
-    closeWinnerModal();
+    hideWinnerModal();
     await refreshPoolUI();
-    // refresh cache too
-    membersCache = { at: 0, data: null };
-    await loadMembersInSettings();
     alert("Restart Spin ✅");
   } catch (e) {
     alert("Restart error: " + (e.message || e));
@@ -831,9 +709,30 @@ restartSpinBtn.addEventListener("click", async () => {
 });
 
 /* ===========================
-   Spin
-   ✅ spin stops => show popup immediately (Loading...) then update from server
+   Spin (server prize first => no delay popup)
 =========================== */
+function calcAngleToLandOnPrize(prize) {
+  const idx = wheelPrizes.indexOf(String(prize));
+  if (idx < 0 || wheelPrizes.length < 2) return null;
+
+  const slice = (Math.PI * 2) / wheelPrizes.length;
+  const pointerAngle = (Math.PI * 3) / 2;
+
+  // target center of slice
+  const centerOffset = (idx + 0.5) * slice;
+  let target = pointerAngle - centerOffset;
+
+  // random small inside slice (avoid border)
+  const jitter = (Math.random() * 0.6 - 0.3) * (slice * 0.6);
+  target += jitter;
+
+  // normalize
+  while (target < 0) target += Math.PI * 2;
+  while (target >= Math.PI * 2) target -= Math.PI * 2;
+
+  return target;
+}
+
 async function spin() {
   if (spinning) return;
 
@@ -844,19 +743,43 @@ async function spin() {
 
   spinning = true;
   spinBtn.disabled = true;
+  const oldText = spinBtn.textContent;
+  spinBtn.textContent = "SPIN...";
+
+  // ✅ get server result first (so popup show instantly after stop)
+  let result;
+  try {
+    result = await apiPost("/spin", {});
+    if (!result?.ok) throw new Error(result?.error || "spin error");
+  } catch (e) {
+    spinning = false;
+    spinBtn.disabled = false;
+    spinBtn.textContent = oldText;
+    alert("Spin error: " + (e.message || e));
+    return;
+  }
+
+  const prize = String(result.prize || "-");
+  const winner = result.winner || {};
+
+  // if prize not in wheel (should not happen), fallback
+  let targetAngle = calcAngleToLandOnPrize(prize);
+  if (targetAngle === null) targetAngle = (Math.random() * Math.PI * 2);
 
   if (musicOn && bgMusic.src) bgMusic.play().catch(() => {});
 
   const extraSpins = 7 + Math.random() * 6;
-  const finalAngle =
-    currentAngle + extraSpins * Math.PI * 2 + Math.random() * Math.PI * 2;
-  const duration = 3000; // ✅ 조금 faster
+  const currentNorm = ((currentAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+
+  // make finalAngle reach targetAngle after many spins
+  const delta = ((targetAngle - currentNorm) + Math.PI * 2) % (Math.PI * 2);
+  const finalAngle = currentAngle + extraSpins * Math.PI * 2 + delta;
+
+  const duration = 3200;
   const startTime = performance.now();
   const startAngle = currentAngle;
 
-  function easeOutCubic(t) {
-    return 1 - Math.pow(1 - t, 3);
-  }
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 
   let tickT = 0;
   function animate(now) {
@@ -876,42 +799,17 @@ async function spin() {
     if (t < 1) {
       requestAnimationFrame(animate);
     } else {
-      const prizeFromWheel = getPointerPrize();
-
-      // ✅ show popup immediately
-      showWinnerModalLoading(prizeFromWheel);
-
-      // server winner
-      finalizeSpinFromServer(prizeFromWheel);
+      // ✅ stop => instantly show popup (no fetch delay)
+      showWinnerModal(prize, winner);
+      refreshPoolUI();
+      spinning = false;
+      spinBtn.disabled = false;
+      spinBtn.textContent = oldText;
     }
   }
+
   requestAnimationFrame(animate);
 }
-
-async function finalizeSpinFromServer(pointerPrize) {
-  try {
-    const data = await apiPost("/spin", {});
-    if (!data?.ok) throw new Error(data?.error || "spin error");
-
-    const prize = data.prize || pointerPrize || "-";
-    const winner = data.winner || {};
-
-    showWinnerModalFinal(prize, winner);
-    nextPrizeText.textContent = `${prize} Winner`;
-
-    await refreshPoolUI();
-    // refresh members cache (because winner status changed)
-    membersCache = { at: 0, data: null };
-    await loadMembersInSettings();
-  } catch (e) {
-    alert("Spin error: " + (e.message || e));
-    closeWinnerModal();
-  } finally {
-    spinning = false;
-    spinBtn.disabled = false;
-  }
-}
-
 spinBtn.addEventListener("click", spin);
 
 /* ===========================
@@ -941,19 +839,16 @@ saveBtn.addEventListener("click", async () => {
 
   const prizeText = buildPrizeText(s.prizes);
 
-  // ✅ Wheel only unique prizes
-  wheelPrizes = uniquePrizeNames(s.prizes);
-
+  // ✅ wheel UI = unique prizes only
+  wheelPrizes = uniquePrizesFromPrizeText(prizeText);
   drawWheel();
-  nextPrizeText.textContent = nextPrizeLabelFromSettings(s.prizes);
 
   closeSettings();
 
   try {
-    await pushPrizeConfigToRender(prizeText); // ✅ keep times for server bag
+    await pushPrizeConfigToRender(prizeText);
     await refreshPoolUI();
-    membersCache = { at: 0, data: null };
-    await loadMembersInSettings();
+    alert("Save ✅");
   } catch (e) {
     alert("Save to Render error: " + (e.message || e));
   }
@@ -1011,6 +906,13 @@ bgSongFile.addEventListener("change", (e) => {
 });
 
 /* ===========================
+   Buttons
+=========================== */
+membersBtn.addEventListener("click", loadMembersUI);
+historyBtn.addEventListener("click", loadHistoryUI);
+refreshMembersInSettingsBtn.addEventListener("click", loadMembersInSettings);
+
+/* ===========================
    Init
 =========================== */
 function init() {
@@ -1028,28 +930,22 @@ function init() {
   applyPageBg(s.pageBgDataUrl || "");
   applyWheelBg(s.wheelBgDataUrl || "");
   applyBanner(s.topBannerDataUrl || "", topBannerImg, topBannerFallback);
-  applyBanner(
-    s.bottomBannerDataUrl || "",
-    bottomBannerImg,
-    bottomBannerFallback
-  );
+  applyBanner(s.bottomBannerDataUrl || "", bottomBannerImg, bottomBannerFallback);
 
   renderPrizeBuilder(s.prizes || structuredClone(defaultSettings.prizes));
 
   sliceColors = parseWheelColors(s.wheelColorsText);
+  const prizeText = buildPrizeText(s.prizes || []);
 
-  // ✅ Wheel only unique prizes
-  wheelPrizes = uniquePrizeNames(s.prizes || []);
+  // ✅ UI wheel prizes unique
+  wheelPrizes = uniquePrizesFromPrizeText(prizeText);
   drawWheel();
-
-  nextPrizeText.textContent = nextPrizeLabelFromSettings(s.prizes);
 
   updateMusicBtn();
 
+  // ✅ keep light: only pool on init
   refreshPoolUI();
-  loadMembersInSettings();
 }
-
 init();
 
 /* ===========================
