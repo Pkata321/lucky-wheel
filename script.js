@@ -216,6 +216,10 @@ function readCache(key) {
     return null;
   }
 }
+function clearCache() {
+  try { localStorage.removeItem(CACHE_MEMBERS_KEY); } catch {}
+  try { localStorage.removeItem(CACHE_HISTORY_KEY); } catch {}
+}
 
 /* ===========================
    Theme Apply
@@ -299,7 +303,9 @@ async function fetchJsonWithTimeout(url, opt = {}, timeoutMs = 8000) {
     const r = await fetch(url, { ...opt, signal: ctrl.signal });
     const text = await r.text();
     let json = null;
-    try { json = JSON.parse(text); } catch { json = { ok: false, error: "Invalid JSON", raw: text?.slice(0, 250) }; }
+    try { json = JSON.parse(text); }
+    catch { json = { ok: false, error: "Invalid JSON", raw: String(text || "").slice(0, 250) }; }
+
     if (!r.ok && json && json.ok !== true) {
       return { ok: false, error: json?.error || `HTTP ${r.status}` };
     }
@@ -312,7 +318,7 @@ async function fetchJsonWithTimeout(url, opt = {}, timeoutMs = 8000) {
   }
 }
 
-async function apiGet(path, timeoutMs = 8000) {
+async function apiGet(path, timeoutMs = 9000) {
   const base = getApiBase();
   const key = getApiKey();
   const url = `${base}${path}?key=${encodeURIComponent(key)}`;
@@ -518,7 +524,11 @@ function showWinnerModal(prize, winnerObj) {
   const hasUsername = !!username;
 
   const name = String(winnerObj.name || "").trim();
-  const display = String(winnerObj.display || name || (username ? `@${username}` : String(winnerObj.id || "-")));
+  const display = String(
+    winnerObj.display ||
+    name ||
+    (username ? `@${username}` : String(winnerObj.id || "-"))
+  );
 
   winnerPrizeTitle.textContent = "WINNER";
   winnerTitleText.textContent = String(prize || "—");
@@ -591,7 +601,7 @@ historyCloseBtn.addEventListener("click", hideHistoryPanel);
 =========================== */
 async function refreshPoolUI() {
   try {
-    const data = await apiGet("/pool", 6000);
+    const data = await apiGet("/pool", 7000);
     if (!data?.ok) throw new Error(data?.error || "pool error");
     poolText.textContent = `${data.count || 0} people in pool`;
   } catch {
@@ -607,7 +617,6 @@ function contactButtonHTML(m) {
   const id = String(m.id || "");
   const name = String(m.display || m.name || "-");
 
-  // optional: inactive -> no action
   if (m.active === false) return `<span class="small">inactive</span>`;
 
   if (username) {
@@ -650,7 +659,6 @@ async function loadMembersUI() {
   showMembersPanel();
   membersTotalText.textContent = "";
 
-  // show cache instantly (no loading stuck)
   const cached = readCache(CACHE_MEMBERS_KEY);
   if (Array.isArray(cached)) {
     membersTotalText.textContent = ` • Total: ${cached.length} (cached)`;
@@ -661,7 +669,7 @@ async function loadMembersUI() {
 
   showLoading("Loading Members...");
   try {
-    const data = await apiGet("/members", 10000);
+    const data = await apiGet("/members", 15000); // ✅ increase timeout
     if (!data?.ok) throw new Error(data?.error || "members error");
 
     const list = Array.isArray(data.members) ? data.members : [];
@@ -669,8 +677,6 @@ async function loadMembersUI() {
     renderMembersTable(list);
     saveCache(CACHE_MEMBERS_KEY, list);
   } catch (e) {
-    // keep cached UI; show small error message
-    membersTotalText.textContent = membersTotalText.textContent || "";
     membersTable.insertAdjacentHTML(
       "afterbegin",
       `<div class="small" style="margin-bottom:8px;">⚠️ ${esc(e.message || e)}</div>`
@@ -683,7 +689,7 @@ async function loadMembersUI() {
 async function loadMembersInSettings() {
   membersInSettings.innerHTML = "Loading...";
   try {
-    const data = await apiGet("/members", 9000);
+    const data = await apiGet("/members", 15000); // ✅ increase timeout
     if (!data?.ok) throw new Error(data?.error || "members error");
     const list = Array.isArray(data.members) ? data.members : [];
     membersInSettings.innerHTML = list.length
@@ -709,8 +715,7 @@ function renderHistory(list) {
     ? list
         .map((h) => {
           const winnerObj = h?.winner ?? h?.member ?? h?.user ?? {};
-          const prize =
-            h?.prize ?? h?.prize_name ?? h?.prizeName ?? h?.item ?? (h?.raw ? "-" : "-");
+          const prize = h?.prize ?? h?.prize_name ?? h?.prizeName ?? h?.item ?? "-";
 
           const display =
             winnerObj?.display ??
@@ -719,21 +724,10 @@ function renderHistory(list) {
             (winnerObj?.id ? String(winnerObj.id) : "") ??
             "-";
 
-          const usernameRaw =
-            winnerObj?.username ??
-            h?.winner_username ??
-            h?.username ??
-            "";
-
+          const usernameRaw = winnerObj?.username ?? h?.winner_username ?? h?.username ?? "";
           const u = String(usernameRaw || "").replace("@", "").trim();
 
-          const id =
-            winnerObj?.id ??
-            h?.winner_id ??
-            h?.user_id ??
-            h?.id ??
-            "";
-
+          const id = winnerObj?.id ?? h?.winner_id ?? h?.user_id ?? h?.id ?? "";
           const at = h?.at ? new Date(h.at).toLocaleString() : "";
 
           const showUser = u ? `@${u}` : "-";
@@ -780,7 +774,7 @@ async function loadHistoryUI() {
 
   showLoading("Loading History...");
   try {
-    const data = await apiGet("/history", 10000);
+    const data = await apiGet("/history", 15000); // ✅ increase timeout
     if (!data?.ok) throw new Error(data?.error || "history error");
     const list = Array.isArray(data.history) ? data.history : [];
     renderHistory(list);
@@ -814,7 +808,7 @@ document.addEventListener("click", async (e) => {
 
     showLoading("Sending Notice (DM)...");
     try {
-      const r = await apiPost("/notice", { user_id: userId, prize }, 10000);
+      const r = await apiPost("/notice", { user_id: userId, prize }, 12000);
       if (r?.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
       else alert("⚠️ DM မပို့နိုင်သေးပါ");
     } catch (err) {
@@ -906,7 +900,6 @@ async function spin() {
 
   const extraSpins = 7 + Math.random() * 6;
   const currentNorm = ((currentAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-
   const delta = ((targetAngle - currentNorm) + Math.PI * 2) % (Math.PI * 2);
   const finalAngle = currentAngle + extraSpins * Math.PI * 2 + delta;
 
@@ -974,7 +967,6 @@ saveBtn.addEventListener("click", async () => {
   wheelPrizes = uniquePrizesFromPrizeText(prizeText);
   drawWheel();
 
-  // ✅ prevent double click stuck
   saveBtn.disabled = true;
   showLoading("Saving Settings + Uploading Prizes...");
 
@@ -994,6 +986,7 @@ saveBtn.addEventListener("click", async () => {
 resetBtn.addEventListener("click", () => {
   if (!confirm("Reset settings လုပ်မလား?")) return;
   saveSettingsLocal(clone(defaultSettings));
+  clearCache(); // ✅ important
   init();
   alert("Reset done ✅");
 });
@@ -1083,7 +1076,7 @@ function init() {
 init();
 
 /* ===========================
-   Utils
+   Utils  ✅ FIXED (closing braces)
 =========================== */
 function esc(str) {
   return String(str)
