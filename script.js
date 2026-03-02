@@ -161,7 +161,30 @@ function winChime() {
 =========================== */
 const STORAGE_KEY = "lucky77_vercel_v2";
 const CACHE_MEMBERS_KEY = "lucky77_cache_members";
-const CACHE_HISTORY_KEY = "lucky77_cache_history";
+const CACHE_HISTORY_KEY = "lucky77_cache_history"; // (kept but not used now)
+
+/* ✅ Winner Prize Map (Frontend-only History Replacement) */
+const LS_WINNERS_KEY = "lucky77_winner_prize_map_v1";
+
+function loadWinnerPrizeMap() {
+  try { return JSON.parse(localStorage.getItem(LS_WINNERS_KEY) || "{}"); }
+  catch { return {}; }
+}
+function saveWinnerPrizeMap(map) {
+  try { localStorage.setItem(LS_WINNERS_KEY, JSON.stringify(map || {})); } catch {}
+}
+function clearWinnerPrizeMap() {
+  try { localStorage.removeItem(LS_WINNERS_KEY); } catch {}
+}
+function setWinnerPrize(id, prizeText) {
+  const map = loadWinnerPrizeMap();
+  map[String(id)] = {
+    prize: String(prizeText || "-"),
+    turnDone: true,
+    at: Date.now()
+  };
+  saveWinnerPrizeMap(map);
+}
 
 const defaultSettings = {
   apiBase: DEFAULT_API_BASE,
@@ -625,6 +648,20 @@ function contactButtonHTML(m) {
   return `<button class="btn mini js-notice" data-id="${esc(id)}" data-prize="" data-name="${esc(name)}">Notice</button>`;
 }
 
+/* ✅ History table Action (same behavior, but pass prize to notice) */
+function contactButtonHTMLWithPrize(m, prizeText) {
+  const username = m.username ? String(m.username).replace("@", "").trim() : "";
+  const id = String(m.id || "");
+  const name = String(m.display || m.name || "-");
+
+  if (m.active === false) return `<span class="small">inactive</span>`;
+
+  if (username) {
+    return `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`;
+  }
+  return `<button class="btn mini js-notice" data-id="${esc(id)}" data-prize="${esc(String(prizeText || ""))}" data-name="${esc(name)}">Notice</button>`;
+}
+
 function renderMembersTable(list) {
   const rows = list
     .map((m, i) => {
@@ -708,77 +745,66 @@ async function loadMembersInSettings() {
 }
 
 /* ===========================
-   History UI (show cache first)
+   Prize History UI (replaces /history)
+   - duplicate member list style
+   - columns: Won Prize | Turn Done ✅ | Action
 =========================== */
-function renderHistory(list) {
-  historyList.innerHTML = list.length
-    ? list
-        .map((h) => {
-          const winnerObj = h?.winner ?? h?.member ?? h?.user ?? {};
-          const prize = h?.prize ?? h?.prize_name ?? h?.prizeName ?? h?.item ?? "-";
+function renderPrizeHistoryTable(members) {
+  const map = loadWinnerPrizeMap();
 
-          const display =
-            winnerObj?.display ??
-            winnerObj?.name ??
-            (winnerObj?.username ? "@" + String(winnerObj.username).replace("@", "") : "") ??
-            (winnerObj?.id ? String(winnerObj.id) : "") ??
-            "-";
+  const rows = (members || []).map((m, i) => {
+    const username = m.username ? `@${String(m.username).replace("@", "")}` : "-";
+    const id = String(m.id || "-");
+    const rec = map[id];
+    const wonPrize = rec?.prize ? String(rec.prize) : "-";
+    const done = rec?.turnDone ? "✅" : "";
 
-          const usernameRaw = winnerObj?.username ?? h?.winner_username ?? h?.username ?? "";
-          const u = String(usernameRaw || "").replace("@", "").trim();
+    return `<tr>
+      <td>${i + 1}</td>
+      <td>${esc(m.display || "-")}</td>
+      <td>${esc(username)}</td>
+      <td>${esc(id)}</td>
+      <td>${esc(wonPrize)}</td>
+      <td>${done}</td>
+      <td>${contactButtonHTMLWithPrize(m, wonPrize)}</td>
+    </tr>`;
+  }).join("");
 
-          const id = winnerObj?.id ?? h?.winner_id ?? h?.user_id ?? h?.id ?? "";
-          const at = h?.at ? new Date(h.at).toLocaleString() : "";
-
-          const showUser = u ? `@${u}` : "-";
-          const showId = id ? String(id) : "-";
-
-          let btn = "";
-          if (u) {
-            btn = `<button class="btn mini js-telegram" data-user="${esc(u)}">Telegram</button>`;
-          } else {
-            btn = `<button class="btn mini js-notice"
-                      data-id="${esc(String(showId))}"
-                      data-prize="${esc(String(prize || ""))}"
-                      data-name="${esc(String(display))}">
-                      Notice
-                   </button>`;
-          }
-
-          return `
-            <div class="hist-row">
-              <div class="hist-main">
-                <b>${esc(String(prize))}</b>
-                <span>${esc(String(display))}</span>
-                <span class="small">(${esc(String(showUser))})</span>
-                <span class="small">[${esc(String(showId))}]</span>
-                ${btn}
-              </div>
-              <div class="hist-time">${esc(String(at))}</div>
-            </div>
-          `;
-        })
-        .join("")
-    : `<div class="small">No winners yet</div>`;
+  historyList.innerHTML = `
+    <div class="small" style="margin-bottom:8px;">
+      Prize History (Frontend) • Turn ပြီးသွားတဲ့သူတွေအတွက် Prize + ✅ ပြမယ်
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>No.</th><th>Name</th><th>Username</th><th>ID</th><th>Won Prize</th><th>Turn Done ✅</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="7">No members yet</td></tr>`}</tbody>
+    </table>
+  `;
 }
 
 async function loadHistoryUI() {
+  // ✅ keep same button behavior but content is our table now
   showHistoryPanel();
 
-  const cached = readCache(CACHE_HISTORY_KEY);
-  if (Array.isArray(cached)) {
-    renderHistory(cached);
+  // 1) show cached members first
+  const cachedMembers = readCache(CACHE_MEMBERS_KEY);
+  if (Array.isArray(cachedMembers)) {
+    renderPrizeHistoryTable(cachedMembers);
   } else {
     historyList.innerHTML = `<div class="small">Loading...</div>`;
   }
 
-  showLoading("Loading History...");
+  // 2) refresh members from API
+  showLoading("Loading Prize History...");
   try {
-    const data = await apiGet("/history", 15000); // ✅ increase timeout
-    if (!data?.ok) throw new Error(data?.error || "history error");
-    const list = Array.isArray(data.history) ? data.history : [];
-    renderHistory(list);
-    saveCache(CACHE_HISTORY_KEY, list);
+    const data = await apiGet("/members", 15000);
+    if (!data?.ok) throw new Error(data?.error || "members error");
+    const list = Array.isArray(data.members) ? data.members : [];
+    saveCache(CACHE_MEMBERS_KEY, list);
+    renderPrizeHistoryTable(list);
   } catch (e) {
     historyList.insertAdjacentHTML(
       "afterbegin",
@@ -927,8 +953,21 @@ async function spin() {
     if (t < 1) {
       requestAnimationFrame(animate);
     } else {
+      // ✅ SAVE prize history frontend-only (replaces /history)
+      const wid = winner?.id ?? winner?.user_id ?? winner?.winner_id;
+      if (wid) {
+        setWinnerPrize(wid, prize);
+      }
+
       showWinnerModal(prize, winner);
       refreshPoolUI();
+
+      // ✅ if history panel is open, auto refresh table
+      if (!historyPanel.classList.contains("hidden")) {
+        const cachedMembers = readCache(CACHE_MEMBERS_KEY);
+        if (Array.isArray(cachedMembers)) renderPrizeHistoryTable(cachedMembers);
+      }
+
       spinning = false;
       spinBtn.disabled = false;
       spinBtn.textContent = oldText;
@@ -987,6 +1026,7 @@ resetBtn.addEventListener("click", () => {
   if (!confirm("Reset settings လုပ်မလား?")) return;
   saveSettingsLocal(clone(defaultSettings));
   clearCache(); // ✅ important
+  clearWinnerPrizeMap(); // ✅ clear prize history too
   init();
   alert("Reset done ✅");
 });
