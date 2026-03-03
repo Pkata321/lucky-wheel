@@ -7,6 +7,10 @@
   --card: rgba(255, 255, 255, 0.82);
   --gold: #d6b25e;
   --shadow: 0 18px 70px rgba(0, 0, 0, 0.18);
+
+  /* ✅ NEW (Prize Done green) */
+  --success: #16a34a;
+  --success-hover: #15803d;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -72,11 +76,13 @@ body {
 }
 .btn:hover { background: rgba(255, 255, 255, 0.92); border-color: rgba(16, 19, 24, 0.18); }
 .btn:active { transform: scale(0.985); }
+
 .btn.primary {
   background: linear-gradient(90deg, rgba(214, 178, 94, 1), rgba(255, 230, 170, 1));
   color: #101318;
   border: none;
 }
+
 .btn.icon {
   width: 44px;
   height: 44px;
@@ -84,8 +90,39 @@ body {
   place-items: center;
   font-size: 18px;
 }
+
 .btn.mini { padding: 8px 10px; border-radius: 12px; font-size: 12px; }
 
+/* ✅ NEW: Done button green style (JS က btn.success class ထည့်/ဖြုတ်လုပ်လည်း OK) */
+.btn.success {
+  background: var(--success) !important;
+  border-color: var(--success) !important;
+  color: #fff !important;
+}
+.btn.success:hover {
+  background: var(--success-hover) !important;
+  border-color: var(--success-hover) !important;
+}
+
+/* ✅ Danger button (Remove prize) */
+.btn.danger {
+  background: rgba(255, 120, 120, 0.14);
+  border-color: rgba(255, 120, 120, 0.35);
+}
+.btn.danger:hover {
+  background: rgba(255, 120, 120, 0.22);
+  border-color: rgba(255, 120, 120, 0.45);
+}
+
+/* ✅ Disabled buttons */
+button:disabled,
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* -------------------- */
 .banner-img {
   max-width: 1100px;
   width: 100%;
@@ -194,6 +231,7 @@ body {
   overflow: hidden;
 }
 .panel.hidden { display: none; }
+
 .panel-head {
   display: flex;
   align-items: center;
@@ -201,13 +239,34 @@ body {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(16, 19, 24, 0.1);
 }
-.panel-title { font-weight: 1000; color: var(--muted); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-.panel-total { font-weight: 1000; color: rgba(16, 19, 24, 0.55); }
+
+.panel-title {
+  font-weight: 1000;
+  color: var(--muted);
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+/* ✅ Total style (Winner History Total ထင်ထင်ရှား) */
+.panel-total {
+  font-weight: 1000;
+  color: var(--gold);
+}
+
 .panel-body { padding: 10px 12px; max-height: 320px; overflow: auto; }
 
 .table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.table th, .table td { padding: 8px 6px; border-bottom: 1px solid rgba(16, 19, 24, 0.1); text-align: left; }
+.table th, .table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(16, 19, 24, 0.1);
+  text-align: left;
+}
 .table th { color: var(--muted); font-weight: 1000; }
+
+/* ✅ Table in small screen better */
+.table td button.btn.mini { white-space: nowrap; }
 
 .drawer {
   position: fixed;
@@ -239,6 +298,7 @@ body {
   background: rgba(255, 255, 255, 0.72);
 }
 .field label { font-size: 12px; font-weight: 1000; color: var(--muted); }
+
 input, textarea {
   width: 100%;
   padding: 10px 12px;
@@ -287,7 +347,7 @@ textarea { resize: vertical; }
   cursor: pointer;
 }
 
-/* ✅ History row style */
+/* ✅ History row style (old history UI, keep) */
 .hist-row {
   padding: 10px 0;
   border-bottom: 1px solid rgba(16, 19, 24, 0.10);
@@ -331,10 +391,12 @@ textarea { resize: vertical; }
   animation: popIn 0.18s ease-out;
   overflow: hidden;
 }
+
 @keyframes popIn {
   from { transform: scale(0.92); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
 .modal-head {
   display: flex;
   align-items: center;
@@ -409,20 +471,8 @@ textarea { resize: vertical; }
 }
 
 /* ===========================
-   ✅ FIX ADDITIONS (new)
-   - Remove button danger style
-   - Loading overlay (no stuck loading)
+   ✅ Loading overlay (no stuck loading)
 =========================== */
-.btn.danger {
-  background: rgba(255, 120, 120, 0.14);
-  border-color: rgba(255, 120, 120, 0.35);
-}
-.btn.danger:hover {
-  background: rgba(255, 120, 120, 0.22);
-  border-color: rgba(255, 120, 120, 0.45);
-}
-
-/* Loading overlay */
 .loading.hidden { display: none; }
 .loading {
   position: fixed;
@@ -458,4 +508,8 @@ textarea { resize: vertical; }
   border-top-color: rgba(214, 178, 94, 0.95);
   animation: spin 0.85s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ✅ ONLY ONE spin keyframes (duplicate removed) */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
