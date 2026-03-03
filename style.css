@@ -8,7 +8,7 @@
   --gold: #d6b25e;
   --shadow: 0 18px 70px rgba(0, 0, 0, 0.18);
 
-  /* ✅ NEW (Prize Done green) */
+  /* ✅ Prize Done green */
   --success: #16a34a;
   --success-hover: #15803d;
 }
@@ -26,7 +26,8 @@ body {
   position: fixed;
   inset: 0;
   z-index: -2;
-  background: radial-gradient(1200px 700px at 20% 10%, rgba(214, 178, 94, 0.12), transparent 60%),
+  background:
+    radial-gradient(1200px 700px at 20% 10%, rgba(214, 178, 94, 0.12), transparent 60%),
     radial-gradient(900px 700px at 80% 20%, rgba(121, 170, 255, 0.12), transparent 55%),
     linear-gradient(180deg, #ffffff, var(--bg));
   background-size: cover;
@@ -48,6 +49,9 @@ body {
   gap: 12px;
 }
 
+/* ===========================
+   TOP BAR
+=========================== */
 .topbar {
   display: flex;
   align-items: center;
@@ -64,6 +68,9 @@ body {
 
 .top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
+/* ===========================
+   BUTTONS
+=========================== */
 .btn {
   padding: 10px 12px;
   border-radius: 14px;
@@ -93,7 +100,7 @@ body {
 
 .btn.mini { padding: 8px 10px; border-radius: 12px; font-size: 12px; }
 
-/* ✅ NEW: Done button green style (JS က btn.success class ထည့်/ဖြုတ်လုပ်လည်း OK) */
+/* ✅ Done button green style */
 .btn.success {
   background: var(--success) !important;
   border-color: var(--success) !important;
@@ -122,7 +129,9 @@ button:disabled,
   transform: none !important;
 }
 
-/* -------------------- */
+/* ===========================
+   BANNERS
+=========================== */
 .banner-img {
   max-width: 1100px;
   width: 100%;
@@ -136,6 +145,9 @@ button:disabled,
 .banner-img img { width: 100%; height: 140px; object-fit: cover; display: block; }
 .banner-fallback { padding: 14px; text-align: center; color: var(--muted); font-weight: 900; }
 
+/* ===========================
+   MAIN LAYOUT
+=========================== */
 .main {
   width: 100%;
   max-width: 1100px;
@@ -177,6 +189,9 @@ button:disabled,
   box-shadow: 0 22px 80px rgba(0, 0, 0, 0.18);
 }
 
+/* ===========================
+   ✅ POINTER (INSIDE / DOWN TO CENTER)
+=========================== */
 .pointer{
   position:absolute;
   top: 10px;
@@ -186,7 +201,7 @@ button:disabled,
   filter: drop-shadow(0 10px 18px rgba(0,0,0,0.25));
 }
 
-/* tip (triangle) */
+/* triangle tip points DOWN to center */
 .pointer::before{
   content:"";
   display:block;
@@ -194,7 +209,7 @@ button:disabled,
   height:0;
   border-left: 16px solid transparent;
   border-right: 16px solid transparent;
-  border-bottom: 30px solid var(--gold);  /* points DOWN to center */
+  border-bottom: 30px solid var(--gold);
 }
 
 /* small base */
@@ -209,6 +224,9 @@ button:disabled,
   border: 1px solid rgba(16,19,24,0.08);
 }
 
+/* ===========================
+   SPIN BUTTON
+=========================== */
 .spin-btn {
   position: absolute;
   width: 128px;
@@ -225,6 +243,26 @@ button:disabled,
 }
 .spin-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* ===========================
+   ✅ WHEEL BRAND PNG BANNER (under wheel)
+=========================== */
+.wheel-brand-banner{
+  margin: 10px auto 0;
+  width: min(520px, 92vw);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.wheel-brand-banner img{
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  display: block;
+}
+
+/* ===========================
+   POOL + ACTIONS
+=========================== */
 .info-row {
   display: flex;
   align-items: center;
@@ -245,6 +283,9 @@ button:disabled,
 }
 .actions .btn { flex: 1; min-width: 160px; }
 
+/* ===========================
+   PANELS
+=========================== */
 .panel {
   border-radius: 18px;
   border: 1px solid rgba(16, 19, 24, 0.1);
@@ -270,7 +311,7 @@ button:disabled,
   flex-wrap:wrap;
 }
 
-/* ✅ Total style (Winner History Total ထင်ထင်ရှား) */
+/* Total highlight */
 .panel-total {
   font-weight: 1000;
   color: var(--gold);
@@ -285,10 +326,11 @@ button:disabled,
   text-align: left;
 }
 .table th { color: var(--muted); font-weight: 1000; }
-
-/* ✅ Table in small screen better */
 .table td button.btn.mini { white-space: nowrap; }
 
+/* ===========================
+   DRAWER
+=========================== */
 .drawer {
   position: fixed;
   top: 0; right: 0;
@@ -345,6 +387,9 @@ textarea { resize: vertical; }
   line-height: 1.35;
 }
 
+/* ===========================
+   PRIZE BUILDER
+=========================== */
 .prize-row {
   display: grid;
   grid-template-columns: 1fr 120px;
@@ -368,24 +413,9 @@ textarea { resize: vertical; }
   cursor: pointer;
 }
 
-/* ✅ History row style (old history UI, keep) */
-.hist-row {
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(16, 19, 24, 0.10);
-}
-.hist-main {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.hist-time {
-  font-size: 12px;
-  color: rgba(16, 19, 24, 0.60);
-  margin-top: 6px;
-}
-
-/* ✅ BIG WINNER MODAL */
+/* ===========================
+   WINNER MODAL
+=========================== */
 .modal.hidden { display: none; }
 .modal {
   position: fixed;
@@ -485,14 +515,8 @@ textarea { resize: vertical; }
   to { transform: translateY(520px) rotate(260deg); }
 }
 
-@media (max-width: 700px) {
-  .actions .btn { min-width: 120px; }
-  .prize-row { grid-template-columns: 1fr 110px; }
-  .modal-card { min-height: 300px; }
-}
-
 /* ===========================
-   ✅ Loading overlay (no stuck loading)
+   LOADING OVERLAY
 =========================== */
 .loading.hidden { display: none; }
 .loading {
@@ -518,8 +542,6 @@ textarea { resize: vertical; }
   font-weight: 900;
   color: rgba(16, 19, 24, 0.75);
 }
-
-/* spinner */
 .spinner {
   width: 40px;
   height: 40px;
@@ -530,7 +552,14 @@ textarea { resize: vertical; }
   animation: spin 0.85s linear infinite;
 }
 
-/* ✅ ONLY ONE spin keyframes (duplicate removed) */
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* ✅ ONLY ONE spin keyframes */
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+@media (max-width: 700px) {
+  .actions .btn { min-width: 120px; }
+  .prize-row { grid-template-columns: 1fr 110px; }
+  .modal-card { min-height: 300px; }
 }
