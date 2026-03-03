@@ -8,7 +8,6 @@
   --gold: #d6b25e;
   --shadow: 0 18px 70px rgba(0, 0, 0, 0.18);
 
-  /* ✅ Prize Done green */
   --success: #16a34a;
   --success-hover: #15803d;
 }
@@ -49,9 +48,6 @@ body {
   gap: 12px;
 }
 
-/* ===========================
-   TOP BAR
-=========================== */
 .topbar {
   display: flex;
   align-items: center;
@@ -68,9 +64,6 @@ body {
 
 .top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
-/* ===========================
-   BUTTONS
-=========================== */
 .btn {
   padding: 10px 12px;
   border-radius: 14px;
@@ -100,7 +93,6 @@ body {
 
 .btn.mini { padding: 8px 10px; border-radius: 12px; font-size: 12px; }
 
-/* ✅ Done button green style */
 .btn.success {
   background: var(--success) !important;
   border-color: var(--success) !important;
@@ -111,7 +103,6 @@ body {
   border-color: var(--success-hover) !important;
 }
 
-/* ✅ Danger button (Remove prize) */
 .btn.danger {
   background: rgba(255, 120, 120, 0.14);
   border-color: rgba(255, 120, 120, 0.35);
@@ -121,7 +112,6 @@ body {
   border-color: rgba(255, 120, 120, 0.45);
 }
 
-/* ✅ Disabled buttons */
 button:disabled,
 .btn:disabled {
   opacity: 0.55;
@@ -129,9 +119,6 @@ button:disabled,
   transform: none !important;
 }
 
-/* ===========================
-   BANNERS
-=========================== */
 .banner-img {
   max-width: 1100px;
   width: 100%;
@@ -145,9 +132,6 @@ button:disabled,
 .banner-img img { width: 100%; height: 140px; object-fit: cover; display: block; }
 .banner-fallback { padding: 14px; text-align: center; color: var(--muted); font-weight: 900; }
 
-/* ===========================
-   MAIN LAYOUT
-=========================== */
 .main {
   width: 100%;
   max-width: 1100px;
@@ -189,44 +173,128 @@ button:disabled,
   box-shadow: 0 22px 80px rgba(0, 0, 0, 0.18);
 }
 
-/* ===========================
-   ✅ POINTER (INSIDE / DOWN TO CENTER)
-=========================== */
-.pointer{
-  position:absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 5;
+/* =================================================
+   ✅ Pointer Arrow (INWARD)
+   - right side, points LEFT into wheel
+   - stays inside wheel-wrap
+================================================= */
+.pointer {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
   filter: drop-shadow(0 10px 18px rgba(0,0,0,0.25));
 }
 
-/* triangle tip points DOWN to center */
-.pointer::before{
-  content:"";
-  display:block;
-  width:0;
-  height:0;
-  border-left: 16px solid transparent;
-  border-right: 16px solid transparent;
-  border-bottom: 30px solid var(--gold);
+/* Arrow head (triangle pointing LEFT) */
+.pointer::before {
+  content: "";
+  display: block;
+  width: 0;
+  height: 0;
+
+  border-top: 18px solid transparent;
+  border-bottom: 18px solid transparent;
+  border-left: 34px solid var(--gold); /* points LEFT (into wheel) */
+
+  /* small bevel look */
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.22));
 }
 
-/* small base */
-.pointer::after{
-  content:"";
-  display:block;
-  width: 18px;
-  height: 10px;
-  margin: -2px auto 0;
-  border-radius: 0 0 10px 10px;
-  background: rgba(214,178,94,0.85);
+/* small base behind arrow */
+.pointer::after {
+  content: "";
+  display: block;
+  width: 16px;
+  height: 28px;
+  margin-left: 16px;
+  margin-top: -23px;
+  border-radius: 10px;
+  background: rgba(214,178,94,0.82);
+  border: 1px solid rgba(16,19,24,0.10);
+}
+
+/* =================================================
+   ✅ Wheel Banner (UI color linked)
+   - PNG logo overlay (transparent background OK)
+================================================= */
+.wheel-banner {
+  position: relative;
+  width: min(520px, 92vw);
+  margin: -2px auto 6px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+/* background slab shape */
+.wheel-banner-slab {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  border: 1px solid rgba(16, 19, 24, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.20), rgba(0,0,0,0.06)),
+    radial-gradient(900px 300px at 50% 0%, rgba(255,255,255,0.35), transparent 60%),
+    rgba(255,255,255,0.25);
+
+  /* UI color effect (tinted by --ui) */
+  box-shadow: 0 18px 70px rgba(0,0,0,0.18);
+  backdrop-filter: blur(8px);
+}
+
+/* make slab slightly “banner-like” with wings */
+.wheel-banner-slab::before,
+.wheel-banner-slab::after {
+  content: "";
+  position: absolute;
+  top: 18px;
+  width: 80px;
+  height: 84px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.18);
   border: 1px solid rgba(16,19,24,0.08);
+  filter: blur(0.2px);
+}
+.wheel-banner-slab::before { left: -22px; transform: skewX(-10deg); }
+.wheel-banner-slab::after  { right: -22px; transform: skewX(10deg); }
+
+/* PNG logo */
+#wheelBannerImg {
+  position: relative;
+  z-index: 2;
+  max-width: 88%;
+  max-height: 88%;
+  object-fit: contain;
+  image-rendering: auto;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,0.25));
 }
 
-/* ===========================
-   SPIN BUTTON
-=========================== */
+/* fallback text (if no PNG) */
+.wheel-banner-fallback {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  font-weight: 1000;
+  letter-spacing: 0.6px;
+  color: rgba(255,255,255,0.92);
+  text-shadow: 0 10px 22px rgba(0,0,0,0.40);
+  line-height: 1.05;
+  font-size: 34px;
+
+  /* make it look like sample: bold blocks */
+  -webkit-text-stroke: 1px rgba(0,0,0,0.10);
+}
+
+/* smaller second line */
+.wheel-banner-fallback div:last-child {
+  margin-top: 6px;
+  font-size: 32px;
+}
+
 .spin-btn {
   position: absolute;
   width: 128px;
@@ -243,26 +311,6 @@ button:disabled,
 }
 .spin-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-/* ===========================
-   ✅ WHEEL BRAND PNG BANNER (under wheel)
-=========================== */
-.wheel-brand-banner{
-  margin: 10px auto 0;
-  width: min(520px, 92vw);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.wheel-brand-banner img{
-  width: 100%;
-  max-width: 520px;
-  height: auto;
-  display: block;
-}
-
-/* ===========================
-   POOL + ACTIONS
-=========================== */
 .info-row {
   display: flex;
   align-items: center;
@@ -283,9 +331,6 @@ button:disabled,
 }
 .actions .btn { flex: 1; min-width: 160px; }
 
-/* ===========================
-   PANELS
-=========================== */
 .panel {
   border-radius: 18px;
   border: 1px solid rgba(16, 19, 24, 0.1);
@@ -311,7 +356,6 @@ button:disabled,
   flex-wrap:wrap;
 }
 
-/* Total highlight */
 .panel-total {
   font-weight: 1000;
   color: var(--gold);
@@ -328,9 +372,6 @@ button:disabled,
 .table th { color: var(--muted); font-weight: 1000; }
 .table td button.btn.mini { white-space: nowrap; }
 
-/* ===========================
-   DRAWER
-=========================== */
 .drawer {
   position: fixed;
   top: 0; right: 0;
@@ -387,9 +428,6 @@ textarea { resize: vertical; }
   line-height: 1.35;
 }
 
-/* ===========================
-   PRIZE BUILDER
-=========================== */
 .prize-row {
   display: grid;
   grid-template-columns: 1fr 120px;
@@ -413,9 +451,24 @@ textarea { resize: vertical; }
   cursor: pointer;
 }
 
-/* ===========================
-   WINNER MODAL
-=========================== */
+/* Winner history old row style (keep) */
+.hist-row {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(16, 19, 24, 0.10);
+}
+.hist-main {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.hist-time {
+  font-size: 12px;
+  color: rgba(16, 19, 24, 0.60);
+  margin-top: 6px;
+}
+
+/* ✅ BIG WINNER MODAL */
 .modal.hidden { display: none; }
 .modal {
   position: fixed;
@@ -515,9 +568,15 @@ textarea { resize: vertical; }
   to { transform: translateY(520px) rotate(260deg); }
 }
 
-/* ===========================
-   LOADING OVERLAY
-=========================== */
+@media (max-width: 700px) {
+  .actions .btn { min-width: 120px; }
+  .prize-row { grid-template-columns: 1fr 110px; }
+  .modal-card { min-height: 300px; }
+  .wheel-banner { height: 110px; }
+  .wheel-banner-fallback { font-size: 30px; }
+}
+
+/* Loading overlay (keep) */
 .loading.hidden { display: none; }
 .loading {
   position: fixed;
@@ -551,15 +610,6 @@ textarea { resize: vertical; }
   border-top-color: rgba(214, 178, 94, 0.95);
   animation: spin 0.85s linear infinite;
 }
-
-/* ✅ ONLY ONE spin keyframes */
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ===========================
-   RESPONSIVE
-=========================== */
-@media (max-width: 700px) {
-  .actions .btn { min-width: 120px; }
-  .prize-row { grid-template-columns: 1fr 110px; }
-  .modal-card { min-height: 300px; }
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
