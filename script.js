@@ -161,9 +161,11 @@ function winChime() {
 =========================== */
 const STORAGE_KEY = "lucky77_vercel_v2";
 const CACHE_MEMBERS_KEY = "lucky77_cache_members";
-const CACHE_HISTORY_KEY = "lucky77_cache_history"; // (kept but not used now)
+const CACHE_HISTORY_KEY = "lucky77_cache_history"; // kept but not used (history API broken)
 
-/* ✅ Winner Prize Map (Frontend-only History Replacement) */
+/* ✅ Frontend Winner History (Prize Map)
+   id => { prize, done, at }
+*/
 const LS_WINNERS_KEY = "lucky77_winner_prize_map_v1";
 
 function loadWinnerPrizeMap() {
@@ -180,10 +182,19 @@ function setWinnerPrize(id, prizeText) {
   const map = loadWinnerPrizeMap();
   map[String(id)] = {
     prize: String(prizeText || "-"),
-    turnDone: true,
+    done: false,       // ✅ new winner default not done
     at: Date.now()
   };
   saveWinnerPrizeMap(map);
+}
+function togglePrizeDone(id) {
+  const map = loadWinnerPrizeMap();
+  const k = String(id);
+  map[k] = map[k] || { prize: "-", done: false, at: Date.now() };
+  map[k].done = !map[k].done;
+  map[k].at = Date.now();
+  saveWinnerPrizeMap(map);
+  return map[k].done;
 }
 
 const defaultSettings = {
@@ -450,13 +461,17 @@ function renderPrizeBuilder(prizesArr) {
 }
 
 /* ===========================
-   Wheel drawing (UNIQUE prizes only)
+   Wheel drawing (REVERSED)
+   ✅ Fix: popup prize = landed prize
 =========================== */
 let wheelPrizes = [];
 let sliceColors = [];
 let currentAngle = 0;
 let spinning = false;
 
+const TAU = Math.PI * 2;
+
+// ✅ reverse rotation + reverse label order
 function parseWheelColors(text) {
   const colors = String(text || "").split("\n").map((x) => x.trim()).filter(Boolean);
   return colors.length ? colors : ["#ffffff", "#f1f5ff"];
@@ -476,6 +491,10 @@ function uniquePrizesFromPrizeText(prizeText) {
   return Array.from(set);
 }
 
+function normalizePrizeName(x) {
+  return String(x || "").trim();
+}
+
 function drawWheel() {
   const cx = wheelCanvas.width / 2;
   const cy = wheelCanvas.height / 2;
@@ -491,16 +510,19 @@ function drawWheel() {
     return;
   }
 
-  const slice = (Math.PI * 2) / wheelPrizes.length;
+  const slice = TAU / wheelPrizes.length;
 
   ctx.beginPath();
-  ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
+  ctx.arc(cx, cy, radius + 2, 0, TAU);
   ctx.strokeStyle = "rgba(214,178,94,0.45)";
   ctx.lineWidth = 10;
   ctx.stroke();
 
+  // ✅ reverse direction: use -currentAngle
+  const base = -currentAngle;
+
   for (let i = 0; i < wheelPrizes.length; i++) {
-    const start = currentAngle + i * slice;
+    const start = base + i * slice;
     const end = start + slice;
 
     ctx.beginPath();
@@ -527,7 +549,7 @@ function drawWheel() {
   }
 
   ctx.beginPath();
-  ctx.arc(cx, cy, 80, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 80, 0, TAU);
   ctx.fillStyle = "rgba(255,255,255,0.75)";
   ctx.fill();
   ctx.strokeStyle = "rgba(214,178,94,0.45)";
@@ -648,7 +670,6 @@ function contactButtonHTML(m) {
   return `<button class="btn mini js-notice" data-id="${esc(id)}" data-prize="" data-name="${esc(name)}">Notice</button>`;
 }
 
-/* ✅ History table Action (same behavior, but pass prize to notice) */
 function contactButtonHTMLWithPrize(m, prizeText) {
   const username = m.username ? String(m.username).replace("@", "").trim() : "";
   const id = String(m.id || "");
@@ -706,7 +727,7 @@ async function loadMembersUI() {
 
   showLoading("Loading Members...");
   try {
-    const data = await apiGet("/members", 15000); // ✅ increase timeout
+    const data = await apiGet("/members", 15000);
     if (!data?.ok) throw new Error(data?.error || "members error");
 
     const list = Array.isArray(data.members) ? data.members : [];
@@ -726,7 +747,7 @@ async function loadMembersUI() {
 async function loadMembersInSettings() {
   membersInSettings.innerHTML = "Loading...";
   try {
-    const data = await apiGet("/members", 15000); // ✅ increase timeout
+    const data = await apiGet("/members", 15000);
     if (!data?.ok) throw new Error(data?.error || "members error");
     const list = Array.isArray(data.members) ? data.members : [];
     membersInSettings.innerHTML = list.length
@@ -745,19 +766,33 @@ async function loadMembersInSettings() {
 }
 
 /* ===========================
-   Prize History UI (replaces /history)
-   - duplicate member list style
-   - columns: Won Prize | Turn Done ✅ | Action
+   Winner History UI (Frontend-only)
+   - Total
+   - Prize Done button (green when done)
 =========================== */
+function doneBtnStyle(done) {
+  return done
+    ? `style="background:#16a34a;color:#fff;border-color:#16a34a;"`
+    : ``;
+}
+
 function renderPrizeHistoryTable(members) {
   const map = loadWinnerPrizeMap();
+  const total = (members || []).length;
 
   const rows = (members || []).map((m, i) => {
     const username = m.username ? `@${String(m.username).replace("@", "")}` : "-";
     const id = String(m.id || "-");
     const rec = map[id];
     const wonPrize = rec?.prize ? String(rec.prize) : "-";
-    const done = rec?.turnDone ? "✅" : "";
+    const done = !!rec?.done;
+
+    const doneBtnDisabled = (wonPrize === "-" || wonPrize.trim() === "-") ? "disabled" : "";
+    const doneBtn = `
+      <button class="btn mini js-prize-done" data-id="${esc(id)}" ${doneBtnStyle(done)} ${doneBtnDisabled}>
+        ${done ? "Done ✅" : "Prize Done"}
+      </button>
+    `;
 
     return `<tr>
       <td>${i + 1}</td>
@@ -765,14 +800,14 @@ function renderPrizeHistoryTable(members) {
       <td>${esc(username)}</td>
       <td>${esc(id)}</td>
       <td>${esc(wonPrize)}</td>
-      <td>${done}</td>
+      <td>${doneBtn}</td>
       <td>${contactButtonHTMLWithPrize(m, wonPrize)}</td>
     </tr>`;
   }).join("");
 
   historyList.innerHTML = `
     <div class="small" style="margin-bottom:8px;">
-      Prize History (Frontend) • Turn ပြီးသွားတဲ့သူတွေအတွက် Prize + ✅ ပြမယ်
+      Winner History • Total: <b>${total}</b>
     </div>
     <table class="table">
       <thead>
@@ -786,10 +821,8 @@ function renderPrizeHistoryTable(members) {
 }
 
 async function loadHistoryUI() {
-  // ✅ keep same button behavior but content is our table now
   showHistoryPanel();
 
-  // 1) show cached members first
   const cachedMembers = readCache(CACHE_MEMBERS_KEY);
   if (Array.isArray(cachedMembers)) {
     renderPrizeHistoryTable(cachedMembers);
@@ -797,8 +830,7 @@ async function loadHistoryUI() {
     historyList.innerHTML = `<div class="small">Loading...</div>`;
   }
 
-  // 2) refresh members from API
-  showLoading("Loading Prize History...");
+  showLoading("Loading Winner History...");
   try {
     const data = await apiGet("/members", 15000);
     if (!data?.ok) throw new Error(data?.error || "members error");
@@ -815,7 +847,9 @@ async function loadHistoryUI() {
   }
 }
 
-/* ✅ Delegation */
+/* ===========================
+   Delegation
+=========================== */
 document.addEventListener("click", async (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
@@ -842,6 +876,27 @@ document.addEventListener("click", async (e) => {
     } finally {
       hideLoading();
     }
+    return;
+  }
+
+  if (btn.classList.contains("js-prize-done")) {
+    const id = btn.dataset.id;
+    if (!id) return;
+
+    const doneNow = togglePrizeDone(id);
+    // update button UI
+    if (doneNow) {
+      btn.textContent = "Done ✅";
+      btn.style.background = "#16a34a";
+      btn.style.color = "#fff";
+      btn.style.borderColor = "#16a34a";
+    } else {
+      btn.textContent = "Prize Done";
+      btn.style.background = "";
+      btn.style.color = "";
+      btn.style.borderColor = "";
+    }
+    return;
   }
 });
 
@@ -866,24 +921,33 @@ restartSpinBtn.addEventListener("click", async () => {
 });
 
 /* ===========================
-   Spin
+   Spin (REVERSED + prize match fix)
 =========================== */
 function calcAngleToLandOnPrize(prize) {
-  const idx = wheelPrizes.indexOf(String(prize));
+  const p = normalizePrizeName(prize);
+  const idx = wheelPrizes.findIndex(x => normalizePrizeName(x) === p);
   if (idx < 0 || wheelPrizes.length < 2) return null;
 
-  const slice = (Math.PI * 2) / wheelPrizes.length;
+  const slice = TAU / wheelPrizes.length;
+
+  // Pointer at top (up)
   const pointerAngle = (Math.PI * 3) / 2;
 
+  // Where should the wheel DISPLAYED rotation be?
+  // displayedAngle = pointerAngle - centerOffset (+ jitter)
   const centerOffset = (idx + 0.5) * slice;
-  let target = pointerAngle - centerOffset;
+  let displayedTarget = pointerAngle - centerOffset;
 
+  // small random
   const jitter = (Math.random() * 0.6 - 0.3) * (slice * 0.6);
-  target += jitter;
+  displayedTarget += jitter;
 
-  while (target < 0) target += Math.PI * 2;
-  while (target >= Math.PI * 2) target -= Math.PI * 2;
+  // But we draw using base = -currentAngle
+  // So we need currentAngle such that (-currentAngle) == displayedTarget
+  let target = -displayedTarget;
 
+  // normalize
+  target = ((target % TAU) + TAU) % TAU;
   return target;
 }
 
@@ -920,14 +984,16 @@ async function spin() {
   const winner = result.winner || {};
 
   let targetAngle = calcAngleToLandOnPrize(prize);
-  if (targetAngle === null) targetAngle = Math.random() * Math.PI * 2;
+  if (targetAngle === null) targetAngle = Math.random() * TAU;
 
   if (musicOn && bgMusic.src) bgMusic.play().catch(() => {});
 
   const extraSpins = 7 + Math.random() * 6;
-  const currentNorm = ((currentAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-  const delta = ((targetAngle - currentNorm) + Math.PI * 2) % (Math.PI * 2);
-  const finalAngle = currentAngle + extraSpins * Math.PI * 2 + delta;
+
+  // ✅ because we compare currentAngle directly (we normalized in calc already)
+  const currentNorm = ((currentAngle % TAU) + TAU) % TAU;
+  const delta = ((targetAngle - currentNorm) + TAU) % TAU;
+  const finalAngle = currentAngle + extraSpins * TAU + delta;
 
   const duration = 3200;
   const startTime = performance.now();
@@ -953,16 +1019,14 @@ async function spin() {
     if (t < 1) {
       requestAnimationFrame(animate);
     } else {
-      // ✅ SAVE prize history frontend-only (replaces /history)
+      // ✅ save frontend history
       const wid = winner?.id ?? winner?.user_id ?? winner?.winner_id;
-      if (wid) {
-        setWinnerPrize(wid, prize);
-      }
+      if (wid) setWinnerPrize(wid, prize);
 
       showWinnerModal(prize, winner);
       refreshPoolUI();
 
-      // ✅ if history panel is open, auto refresh table
+      // ✅ if history panel open, refresh instantly (using cached members)
       if (!historyPanel.classList.contains("hidden")) {
         const cachedMembers = readCache(CACHE_MEMBERS_KEY);
         if (Array.isArray(cachedMembers)) renderPrizeHistoryTable(cachedMembers);
@@ -1003,7 +1067,10 @@ saveBtn.addEventListener("click", async () => {
   sliceColors = parseWheelColors(s.wheelColorsText);
 
   const prizeText = buildPrizeText(s.prizes);
-  wheelPrizes = uniquePrizesFromPrizeText(prizeText);
+
+  // ✅ reverse prize order (as requested) to match new direction
+  wheelPrizes = uniquePrizesFromPrizeText(prizeText).reverse();
+
   drawWheel();
 
   saveBtn.disabled = true;
@@ -1025,8 +1092,8 @@ saveBtn.addEventListener("click", async () => {
 resetBtn.addEventListener("click", () => {
   if (!confirm("Reset settings လုပ်မလား?")) return;
   saveSettingsLocal(clone(defaultSettings));
-  clearCache(); // ✅ important
-  clearWinnerPrizeMap(); // ✅ clear prize history too
+  clearCache();
+  clearWinnerPrizeMap(); // ✅ clear winner history too
   init();
   alert("Reset done ✅");
 });
@@ -1107,7 +1174,9 @@ function init() {
   sliceColors = parseWheelColors(s.wheelColorsText);
   const prizeText = buildPrizeText(s.prizes || []);
 
-  wheelPrizes = uniquePrizesFromPrizeText(prizeText);
+  // ✅ reverse prize order (as requested)
+  wheelPrizes = uniquePrizesFromPrizeText(prizeText).reverse();
+
   drawWheel();
 
   updateMusicBtn();
@@ -1116,7 +1185,7 @@ function init() {
 init();
 
 /* ===========================
-   Utils  ✅ FIXED (closing braces)
+   Utils
 =========================== */
 function esc(str) {
   return String(str)
