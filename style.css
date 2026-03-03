@@ -177,8 +177,9 @@ button:disabled,
   box-shadow: 0 22px 80px rgba(0, 0, 0, 0.18);
 }
 
-.pointer {
-  position: absolute;
+.pointer{
+  transform: rotate(180deg);
+  transform-origin: center;
   top: 8px;
   width: 0; height: 0;
   border-left: 18px solid transparent;
