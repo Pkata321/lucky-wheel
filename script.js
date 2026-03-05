@@ -1,102 +1,100 @@
 "use strict";
 
 /* ===========================
-   CLEAN SCRIPT (V2) — PART 1/7
-   BASE + DOM + LOADING + MUSIC + UTILS
+  Lucky77 Vercel UI (CLEAN)
+  - NO Event History Viewer
+  - Winner List only (Today)
+  - Members + Notice + Telegram + Prize Done
 =========================== */
+
 const DEFAULT_API_BASE = "https://lucky77-wheel-bot.onrender.com";
 const DEFAULT_API_KEY  = "Lucky77_luckywheel_77";
 const TAU = Math.PI * 2;
 
 /* ---------- DOM (match your HTML ids) ---------- */
-const wheelCanvas = document.getElementById("wheel");
+const $ = (id) => document.getElementById(id);
+
+const wheelCanvas = $("wheel");
 const ctx = wheelCanvas ? wheelCanvas.getContext("2d") : null;
 
-const spinBtn  = document.getElementById("spinBtn");
-const poolText = document.getElementById("poolText");
+const spinBtn = $("spinBtn");
+const poolText = $("poolText");
 
-const drawer            = document.getElementById("drawer");
-const settingsBtn       = document.getElementById("settingsBtn");
-const closeSettingsBtn  = document.getElementById("closeSettingsBtn");
-const saveBtn           = document.getElementById("saveBtn");
-const resetBtn          = document.getElementById("resetBtn");
+const drawer = $("drawer");
+const settingsBtn = $("settingsBtn");
+const closeSettingsBtn = $("closeSettingsBtn");
+const saveBtn = $("saveBtn");
+const resetBtn = $("resetBtn");
 
-const apiBaseInput = document.getElementById("apiBaseInput");
-const apiKeyInput  = document.getElementById("apiKeyInput");
+const apiBaseInput = $("apiBaseInput");
+const apiKeyInput  = $("apiKeyInput");
 
-const prizeBuilder      = document.getElementById("prizeBuilder");
-const uiColorInput      = document.getElementById("uiColorInput");
-const wheelAccentInput  = document.getElementById("wheelAccentInput");
-const wheelColorsInput  = document.getElementById("wheelColorsInput");
+const prizeBuilder = $("prizeBuilder");
+const uiColorInput = $("uiColorInput");
+const wheelAccentInput = $("wheelAccentInput");
+const wheelColorsInput = $("wheelColorsInput");
 
-const pageBgFile     = document.getElementById("pageBgFile");
-const wheelBgFile    = document.getElementById("wheelBgFile");
-const topBannerFile  = document.getElementById("topBannerFile");
-const bottomBannerFile = document.getElementById("bottomBannerFile");
-const wheelBannerFile  = document.getElementById("wheelBannerFile");
-const bgSongFile       = document.getElementById("bgSongFile");
+const topBannerFile = $("topBannerFile");
+const bottomBannerFile = $("bottomBannerFile");
+const pageBgFile = $("pageBgFile");
+const wheelBgFile = $("wheelBgFile");
+const bgSongFile = $("bgSongFile");
+const wheelBannerFile = $("wheelBannerFile"); // ✅ only ONCE (no duplicate)
 
-const topBannerImg      = document.getElementById("topBannerImg");
-const bottomBannerImg   = document.getElementById("bottomBannerImg");
-const topBannerFallback = document.getElementById("topBannerFallback");
-const bottomBannerFallback = document.getElementById("bottomBannerFallback");
+const topBannerImg = $("topBannerImg");
+const bottomBannerImg = $("bottomBannerImg");
+const topBannerFallback = $("topBannerFallback");
+const bottomBannerFallback = $("bottomBannerFallback");
 
-const wheelBannerImg      = document.getElementById("wheelBannerImg");
-const wheelBannerFallback = document.getElementById("wheelBannerFallback");
+const wheelBannerImg = $("wheelBannerImg");
+const wheelBannerFallback = $("wheelBannerFallback");
 
-const bgLayer   = document.getElementById("bgLayer");
-const wheelWrap = document.getElementById("wheelWrap");
+const bgLayer = $("bgLayer");
+const wheelWrap = $("wheelWrap");
 
-const restartSpinBtn = document.getElementById("restartSpinBtn");
-const membersBtn     = document.getElementById("membersBtn");
-const winnerListBtn  = document.getElementById("winnerListBtn");
+const restartSpinBtn = $("restartSpinBtn");
+const membersBtn = $("membersBtn");
+const winnerListBtn = $("winnerListBtn");
 
-const membersPanel     = document.getElementById("membersPanel");
-const membersCloseBtn  = document.getElementById("membersCloseBtn");
-const membersTable     = document.getElementById("membersTable");
-const membersTotalText = document.getElementById("membersTotalText");
+const membersPanel = $("membersPanel");
+const membersCloseBtn = $("membersCloseBtn");
+const membersTable = $("membersTable");
+const membersTotalText = $("membersTotalText");
 
-const winnerListPanel      = document.getElementById("winnerListPanel");
-const winnerListCloseBtn   = document.getElementById("winnerListCloseBtn");
-const winnerListBody       = document.getElementById("winnerListBody");
-const winnerListTotalText  = document.getElementById("winnerListTotalText");
+const winnerListPanel = $("winnerListPanel");
+const winnerListCloseBtn = $("winnerListCloseBtn");
+const winnerListBody = $("winnerListBody");
+const winnerListTotalText = $("winnerListTotalText");
+
+const refreshMembersInSettingsBtn = $("refreshMembersInSettingsBtn");
+const membersInSettings = $("membersInSettings");
 
 /* Winner Modal */
-const winnerModal      = document.getElementById("winnerModal");
-const winnerBackdrop   = document.getElementById("winnerBackdrop");
-const winnerPrizeTitle = document.getElementById("winnerPrizeTitle");
-const winnerTitleText  = document.getElementById("winnerTitleText");
-const winnerNameText   = document.getElementById("winnerNameText");
-const contactBtn       = document.getElementById("contactBtn");
-const noticeBtn        = document.getElementById("noticeBtn");
-const winnerCloseBtn   = document.getElementById("winnerCloseBtn");
-const winnerHint       = document.getElementById("winnerHint");
+const winnerModal = $("winnerModal");
+const winnerBackdrop = $("winnerBackdrop");
+const winnerPrizeTitle = $("winnerPrizeTitle");
+const winnerTitleText = $("winnerTitleText");
+const winnerNameText = $("winnerNameText");
+const contactBtn = $("contactBtn");
+const noticeBtn = $("noticeBtn");
+const winnerCloseBtn = $("winnerCloseBtn");
+const winnerHint = $("winnerHint");
 
-/* Test Mode */
-const testModeBtn         = document.getElementById("testModeBtn");
-const clearTestHistoryBtn = document.getElementById("clearTestHistoryBtn");
+/* Test Mode UI */
+const testModeBtn = $("testModeBtn");
+const clearTestHistoryBtn = $("clearTestHistoryBtn");
 
-/* Event History */
-const refreshEventHistoryBtn = document.getElementById("refreshEventHistoryBtn");
-const exportEventHistoryBtn  = document.getElementById("exportEventHistoryBtn");
-const clearEventHistoryBtn   = document.getElementById("clearEventHistoryBtn");
-const eventHistoryViewer     = document.getElementById("eventHistoryViewer");
-
-const refreshMembersInSettingsBtn = document.getElementById("refreshMembersInSettingsBtn");
-const membersInSettings           = document.getElementById("membersInSettings");
-
-/* ---------- Loading Overlay ---------- */
+/* Loading Overlay */
 let activeAbort = null;
-
 function showLoading(text = "Loading...") {
-  const el = document.getElementById("loadingOverlay");
+  const el = $("loadingOverlay");
   if (!el) return;
   el.classList.remove("hidden");
-  const t = document.getElementById("loadingText");
+  const t = $("loadingText");
   if (t) t.textContent = text;
 }
 function hideLoading() {
-  const el = document.getElementById("loadingOverlay");
+  const el = $("loadingOverlay");
   if (!el) return;
   el.classList.add("hidden");
   if (activeAbort) {
@@ -104,10 +102,10 @@ function hideLoading() {
   }
   activeAbort = null;
 }
-document.getElementById("loadingCancelBtn")?.addEventListener("click", hideLoading);
+$("loadingCancelBtn")?.addEventListener("click", hideLoading);
 
 /* ---------- Music ---------- */
-const musicBtn = document.getElementById("musicBtn");
+const musicBtn = $("musicBtn");
 const bgMusic = new Audio();
 bgMusic.loop = true;
 bgMusic.volume = 0.55;
@@ -121,11 +119,11 @@ function updateMusicBtn() {
 musicBtn?.addEventListener("click", async () => {
   musicOn = !musicOn;
   if (musicOn) {
-    if (!bgMusic.src) {
+    if (bgMusic.src) {
+      try { await bgMusic.play(); } catch {}
+    } else {
       alert("Settings ထဲမှာ MP3 Upload လုပ်ပါ");
       musicOn = false;
-    } else {
-      try { await bgMusic.play(); } catch {}
     }
   } else {
     bgMusic.pause();
@@ -157,7 +155,6 @@ function winChime() {
 
 /* ---------- Utils ---------- */
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
-
 function esc(str) {
   return String(str ?? "")
     .replaceAll("&", "&amp;")
@@ -167,37 +164,21 @@ function esc(str) {
     .replaceAll("'", "&#039;");
 }
 
-function dateKeyNow(ts = Date.now()) {
-  return new Date(ts).toISOString().slice(0, 10);
-}
-
-/* Drawer */
 function openSettings() { drawer?.classList.add("open"); }
 function closeSettings() { drawer?.classList.remove("open"); }
 settingsBtn?.addEventListener("click", openSettings);
 closeSettingsBtn?.addEventListener("click", closeSettings);
-/* ===========================
-   CLEAN SCRIPT (V2) — PART 2/7
-   STORAGE + CACHE + TEST MODE + SESSIONS + THEME + IMAGES
-=========================== */
 
 /* ---------- Storage Keys ---------- */
-const STORAGE_KEY = "lucky77_vercel_v2_clean";
-const CACHE_MEMBERS_KEY = "lucky77_cache_members";
-
-/* quick map (id => {prize, done, at}) */
+const STORAGE_KEY = "lucky77_ui_clean_v1";
+const CACHE_MEMBERS_KEY = "lucky77_cache_members_v1";
 const LS_WINNERS_KEY = "lucky77_winner_prize_map_v1";
-const LS_TEST_MODE   = "lucky77_test_mode_v1";
-
-/* Sessions */
-const LS_EVENT_HISTORY   = "lucky77_event_sessions_v1";   // saved sessions
-const LS_CURRENT_SESSION = "lucky77_current_session_v1";  // current session
-const LS_LAST_DATEKEY    = "lucky77_last_datekey_v1";     // for day-change detect
+const LS_TEST_MODE = "lucky77_test_mode_v1";
 
 /* ---------- Default Settings ---------- */
 const defaultSettings = {
   apiBase: DEFAULT_API_BASE,
-  apiKey:  DEFAULT_API_KEY,
+  apiKey: DEFAULT_API_KEY,
 
   uiColor: "#ffffff",
   wheelAccent: "#d6b25e",
@@ -205,10 +186,10 @@ const defaultSettings = {
 
   prizes: [
     { name: "10000Ks", times: 4 },
-    { name: "5000Ks",  times: 2 },
-    { name: "3000Ks",  times: 3 },
-    { name: "2000Ks",  times: 5 },
-    { name: "1000Ks",  times: 10 },
+    { name: "5000Ks", times: 2 },
+    { name: "3000Ks", times: 3 },
+    { name: "2000Ks", times: 5 },
+    { name: "1000Ks", times: 10 },
   ],
 
   pageBgDataUrl: "",
@@ -218,12 +199,10 @@ const defaultSettings = {
   wheelBannerDataUrl: "",
 };
 
-/* ---------- Clone ---------- */
+/* ---------- Clone + Settings Load/Save ---------- */
 function clone(x) {
   try { return structuredClone(x); } catch { return JSON.parse(JSON.stringify(x)); }
 }
-
-/* ---------- Settings Load/Save ---------- */
 function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -254,35 +233,16 @@ function clearCache() {
   try { localStorage.removeItem(CACHE_MEMBERS_KEY); } catch {}
 }
 
-/* ===========================
-   Test Mode
-=========================== */
+/* ---------- Test Mode ---------- */
 function isTestMode() {
   return localStorage.getItem(LS_TEST_MODE) === "1";
 }
 function setTestMode(v) {
-  try { localStorage.setItem(LS_TEST_MODE, v ? "1" : "0"); } catch {}
+  localStorage.setItem(LS_TEST_MODE, v ? "1" : "0");
   if (testModeBtn) testModeBtn.textContent = v ? "Test: ON" : "Test: OFF";
 }
 
-testModeBtn?.addEventListener("click", () => {
-  const next = !isTestMode();
-  setTestMode(next);
-  alert(next ? "Test Mode ON (မသိမ်းပါ)" : "Test Mode OFF (အတည် သိမ်းမယ်)");
-  renderEventHistoryViewer?.();
-  renderWinnerListPanel?.();
-});
-
-clearTestHistoryBtn?.addEventListener("click", () => {
-  if (!confirm("Clear winner prize map (local) လုပ်မလား?")) return;
-  localStorage.removeItem(LS_WINNERS_KEY);
-  alert("Cleared ✅");
-  renderWinnerListPanel?.();
-});
-
-/* ===========================
-   Winner Prize Map (Quick)
-=========================== */
+/* ---------- Winner Prize Map (Done status) ---------- */
 function loadWinnerPrizeMap() {
   try { return JSON.parse(localStorage.getItem(LS_WINNERS_KEY) || "{}"); }
   catch { return {}; }
@@ -304,99 +264,12 @@ function togglePrizeDone(id) {
   saveWinnerPrizeMap(map);
   return map[k].done;
 }
-
 /* ===========================
-   Sessions (Real Mode only)
+ PART 2/7
+ THEME + IMAGES + API + PRIZE BUILDER
 =========================== */
-function loadEventSessions() {
-  try { return JSON.parse(localStorage.getItem(LS_EVENT_HISTORY) || "[]"); }
-  catch { return []; }
-}
-function saveEventSessions(arr) {
-  try { localStorage.setItem(LS_EVENT_HISTORY, JSON.stringify(arr || [])); } catch {}
-}
-function loadCurrentSession() {
-  try { return JSON.parse(localStorage.getItem(LS_CURRENT_SESSION) || "null"); }
-  catch { return null; }
-}
-function saveCurrentSession(obj) {
-  try { localStorage.setItem(LS_CURRENT_SESSION, JSON.stringify(obj || null)); } catch {}
-}
 
-function startNewSession() {
-  const now = Date.now();
-  const dateKey = dateKeyNow(now);
-  const sid = `${dateKey}_${now}`;
-  const session = {
-    id: sid,
-    dateKey,
-    startedAt: now,
-    endedAt: null,
-    completed: false,
-    autoSaved: false,
-    winners: [] // {at, order, id, display, username, prize, done}
-  };
-  saveCurrentSession(session);
-  return session;
-}
-function ensureSession() {
-  if (isTestMode()) return null;
-  let s = loadCurrentSession();
-  if (!s) s = startNewSession();
-  return s;
-}
-
-/* pool 0 => completed mark only */
-function markSessionCompletedIfPoolEmpty(poolCount) {
-  if (isTestMode()) return;
-  if (Number(poolCount) !== 0) return;
-
-  const s = loadCurrentSession();
-  if (!s || s.completed) return;
-
-  s.completed = true;
-  s.endedAt = Date.now();
-  saveCurrentSession(s);
-}
-
-/* day change => auto-save yesterday session into history */
-function autoSaveSessionOnDayChange() {
-  if (isTestMode()) return;
-
-  const nowKey  = dateKeyNow();
-  const lastKey = localStorage.getItem(LS_LAST_DATEKEY) || nowKey;
-
-  if (lastKey !== nowKey) {
-    const s = loadCurrentSession();
-
-    if (s && !s.autoSaved) {
-      const shouldSave = (s.completed === true) || ((s.winners || []).length > 0);
-      if (shouldSave) {
-        s.autoSaved = true;
-        if (!s.endedAt) s.endedAt = Date.now();
-
-        const all = loadEventSessions();
-        all.push(s);
-        saveEventSessions(all);
-      }
-    }
-
-    // start fresh for today
-    startNewSession();
-
-    localStorage.setItem(LS_LAST_DATEKEY, nowKey);
-    renderEventHistoryViewer?.();
-    renderWinnerListPanel?.();
-    return;
-  }
-
-  localStorage.setItem(LS_LAST_DATEKEY, nowKey);
-}
-setInterval(autoSaveSessionOnDayChange, 20000);
-
-/* ===========================
-   Theme + Images
-=========================== */
+/* ---------- Theme ---------- */
 function applyThemeUI(uiColor, wheelAccent) {
   document.documentElement.style.setProperty("--ui", uiColor);
   document.documentElement.style.setProperty("--bg", uiColor);
@@ -404,6 +277,7 @@ function applyThemeUI(uiColor, wheelAccent) {
   document.documentElement.style.setProperty("--text", "#101318");
 }
 
+/* ---------- File → DataURL ---------- */
 function fileToDataURL(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -413,8 +287,10 @@ function fileToDataURL(file) {
   });
 }
 
+/* ---------- Banner ---------- */
 function applyBanner(dataUrl, imgEl, fallbackEl) {
   if (!imgEl || !fallbackEl) return;
+
   if (dataUrl) {
     imgEl.src = dataUrl;
     imgEl.style.display = "block";
@@ -424,8 +300,11 @@ function applyBanner(dataUrl, imgEl, fallbackEl) {
     fallbackEl.style.display = "block";
   }
 }
+
+/* ---------- Page BG ---------- */
 function applyPageBg(dataUrl) {
   if (!bgLayer) return;
+
   if (dataUrl) {
     bgLayer.classList.add("has-img");
     bgLayer.style.backgroundImage = `url("${dataUrl}")`;
@@ -434,8 +313,11 @@ function applyPageBg(dataUrl) {
     bgLayer.style.backgroundImage = "";
   }
 }
+
+/* ---------- Wheel BG ---------- */
 function applyWheelBg(dataUrl) {
   if (!wheelWrap) return;
+
   if (dataUrl) {
     wheelWrap.classList.add("has-img");
     wheelWrap.style.backgroundImage = `url("${dataUrl}")`;
@@ -444,8 +326,11 @@ function applyWheelBg(dataUrl) {
     wheelWrap.style.backgroundImage = "";
   }
 }
+
+/* ---------- Wheel Banner ---------- */
 function applyWheelBanner(dataUrl) {
   if (!wheelBannerImg || !wheelBannerFallback) return;
+
   if (dataUrl) {
     wheelBannerImg.src = dataUrl;
     wheelBannerImg.style.display = "block";
@@ -455,18 +340,16 @@ function applyWheelBanner(dataUrl) {
     wheelBannerFallback.style.display = "block";
   }
 }
-/* ===========================
-   CLEAN SCRIPT (V2) — PART 3/7
-   API HELPERS + PRIZE BUILDER
-=========================== */
 
 /* ===========================
-   API helpers
+ API Helpers
 =========================== */
+
 function getApiBase() {
   const s = loadSettings();
   return (s.apiBase || DEFAULT_API_BASE).replace(/\/+$/, "");
 }
+
 function getApiKey() {
   const s = loadSettings();
   return s.apiKey || DEFAULT_API_KEY;
@@ -475,180 +358,183 @@ function getApiKey() {
 async function fetchJsonWithTimeout(url, opt = {}, timeoutMs = 9000) {
   const ctrl = new AbortController();
   activeAbort = ctrl;
+
   const id = setTimeout(() => ctrl.abort(), timeoutMs);
 
   try {
     const r = await fetch(url, { ...opt, signal: ctrl.signal });
+
     const text = await r.text();
     let json = null;
 
-    try { json = JSON.parse(text); }
-    catch { json = { ok:false, error:"Invalid JSON", raw:String(text||"").slice(0,250) }; }
+    try {
+      json = JSON.parse(text);
+    } catch {
+      json = { ok:false, error:"Invalid JSON", raw:text };
+    }
 
-    if (!r.ok && json && json.ok !== true) {
+    if (!r.ok && json?.ok !== true) {
       return { ok:false, error: json?.error || `HTTP ${r.status}` };
     }
+
     return json;
+
   } catch (e) {
-    return { ok:false, error: e?.name==="AbortError" ? "Timeout/Cancelled" : (e?.message||String(e)) };
+
+    return {
+      ok:false,
+      error: e?.name === "AbortError"
+        ? "Timeout/Cancelled"
+        : (e?.message || String(e))
+    };
+
   } finally {
     clearTimeout(id);
     activeAbort = null;
   }
 }
 
-async function apiGet(path, timeoutMs = 9000) {
-  const base = getApiBase();
-  const key = getApiKey();
-  const url = `${base}${path}?key=${encodeURIComponent(key)}`;
-  return fetchJsonWithTimeout(url, {}, timeoutMs);
+async function apiGet(path, timeout = 9000) {
+  const url = `${getApiBase()}${path}?key=${encodeURIComponent(getApiKey())}`;
+  return fetchJsonWithTimeout(url, {}, timeout);
 }
 
-async function apiPost(path, body, timeoutMs = 12000) {
-  const base = getApiBase();
+async function apiPost(path, body, timeout = 12000) {
   const key = getApiKey();
-  const url = `${base}${path}?key=${encodeURIComponent(key)}`;
+  const url = `${getApiBase()}${path}?key=${encodeURIComponent(key)}`;
+
   return fetchJsonWithTimeout(url, {
     method: "POST",
-    headers: { "Content-Type":"application/json", "x-api-key": key },
-    body: JSON.stringify(body || {}),
-  }, timeoutMs);
+    headers: {
+      "Content-Type":"application/json",
+      "x-api-key": key
+    },
+    body: JSON.stringify(body || {})
+  }, timeout);
 }
 
 /* ===========================
-   Prize Builder
+ Prize Builder
 =========================== */
+
 function buildPrizeText(prizesArr) {
   return (prizesArr || [])
     .filter((p) => p && String(p.name || "").trim())
-    .map((p) => `${String(p.name).trim()} ${clamp(Number(p.times || 1), 1, 9999)}time`)
+    .map((p) =>
+      `${String(p.name).trim()} ${clamp(Number(p.times || 1),1,9999)}time`
+    )
     .join("\n");
 }
 
 function parseWheelColors(text) {
   const colors = String(text || "")
     .split("\n")
-    .map((x) => x.trim())
+    .map(x => x.trim())
     .filter(Boolean);
 
-  return colors.length ? colors : ["#ffffff", "#f1f5ff"];
+  return colors.length
+    ? colors
+    : ["#ffffff","#f1f5ff"];
 }
 
-/* unique prizes for wheel display only */
+/* wheel only needs unique prize names */
 function uniquePrizesFromPrizeText(prizeText) {
-  const lines = String(prizeText || "").split("\n").map((x) => x.trim()).filter(Boolean);
+
+  const lines = String(prizeText || "")
+    .split("\n")
+    .map(x => x.trim())
+    .filter(Boolean);
+
   const out = [];
   const seen = new Set();
 
   for (const line of lines) {
+
     let m = line.match(/^(.+?)\s+(\d+)\s*time$/i);
     if (!m) m = line.match(/^(.+?)\s+(\d+)$/i);
     if (!m) continue;
 
     const prize = m[1].trim();
+
     if (!prize || seen.has(prize)) continue;
 
     seen.add(prize);
     out.push(prize);
   }
+
   return out;
 }
 
+/* ---------- Render Prize Builder ---------- */
 function renderPrizeBuilder(prizesArr) {
+
   if (!prizeBuilder) return;
+
   prizeBuilder.innerHTML = "";
 
   (prizesArr || []).forEach((p, idx) => {
+
     const row = document.createElement("div");
     row.className = "prize-row";
 
     const left = document.createElement("div");
     left.innerHTML = `
       <div class="pname">Prize</div>
-      <input data-k="name" data-i="${idx}" value="${esc(p.name || "")}" placeholder="10000Ks">
+      <input data-k="name" data-i="${idx}"
+        value="${esc(p.name || "")}"
+        placeholder="10000Ks">
     `;
 
     const right = document.createElement("div");
     right.className = "stepper";
+
     right.innerHTML = `
-      <button data-act="dec" data-i="${idx}" title="-1">-</button>
-      <input data-k="times" data-i="${idx}" type="number" min="1" max="9999"
-             value="${clamp(Number(p.times || 1), 1, 9999)}">
-      <button data-act="inc" data-i="${idx}" title="+1">+</button>
-      <button class="btn mini danger" data-act="remove" data-i="${idx}" title="Remove Prize">Remove</button>
+      <button data-act="dec" data-i="${idx}">-</button>
+
+      <input data-k="times" data-i="${idx}"
+        type="number" min="1" max="9999"
+        value="${clamp(Number(p.times || 1),1,9999)}">
+
+      <button data-act="inc" data-i="${idx}">+</button>
+
+      <button class="btn mini danger"
+        data-act="remove"
+        data-i="${idx}">
+        Remove
+      </button>
     `;
 
     row.appendChild(left);
     row.appendChild(right);
+
     prizeBuilder.appendChild(row);
   });
 
-  /* Add */
+  /* Add Prize button */
+
   const addBtn = document.createElement("button");
   addBtn.className = "btn";
   addBtn.textContent = "+ Add Prize";
+
   addBtn.addEventListener("click", () => {
+
     const s = loadSettings();
-    s.prizes = Array.isArray(s.prizes) ? s.prizes : [];
-    s.prizes.push({ name: "", times: 1 });
+
+    s.prizes.push({
+      name:"",
+      times:1
+    });
+
     saveSettingsLocal(s);
+
     renderPrizeBuilder(s.prizes);
   });
+
   prizeBuilder.appendChild(addBtn);
-
-  /* Stepper buttons */
-  prizeBuilder.querySelectorAll("button[data-act]").forEach((b) => {
-    b.addEventListener("click", () => {
-      const i = Number(b.dataset.i);
-      const act = b.dataset.act;
-      const s = loadSettings();
-
-      s.prizes = Array.isArray(s.prizes) ? s.prizes : [];
-      if (!s.prizes[i]) return;
-
-      if (act === "remove") {
-        s.prizes.splice(i, 1);
-        if (s.prizes.length === 0) s.prizes.push({ name:"", times:1 });
-        saveSettingsLocal(s);
-        renderPrizeBuilder(s.prizes);
-        return;
-      }
-
-      const cur = clamp(Number(s.prizes[i]?.times || 1), 1, 9999);
-      s.prizes[i].times = clamp(cur + (act === "inc" ? 1 : -1), 1, 9999);
-
-      saveSettingsLocal(s);
-      renderPrizeBuilder(s.prizes);
-    });
-  });
-
-  /* Inputs */
-  prizeBuilder.querySelectorAll("input[data-k]").forEach((inp) => {
-    inp.addEventListener("input", () => {
-      const i = Number(inp.dataset.i);
-      const k = String(inp.dataset.k);
-      const s = loadSettings();
-
-      s.prizes = Array.isArray(s.prizes) ? s.prizes : [];
-      if (!s.prizes[i]) return;
-
-      if (k === "times") s.prizes[i].times = clamp(Number(inp.value || 1), 1, 9999);
-      if (k === "name") s.prizes[i].name = String(inp.value || "");
-
-      saveSettingsLocal(s);
-    });
-  });
-}
-
-/* Push prizes to Render */
-async function pushPrizeConfigToRender(prizeText) {
-  const r = await apiPost("/config/prizes", { prizeText }, 12000);
-  if (!r?.ok) throw new Error(r?.error || "config/prizes error");
-  return r;
 }
 /* ===========================
-   CLEAN SCRIPT (V2) — PART 4/7
-   WHEEL DRAW + PRIZE LANDING
+ PART 3/7
+ WHEEL + SPIN + WINNER MODAL
 =========================== */
 
 let wheelPrizes = [];
@@ -659,43 +545,50 @@ let spinning = false;
 /* pointer is TOP */
 const POINTER_ANGLE = -Math.PI / 2;
 
-function normalizePrizeName(x) {
+function normalizePrizeName(x){
   return String(x || "").trim();
 }
 
-function drawWheel() {
-  if (!wheelCanvas || !ctx) return;
+/* ---------- Draw Wheel ---------- */
+
+function drawWheel(){
+
+  if(!ctx) return;
 
   const cx = wheelCanvas.width / 2;
   const cy = wheelCanvas.height / 2;
-  const radius = Math.min(cx, cy) - 12;
+  const radius = Math.min(cx,cy) - 12;
 
-  ctx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
+  ctx.clearRect(0,0,wheelCanvas.width,wheelCanvas.height);
 
-  if (wheelPrizes.length < 2) {
+  if(wheelPrizes.length < 2){
+
     ctx.fillStyle = "#101318";
     ctx.font = "bold 18px sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("Add Prize List in Settings", cx, cy);
+
     return;
   }
 
   const slice = TAU / wheelPrizes.length;
 
   /* outer ring */
+
   ctx.beginPath();
-  ctx.arc(cx, cy, radius + 2, 0, TAU);
+  ctx.arc(cx,cy,radius+2,0,TAU);
   ctx.strokeStyle = "rgba(214,178,94,0.45)";
   ctx.lineWidth = 10;
   ctx.stroke();
 
-  for (let i = 0; i < wheelPrizes.length; i++) {
+  for(let i=0;i<wheelPrizes.length;i++){
+
     const start = currentAngle + i * slice;
     const end = start + slice;
 
     ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, radius, start, end);
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,radius,start,end);
     ctx.closePath();
 
     ctx.fillStyle = sliceColors[i % sliceColors.length] || "#fff";
@@ -706,64 +599,79 @@ function drawWheel() {
     ctx.stroke();
 
     /* text */
+
     ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(start + slice / 2);
+
+    ctx.translate(cx,cy);
+    ctx.rotate(start + slice/2);
+
     ctx.textAlign = "right";
     ctx.fillStyle = "#101318";
     ctx.font = "900 18px sans-serif";
-    ctx.fillText(String(wheelPrizes[i] || ""), radius - 18, 6);
+
+    ctx.fillText(wheelPrizes[i], radius - 18, 6);
+
     ctx.restore();
   }
 
   /* center cap */
+
   ctx.beginPath();
-  ctx.arc(cx, cy, 80, 0, TAU);
+  ctx.arc(cx,cy,80,0,TAU);
+
   ctx.fillStyle = "rgba(255,255,255,0.75)";
   ctx.fill();
+
   ctx.strokeStyle = "rgba(214,178,94,0.45)";
   ctx.lineWidth = 5;
   ctx.stroke();
 }
 
-/* calculate angle to land prize at POINTER_ANGLE */
-function calcAngleToLandOnPrize(prize) {
+/* ---------- Target Angle ---------- */
+
+function calcAngleToLandOnPrize(prize){
+
   const p = normalizePrizeName(prize);
-  const idx = wheelPrizes.findIndex((x) => normalizePrizeName(x) === p);
-  if (idx < 0 || wheelPrizes.length < 2) return null;
+
+  const idx = wheelPrizes.findIndex(
+    x => normalizePrizeName(x) === p
+  );
+
+  if(idx < 0) return null;
 
   const slice = TAU / wheelPrizes.length;
 
-  /* want: center of idx slice at pointer */
   let target = POINTER_ANGLE - (idx + 0.5) * slice;
 
-  /* small jitter */
-  const jitter = (Math.random() * 0.6 - 0.3) * (slice * 0.55);
+  const jitter = (Math.random()*0.6 - 0.3) * (slice*0.55);
+
   target += jitter;
 
-  /* normalize */
   target = ((target % TAU) + TAU) % TAU;
+
   return target;
 }
+
 /* ===========================
-   CLEAN SCRIPT (V2) — PART 5/7
-   WINNER MODAL + PANELS
+ WINNER MODAL
 =========================== */
 
 let lastWinner = null;
 
-/* ===========================
-   WINNER MODAL
-=========================== */
+function showWinnerModal(prize, winnerObj){
 
-function showWinnerModal(prize, winnerObj) {
+  lastWinner = {
+    prize,
+    winner: winnerObj
+  };
 
-  lastWinner = { prize, winner: winnerObj };
+  const username = String(
+    winnerObj.username || ""
+  ).replace("@","").trim();
 
-  const username = String(winnerObj.username || "").replace("@","").trim();
-  const hasUsername = !!username;
-
-  const name = String(winnerObj.name || "").trim();
+  const name = String(
+    winnerObj.name || ""
+  ).trim();
 
   const display = String(
     winnerObj.display ||
@@ -772,93 +680,352 @@ function showWinnerModal(prize, winnerObj) {
   );
 
   winnerPrizeTitle.textContent = "WINNER";
-  winnerTitleText.textContent  = prize;
-  winnerNameText.textContent   = display;
 
-  contactBtn.style.display = hasUsername ? "inline-flex" : "none";
-  noticeBtn.style.display  = hasUsername ? "none" : "inline-flex";
+  winnerTitleText.textContent = String(prize || "—");
+
+  winnerNameText.textContent = display;
+
+  const hasUsername = !!username;
+
+  contactBtn.style.display = hasUsername
+    ? "inline-flex"
+    : "none";
+
+  noticeBtn.style.display = hasUsername
+    ? "none"
+    : "inline-flex";
 
   winnerHint.textContent = hasUsername
-    ? "Username ရှိပါတယ် — Telegram နှိပ်ပါ"
-    : "Username မရှိပါ — Notice နှိပ်ပါ";
+    ? "Telegram username detected"
+    : "Notice DM will be sent by bot";
 
   winnerModal.classList.remove("hidden");
+  winnerModal.setAttribute("aria-hidden","false");
+
   winChime();
 }
 
-function hideWinnerModal() {
+function hideWinnerModal(){
 
   winnerModal.classList.add("hidden");
-  lastWinner = null;
+  winnerModal.setAttribute("aria-hidden","true");
 
+  lastWinner = null;
 }
 
-winnerCloseBtn?.addEventListener("click", hideWinnerModal);
-winnerBackdrop?.addEventListener("click", hideWinnerModal);
+winnerCloseBtn?.addEventListener(
+  "click",
+  hideWinnerModal
+);
 
-/* Telegram contact */
+winnerBackdrop?.addEventListener(
+  "click",
+  hideWinnerModal
+);
+
+/* Telegram button */
+
 contactBtn?.addEventListener("click", () => {
 
-  if (!lastWinner) return;
+  if(!lastWinner) return;
 
-  const u = String(lastWinner.winner.username || "")
-    .replace("@","")
-    .trim();
+  const u = String(
+    lastWinner.winner.username || ""
+  ).replace("@","").trim();
 
-  if (!u) return;
+  if(!u) return;
 
   window.open(`https://t.me/${u}`, "_blank");
-
 });
 
-/* Notice DM */
-noticeBtn?.addEventListener("click", async () => {
+/* Notice button */
 
-  if (!lastWinner) return;
+noticeBtn?.addEventListener(
+  "click",
+  async () => {
 
-  const w = lastWinner.winner;
-  const prize = lastWinner.prize;
+    if(!lastWinner) return;
 
-  showLoading("Sending DM...");
+    const w = lastWinner.winner;
 
-  try {
+    const prize = lastWinner.prize;
 
-    const r = await apiPost("/notice", {
-      user_id: w.id,
-      prize
-    },12000);
+    showLoading("Sending Notice...");
 
-    if (r?.dm_ok) {
-      alert("DM sent ✅");
-    } else {
-      alert("User hasn't started bot");
+    try{
+
+      const r = await apiPost(
+        "/notice",
+        {
+          user_id: w.id,
+          prize
+        },
+        12000
+      );
+
+      if(!r?.ok)
+        throw new Error(
+          r?.error || "notice failed"
+        );
+
+      if(r.dm_ok)
+        alert("DM sent");
+
+      else
+        alert("User has not started bot");
+
+    }catch(e){
+
+      alert("Notice error: " + (e.message || e));
+
+    }finally{
+
+      hideLoading();
     }
-
-  } catch(e) {
-
-    alert("Notice error");
-
-  } finally {
-
-    hideLoading();
-
   }
-
-});
-
+);
 /* ===========================
-   PANELS
+ PART 4/7
+ MEMBERS PANEL + MEMBERS API + TABLE + ACTIONS
 =========================== */
 
+/* ---------- Members Panel Open/Close ---------- */
 function showMembersPanel(){
   membersPanel?.classList.remove("hidden");
 }
-
 function hideMembersPanel(){
   membersPanel?.classList.add("hidden");
 }
-
 membersCloseBtn?.addEventListener("click", hideMembersPanel);
+
+/* ---------- Members Action Button HTML ---------- */
+function contactButtonHTML(m){
+
+  const username = m.username
+    ? String(m.username).replace("@","").trim()
+    : "";
+
+  const id = String(m.id || "");
+
+  const name = String(m.display || m.name || "-");
+
+  if(m.active === false){
+    return `<span class="small">inactive</span>`;
+  }
+
+  if(username){
+    return `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`;
+  }
+
+  return `<button class="btn mini js-notice" data-id="${esc(id)}" data-prize="" data-name="${esc(name)}">Notice</button>`;
+}
+
+/* ---------- Render Members Table ---------- */
+function renderMembersTable(list){
+
+  const rows = (list || []).map((m,i) => {
+
+    const username = m.username
+      ? `@${String(m.username).replace("@","")}`
+      : "-";
+
+    const won = m.isWinner ? "✅" : "";
+
+    const status = (m.active === false)
+      ? "❌ INACTIVE"
+      : "✅ ACTIVE";
+
+    return `
+      <tr>
+        <td>${i+1}</td>
+        <td>${esc(m.display || "-")}</td>
+        <td>${esc(username)}</td>
+        <td>${esc(String(m.id || "-"))}</td>
+        <td>${won}</td>
+        <td>${status}</td>
+        <td>${contactButtonHTML(m)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  membersTable.innerHTML = `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>Name</th>
+          <th>Username</th>
+          <th>ID</th>
+          <th>Won</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || `<tr><td colspan="7">No members yet</td></tr>`}
+      </tbody>
+    </table>
+  `;
+}
+
+/* ---------- Load Members (Panel) ---------- */
+async function loadMembersUI(){
+
+  showMembersPanel();
+
+  membersTotalText.textContent = "";
+
+  /* cache first */
+  const cached = readCache(CACHE_MEMBERS_KEY);
+
+  if(Array.isArray(cached)){
+    membersTotalText.textContent = ` • Total: ${cached.length} (cached)`;
+    renderMembersTable(cached);
+  }else{
+    membersTable.innerHTML = `<div class="small">Loading...</div>`;
+  }
+
+  showLoading("Loading Members...");
+
+  try{
+
+    const data = await apiGet("/members", 15000);
+
+    if(!data?.ok) throw new Error(data?.error || "members error");
+
+    const list = Array.isArray(data.members)
+      ? data.members
+      : [];
+
+    membersTotalText.textContent = ` • Total: ${list.length}`;
+
+    renderMembersTable(list);
+
+    saveCache(CACHE_MEMBERS_KEY, list);
+
+  }catch(e){
+
+    membersTable.innerHTML = `
+      <div class="small" style="margin-bottom:8px;">
+        ⚠️ ${esc(e.message || e)}
+      </div>
+    ` + (membersTable.innerHTML || "");
+
+  }finally{
+
+    hideLoading();
+  }
+}
+
+/* ---------- Members Preview in Settings ---------- */
+async function loadMembersInSettings(){
+
+  if(!membersInSettings) return;
+
+  membersInSettings.innerHTML = "Loading...";
+
+  try{
+
+    const data = await apiGet("/members", 15000);
+
+    if(!data?.ok) throw new Error(data?.error || "members error");
+
+    const list = Array.isArray(data.members)
+      ? data.members
+      : [];
+
+    membersInSettings.innerHTML = list.length
+      ? list.map((m,i) => {
+
+          const u = m.username
+            ? `@${String(m.username).replace("@","")}`
+            : "-";
+
+          const st = (m.active === false)
+            ? "INACTIVE"
+            : "ACTIVE";
+
+          return `${i+1}. ${esc(m.display || "-")} (${esc(u)}) [${esc(String(m.id || "-"))}] • ${st}`;
+        }).join("<br>")
+      : "No members yet";
+
+    saveCache(CACHE_MEMBERS_KEY, list);
+
+  }catch(e){
+
+    membersInSettings.innerHTML = `Error: ${esc(e.message || e)}`;
+  }
+}
+
+/* ---------- Buttons ---------- */
+membersBtn?.addEventListener("click", loadMembersUI);
+
+refreshMembersInSettingsBtn?.addEventListener("click", loadMembersInSettings);
+
+/* ---------- Global Delegation: Telegram / Notice (members & winner list share) ---------- */
+document.addEventListener("click", async (e) => {
+
+  const btn = e.target.closest("button");
+
+  if(!btn) return;
+
+  /* telegram */
+  if(btn.classList.contains("js-telegram")){
+
+    const user = (btn.dataset.user || "").replace("@","").trim();
+
+    if(!user) return;
+
+    window.open(`https://t.me/${user}`, "_blank");
+
+    return;
+  }
+
+  /* notice */
+  if(btn.classList.contains("js-notice")){
+
+    const userId = btn.dataset.id;
+
+    const prize = btn.dataset.prize || "";
+
+    if(!userId) return;
+
+    showLoading("Sending Notice...");
+
+    try{
+
+      const r = await apiPost(
+        "/notice",
+        {
+          user_id: userId,
+          prize
+        },
+        12000
+      );
+
+      if(r?.dm_ok) alert("DM sent ✅");
+      else alert("DM failed / user not started bot ⚠️");
+
+    }catch(err){
+
+      alert("Notice error: " + (err.message || err));
+
+    }finally{
+
+      hideLoading();
+    }
+
+    return;
+  }
+});
+/* ===========================
+ PART 5/7
+ WINNER LIST PANEL (Spin #)
+=========================== */
+
+let winnerList = [];
+
+/* ---------- Panel Open/Close ---------- */
 
 function showWinnerListPanel(){
   winnerListPanel?.classList.remove("hidden");
@@ -869,361 +1036,190 @@ function hideWinnerListPanel(){
 }
 
 winnerListBtn?.addEventListener("click", () => {
-
   showWinnerListPanel();
   renderWinnerListPanel();
-
 });
 
-winnerListCloseBtn?.addEventListener("click", hideWinnerListPanel);
+winnerListCloseBtn?.addEventListener(
+  "click",
+  hideWinnerListPanel
+);
 
-/* ===========================
-   WINNER LIST RENDER
-=========================== */
-
-function btnDoneStyle(done){
-
-  return done
-    ? `style="background:#16a34a;color:#fff;border-color:#16a34a"`
-    : "";
-
-}
+/* ---------- Winner List Render ---------- */
 
 function renderWinnerListPanel(){
 
-  if (!winnerListBody) return;
+  if(!winnerListBody) return;
 
-  if (isTestMode()){
-
-    winnerListBody.innerHTML =
-      `<div class="small">Test Mode ON</div>`;
-
-    return;
-
-  }
-
-  const s = loadCurrentSession();
-
-  const winners = Array.isArray(s?.winners)
-    ? s.winners
-    : [];
-
-  if (!winners.length){
+  if(!winnerList.length){
 
     winnerListBody.innerHTML =
-      `<div class="small">Winner List empty</div>`;
+      `<div class="small">Winner List: (empty)</div>`;
+
+    if(winnerListTotalText)
+      winnerListTotalText.textContent = "";
 
     return;
-
   }
 
-  const rows = winners.map((w,i)=>{
+  const rows = winnerList.map((w,idx) => {
 
-    const done = !!w.done;
+    const username = String(
+      w.username || ""
+    ).replace("@","").trim();
 
-    return `<tr>
+    const actionBtn = username
+      ? `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`
+      : `<button class="btn mini js-notice" data-id="${esc(w.id)}" data-prize="${esc(w.prize)}">Notice</button>`;
 
-      <td>${i+1}</td>
-
-      <td><b>Spin #${i+1}</b> - ${esc(w.prize)}</td>
-
-      <td>${esc(w.display)}</td>
-
-      <td>${esc(w.id)}</td>
-
-      <td>
-      <button
-      class="btn mini js-prize-done"
-      data-id="${esc(w.id)}"
-      ${btnDoneStyle(done)}
-      >
-      ${done ? "Done" : "Prize Done"}
+    const doneBtn = `
+      <button class="btn mini js-prize-done"
+        data-id="${esc(w.id)}"
+        data-index="${idx}"
+        ${w.done ? `style="background:#16a34a;color:#fff;border-color:#16a34a;"` : ``}>
+        ${w.done ? "Done ✅" : "Prize Done"}
       </button>
-      </td>
+    `;
 
-    </tr>`;
-
+    return `
+      <tr>
+        <td>${idx+1}</td>
+        <td><b>Spin #${idx+1}</b> - ${esc(w.prize)}</td>
+        <td>${esc(w.display || "-")}</td>
+        <td>${esc(String(w.id || "-"))}</td>
+        <td>${doneBtn}</td>
+        <td>${actionBtn}</td>
+      </tr>
+    `;
   }).join("");
 
   winnerListBody.innerHTML = `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>Spin</th>
+          <th>Name</th>
+          <th>ID</th>
+          <th>Prize Done</th>
+          <th>Action</th>
+        </tr>
+      </thead>
 
-  <div class="small" style="margin-bottom:8px">
-
-  Winner List • Total: <b>${winners.length}</b>
-
-  </div>
-
-  <table class="table">
-
-  <thead>
-
-  <tr>
-
-  <th>No</th>
-  <th>Spin</th>
-  <th>Name</th>
-  <th>ID</th>
-  <th>Done</th>
-
-  </tr>
-
-  </thead>
-
-  <tbody>
-
-  ${rows}
-
-  </tbody>
-
-  </table>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
   `;
 
-}
-/* ===========================
-   CLEAN SCRIPT (V2) — PART 6/7
-   MEMBERS + BUTTONS + SPIN
-=========================== */
-
-/* ===========================
-   MEMBERS TABLE
-=========================== */
-
-function contactButtonHTML(m){
-
-  const username = m.username
-    ? String(m.username).replace("@","").trim()
-    : "";
-
-  const id = String(m.id || "");
-
-  if (username){
-
-    return `<button class="btn mini js-telegram"
-    data-user="${esc(username)}">
-    Telegram
-    </button>`;
-
-  }
-
-  return `<button class="btn mini js-notice"
-  data-id="${esc(id)}">
-  Notice
-  </button>`;
-
+  if(winnerListTotalText)
+    winnerListTotalText.textContent =
+      ` • Total: ${winnerList.length}`;
 }
 
-async function loadMembersUI(){
+/* ---------- Prize Done Toggle ---------- */
 
-  showMembersPanel();
+document.addEventListener("click",(e)=>{
 
-  membersTable.innerHTML = "Loading...";
-
-  try{
-
-    const data = await apiGet("/members",15000);
-
-    if (!data?.ok) throw new Error();
-
-    const list = data.members || [];
-
-    membersTotalText.textContent =
-      ` • Total: ${list.length}`;
-
-    const rows = list.map((m,i)=>{
-
-      const username = m.username
-        ? "@"+m.username
-        : "-";
-
-      return `<tr>
-
-      <td>${i+1}</td>
-
-      <td>${esc(m.display||"-")}</td>
-
-      <td>${esc(username)}</td>
-
-      <td>${esc(m.id)}</td>
-
-      <td>${contactButtonHTML(m)}</td>
-
-      </tr>`;
-
-    }).join("");
-
-    membersTable.innerHTML = `
-
-    <table class="table">
-
-    <thead>
-
-    <tr>
-    <th>No</th>
-    <th>Name</th>
-    <th>Username</th>
-    <th>ID</th>
-    <th>Action</th>
-    </tr>
-
-    </thead>
-
-    <tbody>
-
-    ${rows}
-
-    </tbody>
-
-    </table>`;
-
-  }catch{
-
-    membersTable.innerHTML = "Error loading members";
-
-  }
-
-}
-
-membersBtn?.addEventListener("click", loadMembersUI);
-
-
-/* ===========================
-   BUTTON DELEGATION
-=========================== */
-
-document.addEventListener("click", async (e)=>{
-
-  const btn = e.target.closest("button");
+  const btn = e.target.closest(".js-prize-done");
 
   if(!btn) return;
 
-  /* Telegram */
-  if (btn.classList.contains("js-telegram")){
+  const index = Number(btn.dataset.index);
 
-    const user = btn.dataset.user;
+  if(!winnerList[index]) return;
 
-    window.open(`https://t.me/${user}`,"_blank");
+  winnerList[index].done = !winnerList[index].done;
 
-    return;
-
-  }
-
-  /* Notice */
-  if (btn.classList.contains("js-notice")){
-
-    const id = btn.dataset.id;
-
-    showLoading("Sending DM...");
-
-    try{
-
-      const r = await apiPost("/notice",{user_id:id},12000);
-
-      if (r?.dm_ok){
-        alert("DM sent");
-      }else{
-        alert("User didn't start bot");
-      }
-
-    }catch{
-
-      alert("DM error");
-
-    }finally{
-
-      hideLoading();
-
-    }
-
-    return;
-
-  }
-
-  /* Prize Done */
-  if (btn.classList.contains("js-prize-done")){
-
-    const id = btn.dataset.id;
-
-    const doneNow = togglePrizeDone(id);
-
-    if(doneNow){
-
-      btn.textContent="Done";
-      btn.style.background="#16a34a";
-      btn.style.color="#fff";
-
-    }else{
-
-      btn.textContent="Prize Done";
-      btn.style.background="";
-      btn.style.color="";
-
-    }
-
-    renderWinnerListPanel();
-
-  }
-
+  renderWinnerListPanel();
 });
-
-
 /* ===========================
-   RESTART SPIN
+ PART 6/7
+ SPIN + POOL + RESTART
 =========================== */
 
-restartSpinBtn?.addEventListener("click", async ()=>{
+/* ---------- Pool Refresh ---------- */
 
-  showLoading("Restarting...");
+async function refreshPoolUI(){
 
   try{
 
-    const r = await apiPost("/restart-spin",{},12000);
+    const data = await apiGet("/pool",7000);
 
-    if (!r?.ok) throw new Error();
+    if(!data?.ok) throw new Error(data?.error || "pool error");
 
-    hideWinnerModal();
-
-    if (!isTestMode()) startNewSession();
-
-    await refreshPoolUI();
-
-    renderWinnerListPanel();
-
-    alert("Restart Done");
+    poolText.textContent =
+      `${data.count || 0} people in pool`;
 
   }catch{
 
-    alert("Restart Error");
+    poolText.textContent = "Pool: error";
+  }
+}
+
+/* ---------- Restart Spin ---------- */
+
+restartSpinBtn?.addEventListener("click", async ()=>{
+
+  showLoading("Restarting Spin...");
+
+  restartSpinBtn.disabled = true;
+
+  try{
+
+    const data = await apiPost(
+      "/restart-spin",
+      {},
+      12000
+    );
+
+    if(!data?.ok)
+      throw new Error(data?.error || "restart error");
+
+    winnerList = [];
+
+    hideWinnerModal();
+
+    renderWinnerListPanel();
+
+    await refreshPoolUI();
+
+    alert("Restart Spin ✅");
+
+  }catch(e){
+
+    alert("Restart error: " + (e.message || e));
 
   }finally{
 
+    restartSpinBtn.disabled = false;
+
     hideLoading();
-
   }
-
 });
 
-
 /* ===========================
-   SPIN SYSTEM
+ SPIN
 =========================== */
 
 async function spin(){
 
   if(spinning) return;
 
-  if(wheelPrizes.length<2){
+  if(wheelPrizes.length < 2){
 
-    alert("Add prize first");
+    alert("Add Prize List in Settings");
 
     return;
-
   }
 
-  spinning=true;
+  spinning = true;
 
-  spinBtn.disabled=true;
+  spinBtn.disabled = true;
 
-  spinBtn.textContent="SPIN...";
+  const oldText = spinBtn.textContent;
+
+  spinBtn.textContent = "SPIN...";
 
   showLoading("Spinning...");
 
@@ -1231,198 +1227,217 @@ async function spin(){
 
   try{
 
-    result = await apiPost("/spin",{},12000);
+    result = await apiPost(
+      "/spin",
+      {},
+      12000
+    );
 
-    if(!result?.ok) throw new Error();
+    if(!result?.ok)
+      throw new Error(result?.error || "spin error");
 
-  }catch{
+  }catch(e){
 
-    spinning=false;
+    spinning = false;
 
-    spinBtn.disabled=false;
+    spinBtn.disabled = false;
 
-    spinBtn.textContent="SPIN";
+    spinBtn.textContent = oldText;
 
     hideLoading();
 
-    alert("Spin error");
+    alert("Spin error: " + (e.message || e));
 
     return;
 
+  }finally{
+
+    hideLoading();
   }
 
-  hideLoading();
-
-  const prize = result.prize;
+  const prize = String(result.prize || "-");
 
   const winner = result.winner || {};
 
+  /* ---------- calculate target ---------- */
+
   let targetAngle = calcAngleToLandOnPrize(prize);
 
-  if(targetAngle===null){
+  if(targetAngle === null)
+    targetAngle = Math.random() * TAU;
 
-    targetAngle = Math.random()*TAU;
-
-  }
+  if(musicOn && bgMusic.src)
+    bgMusic.play().catch(()=>{});
 
   const extraSpins = 7 + Math.random()*6;
 
   const currentNorm =
-    ((currentAngle % TAU)+TAU)%TAU;
+    ((currentAngle % TAU) + TAU) % TAU;
 
   const delta =
-    ((targetAngle-currentNorm)+TAU)%TAU;
+    ((targetAngle - currentNorm) + TAU) % TAU;
 
   const finalAngle =
     currentAngle + extraSpins*TAU + delta;
 
-  const duration=3200;
+  const duration = 3200;
 
-  const startTime=performance.now();
+  const startTime = performance.now();
 
-  const startAngle=currentAngle;
+  const startAngle = currentAngle;
 
-  function ease(t){
-
-    return 1-Math.pow(1-t,3);
-
+  function easeOutCubic(t){
+    return 1 - Math.pow(1 - t,3);
   }
+
+  let tickT = 0;
 
   function animate(now){
 
-    const elapsed=now-startTime;
+    const elapsed = now - startTime;
 
-    const t=Math.min(elapsed/duration,1);
+    const t = Math.min(elapsed/duration,1);
 
-    const eased=ease(t);
+    const eased = easeOutCubic(t);
 
     currentAngle =
-      startAngle+(finalAngle-startAngle)*eased;
+      startAngle + (finalAngle-startAngle)*eased;
 
     drawWheel();
 
-    if(t<1){
+    const nt = Math.floor(eased*60);
+
+    if(nt !== tickT){
+
+      tickT = nt;
+
+      tickSound(
+        600 + nt*10,
+        0.015,
+        0.04
+      );
+    }
+
+    if(t < 1){
 
       requestAnimationFrame(animate);
 
     }else{
 
+      /* ---------- Spin Finished ---------- */
+
+      const wid =
+        winner?.id ??
+        winner?.user_id ??
+        winner?.winner_id;
+
+      const username =
+        String(winner?.username || "")
+        .replace("@","")
+        .trim();
+
+      const display =
+        String(
+          winner?.display ||
+          winner?.name ||
+          (username ? `@${username}` : String(wid || "-"))
+        );
+
+      /* save winner */
+
+      winnerList.push({
+
+        id: String(wid || "-"),
+
+        display,
+
+        username,
+
+        prize,
+
+        done:false
+      });
+
+      setWinnerPrize(wid,prize);
+
+      /* modal */
+
       showWinnerModal(prize,winner);
 
-      spinning=false;
+      renderWinnerListPanel();
 
-      spinBtn.disabled=false;
+      refreshPoolUI();
 
-      spinBtn.textContent="SPIN";
+      spinning = false;
 
+      spinBtn.disabled = false;
+
+      spinBtn.textContent = oldText;
     }
-
   }
 
   requestAnimationFrame(animate);
-
 }
 
-spinBtn?.addEventListener("click", spin);
+spinBtn?.addEventListener("click",spin);
 /* ===========================
-   CLEAN SCRIPT (V2) — PART 7/7 (FINAL)
-   POOL + SETTINGS + HISTORY + INIT
+ PART 7/7 (FINAL)
+ SETTINGS SAVE/RESET + UPLOADS + INIT
 =========================== */
 
-/* ===========================
-   POOL UI
-=========================== */
-async function refreshPoolUI(){
-
-  try{
-
-    const data = await apiGet("/pool",7000);
-
-    if(!data?.ok) throw new Error();
-
-    poolText.textContent =
-      `${data.count||0} people in pool`;
-
-    // pool 0 => mark completed
-    markSessionCompletedIfPoolEmpty(data.count||0);
-
-    // day change autosave
-    autoSaveSessionOnDayChange();
-
-    renderWinnerListPanel();
-    renderEventHistoryViewer();
-
-  }catch{
-
-    poolText.textContent = "Pool: error";
-
-  }
-
-}
-
-
-/* ===========================
-   SETTINGS SAVE
-=========================== */
-saveBtn?.addEventListener("click", async ()=>{
+/* ---------- Save Settings + Push Prizes ---------- */
+saveBtn?.addEventListener("click", async () => {
 
   const s = loadSettings();
 
-  s.apiBase = (apiBaseInput.value||DEFAULT_API_BASE).trim();
-  s.apiKey  = (apiKeyInput.value||DEFAULT_API_KEY).trim();
+  s.apiBase = (apiBaseInput?.value || DEFAULT_API_BASE).trim();
+  s.apiKey  = (apiKeyInput?.value  || DEFAULT_API_KEY).trim();
 
-  s.uiColor      = uiColorInput.value || "#ffffff";
-  s.wheelAccent  = wheelAccentInput.value || "#d6b25e";
-  s.wheelColorsText = wheelColorsInput.value || defaultSettings.wheelColorsText;
+  s.uiColor      = uiColorInput?.value || "#ffffff";
+  s.wheelAccent  = wheelAccentInput?.value || "#d6b25e";
+  s.wheelColorsText = wheelColorsInput?.value || defaultSettings.wheelColorsText;
 
   saveSettingsLocal(s);
 
-  applyThemeUI(s.uiColor,s.wheelAccent);
-
+  // apply theme + wheel colors
+  applyThemeUI(s.uiColor, s.wheelAccent);
   sliceColors = parseWheelColors(s.wheelColorsText);
 
+  // build prizes -> unique wheel display
   const prizeText = buildPrizeText(s.prizes);
-
   wheelPrizes = uniquePrizesFromPrizeText(prizeText);
 
   drawWheel();
 
-  showLoading("Saving...");
+  saveBtn.disabled = true;
+  showLoading("Saving Settings + Uploading Prizes...");
 
-  try{
+  try {
 
-    // Real mode only => push prizes
-    if(!isTestMode()){
+    // Push prizes to Render
+    await pushPrizeConfigToRender(prizeText);
 
-      await pushPrizeConfigToRender(prizeText);
-
-      await refreshPoolUI();
-
-    }
+    // refresh pool
+    await refreshPoolUI();
 
     closeSettings();
-
     alert("Save ✅");
 
-  }catch{
+  } catch (e) {
 
-    alert("Save Error");
+    alert("Save error: " + (e?.message || e));
 
-  }finally{
+  } finally {
 
+    saveBtn.disabled = false;
     hideLoading();
-
   }
-
 });
 
+/* ---------- Reset Settings ---------- */
+resetBtn?.addEventListener("click", () => {
 
-/* ===========================
-   RESET
-=========================== */
-resetBtn?.addEventListener("click", ()=>{
-
-  if(!confirm("Reset settings?")) return;
+  if (!confirm("Reset settings လုပ်မလား?")) return;
 
   saveSettingsLocal(clone(defaultSettings));
 
@@ -1430,223 +1445,147 @@ resetBtn?.addEventListener("click", ()=>{
 
   localStorage.removeItem(LS_WINNERS_KEY);
 
+  // clear local winner list (UI)
+  winnerList = [];
+
   init();
 
-  alert("Reset Done ✅");
-
+  alert("Reset done ✅");
 });
 
+/* ---------- Upload Helpers ---------- */
+pageBgFile?.addEventListener("change", async (e) => {
 
-/* ===========================
-   FILE INPUTS
-=========================== */
-pageBgFile?.addEventListener("change", async (e)=>{
+  const f = e.target?.files?.[0];
+  if (!f) return;
 
-  const f=e.target.files?.[0];
+  const s = loadSettings();
 
-  if(!f) return;
-
-  const s=loadSettings();
-
-  s.pageBgDataUrl=await fileToDataURL(f);
+  s.pageBgDataUrl = await fileToDataURL(f);
 
   saveSettingsLocal(s);
 
   applyPageBg(s.pageBgDataUrl);
-
 });
 
-wheelBgFile?.addEventListener("change", async (e)=>{
+wheelBgFile?.addEventListener("change", async (e) => {
 
-  const f=e.target.files?.[0];
+  const f = e.target?.files?.[0];
+  if (!f) return;
 
-  if(!f) return;
+  const s = loadSettings();
 
-  const s=loadSettings();
-
-  s.wheelBgDataUrl=await fileToDataURL(f);
+  s.wheelBgDataUrl = await fileToDataURL(f);
 
   saveSettingsLocal(s);
 
   applyWheelBg(s.wheelBgDataUrl);
-
 });
 
-topBannerFile?.addEventListener("change", async (e)=>{
+topBannerFile?.addEventListener("change", async (e) => {
 
-  const f=e.target.files?.[0];
+  const f = e.target?.files?.[0];
+  if (!f) return;
 
-  if(!f) return;
+  const s = loadSettings();
 
-  const s=loadSettings();
-
-  s.topBannerDataUrl=await fileToDataURL(f);
+  s.topBannerDataUrl = await fileToDataURL(f);
 
   saveSettingsLocal(s);
 
-  applyBanner(s.topBannerDataUrl,topBannerImg,topBannerFallback);
-
+  applyBanner(s.topBannerDataUrl, topBannerImg, topBannerFallback);
 });
 
-bottomBannerFile?.addEventListener("change", async (e)=>{
+bottomBannerFile?.addEventListener("change", async (e) => {
 
-  const f=e.target.files?.[0];
+  const f = e.target?.files?.[0];
+  if (!f) return;
 
-  if(!f) return;
+  const s = loadSettings();
 
-  const s=loadSettings();
-
-  s.bottomBannerDataUrl=await fileToDataURL(f);
+  s.bottomBannerDataUrl = await fileToDataURL(f);
 
   saveSettingsLocal(s);
 
-  applyBanner(s.bottomBannerDataUrl,bottomBannerImg,bottomBannerFallback);
-
+  applyBanner(s.bottomBannerDataUrl, bottomBannerImg, bottomBannerFallback);
 });
 
-wheelBannerFile?.addEventListener("change", async (e)=>{
+wheelBannerFile?.addEventListener("change", async (e) => {
 
-  const f=e.target.files?.[0];
+  const f = e.target?.files?.[0];
+  if (!f) return;
 
-  if(!f) return;
+  const s = loadSettings();
 
-  const s=loadSettings();
-
-  s.wheelBannerDataUrl=await fileToDataURL(f);
+  s.wheelBannerDataUrl = await fileToDataURL(f);
 
   saveSettingsLocal(s);
 
   applyWheelBanner(s.wheelBannerDataUrl);
-
 });
 
-bgSongFile?.addEventListener("change",(e)=>{
+bgSongFile?.addEventListener("change", (e) => {
 
-  const f=e.target.files?.[0];
+  const f = e.target?.files?.[0];
+  if (!f) return;
 
-  if(!f) return;
+  const url = URL.createObjectURL(f);
 
-  bgMusic.src = URL.createObjectURL(f);
+  bgMusic.src = url;
 
-  if(musicOn) bgMusic.play().catch(()=>{});
-
+  if (musicOn) bgMusic.play().catch(()=>{});
 });
 
+/* ---------- Settings: Members preview button ---------- */
+refreshMembersInSettingsBtn?.addEventListener("click", loadMembersInSettings);
 
 /* ===========================
-   EVENT HISTORY BUTTONS
+ INIT
 =========================== */
-refreshEventHistoryBtn?.addEventListener("click", ()=>{
 
-  autoSaveSessionOnDayChange();
-
-  renderEventHistoryViewer();
-
-  renderWinnerListPanel();
-
-});
-
-exportEventHistoryBtn?.addEventListener("click", ()=>{
-
-  const data = {
-
-    saved: loadEventSessions(),
-
-    current: loadCurrentSession()
-
-  };
-
-  const blob = new Blob(
-    [JSON.stringify(data,null,2)],
-    {type:"application/json"}
-  );
-
-  const url = URL.createObjectURL(blob);
-
-  const a=document.createElement("a");
-
-  a.href=url;
-
-  a.download="lucky77_event_history.json";
-
-  a.click();
-
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
-
-});
-
-clearEventHistoryBtn?.addEventListener("click", ()=>{
-
-  if(!confirm("Clear ALL history?")) return;
-
-  localStorage.removeItem(LS_EVENT_HISTORY);
-
-  localStorage.removeItem(LS_CURRENT_SESSION);
-
-  renderEventHistoryViewer();
-
-  renderWinnerListPanel();
-
-  alert("Cleared ✅");
-
-});
-
-
-/* ===========================
-   INIT
-=========================== */
 function init(){
 
   const s = loadSettings();
 
-  apiBaseInput.value = s.apiBase || DEFAULT_API_BASE;
+  // Inputs
+  if (apiBaseInput) apiBaseInput.value = s.apiBase || DEFAULT_API_BASE;
+  if (apiKeyInput)  apiKeyInput.value  = s.apiKey  || DEFAULT_API_KEY;
 
-  apiKeyInput.value  = s.apiKey  || DEFAULT_API_KEY;
+  if (uiColorInput) uiColorInput.value = s.uiColor || "#ffffff";
+  if (wheelAccentInput) wheelAccentInput.value = s.wheelAccent || "#d6b25e";
+  if (wheelColorsInput) wheelColorsInput.value = s.wheelColorsText || defaultSettings.wheelColorsText;
 
-  uiColorInput.value = s.uiColor || "#ffffff";
+  // Theme
+  applyThemeUI(s.uiColor, s.wheelAccent);
 
-  wheelAccentInput.value =
-    s.wheelAccent || "#d6b25e";
+  // Images
+  applyPageBg(s.pageBgDataUrl || "");
+  applyWheelBg(s.wheelBgDataUrl || "");
+  applyBanner(s.topBannerDataUrl || "", topBannerImg, topBannerFallback);
+  applyBanner(s.bottomBannerDataUrl || "", bottomBannerImg, bottomBannerFallback);
+  applyWheelBanner(s.wheelBannerDataUrl || "");
 
-  wheelColorsInput.value =
-    s.wheelColorsText || defaultSettings.wheelColorsText;
+  // Prize Builder UI
+  renderPrizeBuilder(s.prizes || clone(defaultSettings.prizes));
 
-  applyThemeUI(s.uiColor,s.wheelAccent);
-
-  applyPageBg(s.pageBgDataUrl||"");
-
-  applyWheelBg(s.wheelBgDataUrl||"");
-
-  applyBanner(s.topBannerDataUrl||"",topBannerImg,topBannerFallback);
-
-  applyBanner(s.bottomBannerDataUrl||"",bottomBannerImg,bottomBannerFallback);
-
-  applyWheelBanner(s.wheelBannerDataUrl||"");
-
-  renderPrizeBuilder(s.prizes||clone(defaultSettings.prizes));
-
+  // Wheel prizes/colors
   sliceColors = parseWheelColors(s.wheelColorsText);
-
-  const prizeText = buildPrizeText(s.prizes||[]);
-
+  const prizeText = buildPrizeText(s.prizes || []);
   wheelPrizes = uniquePrizesFromPrizeText(prizeText);
 
   drawWheel();
 
+  // Music btn text
   updateMusicBtn();
 
-  setTestMode(isTestMode());
+  // Winner list reset (today only in UI)
+  winnerList = [];
 
-  localStorage.setItem(LS_LAST_DATEKEY,dateKeyNow());
-
-  if(!isTestMode()) ensureSession();
-
+  // First load pool
   refreshPoolUI();
 
-  renderEventHistoryViewer();
-
+  // Render winner list UI empty
   renderWinnerListPanel();
-
 }
 
 init();
