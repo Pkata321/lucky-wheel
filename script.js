@@ -14,6 +14,8 @@ const DEFAULT_API_KEY = "Lucky77_luckywheel_77";
 const LS_SETTINGS = "lucky77_ui_settings_v1";
 const LS_CACHE_MEMBERS = "lucky77_cache_members_v1";
 const LS_CACHE_MEMBERS_AT = "lucky77_cache_members_at_v1";
+const LS_TODAY_WINNERS = "lucky77_today_winners_v1";
+
 
 /* ===== DOM HELPER ===== */
 
@@ -743,7 +745,7 @@ async function doSpin(){
 
 recordTodayWinner({ prize, winner, turn: res.turn });
 
-recordTodayWinner({ prize, winner, turn: res.turn });
+
 
   refreshPool();
 
