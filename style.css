@@ -1,4 +1,4 @@
-:root {
+ :root {
   --ui: #ffffff;
   --bg: #ffffff;
   --text: #101318;
@@ -332,7 +332,7 @@ button:disabled,
   width: min(420px, 92vw);
   height: 100vh;
   background: rgba(255, 255, 255, 0.96);
-  border-left: က်1px solid rgba(16, 19, 24, 0.1);
+  border-left: 1px solid rgba(16, 19, 24, 0.1);
   box-shadow: -18px 0 90px rgba(0, 0, 0, 0.18);
   padding: 14px;
   z-index: 9999;
