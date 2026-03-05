@@ -721,7 +721,7 @@ async function doSpin(){
 
   if(spinning) return;
 
-  if(!wheelPrizes.length || wheelPrizes[0] === "EMPTY"){
+  if(!wheelPrizes.length){
     alert("Prize မရှိသေးပါ");
     return;
   }
@@ -731,29 +731,36 @@ async function doSpin(){
 
   let res;
 
-try{
-  res = await apiPost("/spin",{},12000);
-  if(!res?.ok) throw new Error(res?.error || "spin error");
-}catch(e){
-  spinning=false;
-  setBusy(spinBtn,false);
-  alert("Spin error: " + (e?.message || e));
-  return;
-}
+  try{
 
-  const prize = String(res.prize || "").trim();
+    // ✅ correct endpoint
+    res = await apiPost("/spin",{},12000);
+
+    if(!res?.ok){
+      throw new Error(res?.error || "spin error");
+    }
+
+  }catch(e){
+
+    spinning=false;
+    setBusy(spinBtn,false);
+
+    alert("Spin error: " + (e?.message || e));
+    return;
+  }
+
+  const prize = String(res.prize || "");
   const winner = res.winner || {};
-  const turn = res.turn;
 
   let idx = findPrizeIndex(prize);
 
-  if(idx<0){
+  if(idx < 0){
     buildWheelPrizes();
     drawWheel();
     idx = findPrizeIndex(prize);
   }
 
-  if(idx<0){
+  if(idx < 0){
     idx = Math.floor(Math.random()*wheelPrizes.length);
   }
 
@@ -761,9 +768,9 @@ try{
 
   await animateSpin(target,3200);
 
-  // ✅ modal + save list
-  try{ showWinnerModal(prize,winner,turn); }catch{}
-  try{ recordTodayWinner({ prize, winner, turn }); }catch{}
+  showWinnerModal(prize,winner,res.turn);
+
+  recordTodayWinner({ prize, winner, turn: res.turn });
 
   refreshPool();
 
