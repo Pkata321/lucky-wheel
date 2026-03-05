@@ -1168,7 +1168,7 @@ restartSpinBtn?.addEventListener("click", async ()=>{
   try{
 
     const data = await apiPost(
-      "/restart-spin",
+      "/restart",
       {},
       12000
     );
