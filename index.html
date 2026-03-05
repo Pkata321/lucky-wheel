@@ -2,17 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Lucky Spin Wheel</title>
     <link rel="stylesheet" href="./style.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
   </head>
 
   <body>
     <div class="bg" id="bgLayer"></div>
 
     <div class="page">
-      <!-- Topbar -->
-      <div class="topbar edge">
+      <!-- ================= TOP BAR ================= -->
+      <div class="topbar">
         <div class="brand">
           <h1>🎡 Lucky Spin Wheel</h1>
           <p>Luxury • Prize Turn • Member No-Repeat • Telegram Contact</p>
@@ -24,60 +24,57 @@
         </div>
       </div>
 
-      <!-- Top Banner -->
-      <div class="banner-img edge">
+      <!-- ================= TOP BANNER ================= -->
+      <div class="banner-img">
         <img id="topBannerImg" alt="Top Banner" style="display:none;" />
         <div id="topBannerFallback" class="banner-fallback">
           Top Banner (Settings ထဲကနေ Upload ထည့်နိုင်ပါတယ်)
         </div>
       </div>
 
+      <!-- ================= MAIN ================= -->
       <div class="main">
         <div class="wheel-card">
+          <!-- ===== Wheel Wrap ===== -->
           <div class="wheel-wrap" id="wheelWrap">
-            <!-- Pointer (TOP) -->
-            <div class="pointer" aria-hidden="true"></div>
-
+            <div class="pointer"></div>
             <canvas id="wheel" width="520" height="520"></canvas>
             <button id="spinBtn" class="spin-btn">SPIN</button>
+
+            <!-- Loading overlay (UI stuck မဖြစ်အောင်) -->
+            <div id="loadingOverlay" class="loading hidden" aria-hidden="true">
+              <div class="loading-box">
+                <div class="loading-title" id="loadingText">Loading...</div>
+                <div class="loading-sub">Please wait</div>
+              </div>
+            </div>
           </div>
 
-          <!-- Wheel Banner (PNG Logo) -->
+          <!-- ===== Wheel Banner (PNG Logo) ===== -->
           <div class="wheel-banner" id="wheelBanner">
             <div class="wheel-banner-slab"></div>
-
             <img id="wheelBannerImg" alt="Wheel Banner Logo" style="display:none;" />
-
             <div id="wheelBannerFallback" class="wheel-banner-fallback">
               <div>Lucky77</div>
               <div>LuckyWheel</div>
             </div>
           </div>
 
+          <!-- ===== Pool Info ===== -->
           <div class="info-row">
             <div class="label">POOL</div>
             <div id="poolText">-</div>
           </div>
 
+          <!-- ===== Actions ===== -->
           <div class="actions">
             <button class="btn" id="restartSpinBtn">Restart Spin</button>
             <button class="btn" id="membersBtn">Members</button>
-            <button class="btn" id="winnerListBtn">Winner List</button>
+            <button class="btn" id="winnersBtn">Winners</button>
+            <button class="btn" id="historyBtn">History</button>
           </div>
 
-          <!-- ✅ Winner List Panel (Wheel အောက်) -->
-          <div id="winnerListPanel" class="panel hidden">
-            <div class="panel-head">
-              <div class="panel-title">
-                Winner List (Today)
-                <span class="panel-total" id="winnerListTotalText"></span>
-              </div>
-              <button class="btn mini" id="winnerListCloseBtn">Close</button>
-            </div>
-            <div class="panel-body" id="winnerListBody"></div>
-          </div>
-
-          <!-- Members Panel -->
+          <!-- ================= MEMBERS PANEL ================= -->
           <div id="membersPanel" class="panel hidden">
             <div class="panel-head">
               <div class="panel-title">
@@ -86,13 +83,81 @@
               </div>
               <button class="btn mini" id="membersCloseBtn">Close</button>
             </div>
+
+            <!-- tools -->
+            <div class="panel-tools">
+              <button class="btn mini" id="membersRefreshBtn">Refresh</button>
+            </div>
+
             <div class="panel-body" id="membersTable"></div>
+          </div>
+
+          <!-- ================= WINNERS PANEL (Main UI list) ================= -->
+          <div id="winnersPanel" class="panel hidden">
+            <div class="panel-head">
+              <div class="panel-title">
+                Winners
+                <span class="panel-total" id="winnersTotalText"></span>
+              </div>
+              <button class="btn mini" id="winnersCloseBtn">Close</button>
+            </div>
+
+            <!-- tools -->
+            <div class="panel-tools">
+              <button class="btn mini" id="winnersRefreshBtn">Refresh</button>
+              <button class="btn mini" id="winnersExportPdfBtn">Export PDF</button>
+            </div>
+
+            <!-- render here as cards or table -->
+            <div class="panel-body" id="winnersList"></div>
+
+            <!-- hidden printable area (PDF/Print) -->
+            <div id="winnersPrintArea" class="hidden" aria-hidden="true"></div>
+          </div>
+
+          <!-- ================= HISTORY PANEL (Table + Export) ================= -->
+          <div id="historyPanel" class="panel hidden">
+            <div class="panel-head">
+              <div class="panel-title">
+                Winner History (Table)
+                <span class="panel-total" id="historyTotalText"></span>
+              </div>
+              <button class="btn mini" id="historyCloseBtn">Close</button>
+            </div>
+
+            <div class="panel-tools">
+              <button class="btn mini" id="historyRefreshBtn">Refresh</button>
+              <button class="btn mini" id="historyExportCsvBtn">Export CSV</button>
+              <button class="btn mini" id="historyExportPdfBtn">Export PDF</button>
+            </div>
+
+            <!-- Table -->
+            <div class="panel-body">
+              <div class="table-wrap">
+                <table class="tbl" id="historyTable">
+                  <thead>
+                    <tr>
+                      <th>Turn</th>
+                      <th>Prize</th>
+                      <th>Name</th>
+                      <th>Username</th>
+                      <th>User ID</th>
+                      <th>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="historyTbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- hidden printable area (PDF/Print) -->
+            <div id="historyPrintArea" class="hidden" aria-hidden="true"></div>
           </div>
         </div>
       </div>
 
-      <!-- Bottom Banner -->
-      <div class="banner-img edge">
+      <!-- ================= BOTTOM BANNER ================= -->
+      <div class="banner-img">
         <img id="bottomBannerImg" alt="Bottom Banner" style="display:none;" />
         <div id="bottomBannerFallback" class="banner-fallback">
           Bottom Banner (Settings ထဲကနေ Upload ထည့်နိုင်ပါတယ်)
@@ -100,7 +165,7 @@
       </div>
     </div>
 
-    <!-- WINNER MODAL -->
+    <!-- ================= WINNER MODAL ================= -->
     <div id="winnerModal" class="modal hidden" aria-hidden="true">
       <div class="modal-backdrop" id="winnerBackdrop"></div>
       <div class="modal-card">
@@ -112,12 +177,19 @@
         <div class="modal-title" id="winnerTitleText">—</div>
         <div class="modal-name" id="winnerNameText">—</div>
 
+        <!-- winner meta row -->
+        <div class="modal-meta">
+          <div id="winnerTurnText">Turn: —</div>
+          <div id="winnerIdText">ID: —</div>
+        </div>
+
         <div class="modal-actions">
           <button class="btn primary" id="contactBtn">Telegram</button>
           <button class="btn" id="noticeBtn">Notice (DM)</button>
+          <button class="btn success" id="prizeDoneBtn">Prize Done</button>
         </div>
 
-        <div class="small" id="winnerHint" style="margin-top:10px"></div>
+        <div class="small" id="winnerHint" style="margin-top: 10px"></div>
 
         <div class="fx">
           <span></span><span></span><span></span><span></span><span></span>
@@ -126,15 +198,16 @@
       </div>
     </div>
 
-    <!-- Settings Drawer -->
+    <!-- ================= SETTINGS DRAWER ================= -->
     <div class="drawer" id="drawer">
       <div class="drawer-head">
         <h2>⚙️ Settings</h2>
         <button class="btn icon" id="closeSettingsBtn" title="Close">✖️</button>
       </div>
 
+      <!-- Render Connection -->
       <div class="field">
-        <label>Render API</label>
+        <label>Render API Base</label>
         <input id="apiBaseInput" type="text" placeholder="https://lucky77-wheel-bot.onrender.com" />
         <small class="small">Render URL ကို ၁ခါပဲထည့်ပြီး Save လုပ်ပါ</small>
       </div>
@@ -144,54 +217,19 @@
         <input id="apiKeyInput" type="text" placeholder="Lucky77_luckywheel_77" />
       </div>
 
-      <!-- Test Mode -->
-      <div class="field">
-        <label>Test Mode</label>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <button class="btn" id="testModeBtn">Test: OFF</button>
-          <button class="btn mini danger" id="clearTestHistoryBtn" title="Clear quick winner map">Clear Test File</button>
-        </div>
-        <small class="small">
-          ✅ OFF = Event အမှန် (အတည် Winner List + Winner History သိမ်းမယ်)<br/>
-          ✅ ON = စမ်းသပ် (မသိမ်းပါ)
-        </small>
-      </div>
-
-      <!-- ✅ Winner History (Sessions) -->
-      <div class="field" id="eventHistoryField">
-        <label>Winner History (Sessions) — Test OFF only</label>
-
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <button class="btn mini" id="refreshEventHistoryBtn">Refresh History</button>
-          <button class="btn mini" id="exportEventHistoryBtn">Export JSON</button>
-          <button class="btn mini danger" id="clearEventHistoryBtn">Clear All History</button>
-        </div>
-
-        <div id="eventHistoryViewer" class="small"
-             style="margin-top:8px;max-height:260px;overflow:auto;">
-          —
-        </div>
-
-        <small class="small">
-          ✅ Restart Spin = Session အသစ်စတင်<br/>
-          ✅ Pool 0 ဖြစ်ရင် "Completed" အမှတ်ထားမယ် (အတည် Save မသွားသေး)<br/>
-          ✅ နောက်နေ့ 00:00 (နေ့ကူး) ဖြစ်မှ Winner History ထဲ Auto-Save သွားမယ်<br/>
-          ✅ Prize Done status လည်း သိမ်းမယ်
-        </small>
-      </div>
-
+      <!-- Prize Builder (Save -> /config/prizes) -->
       <div class="field">
         <label>Prize List + Prize Turn (Stepper)</label>
         <div id="prizeBuilder"></div>
-        <div class="small" style="margin-top:6px">
-          ✅ Save လုပ်တာနဲ့ Render ထဲကို Prizes သွားသိမ်းမယ် (Test Mode ON မှာတော့ မပို့ပါ)
+        <div class="small" style="margin-top: 6px">
+          ✅ Prize + time ကို stepper နဲ့ချိန်ပြီး Save လုပ်တာနဲ့ Render ထဲကိုလည်းသိမ်းမယ်
         </div>
       </div>
 
+      <!-- UI Colors -->
       <div class="field">
         <label>UI Color (default = white)</label>
         <input id="uiColorInput" type="color" value="#ffffff" />
-        <small class="small">Border / panel / button တွေ color ချိတ်ထားပြီးသား</small>
       </div>
 
       <div class="field">
@@ -205,9 +243,9 @@
 #f1f5ff
 #fff4d6
 #e9eefc"></textarea>
-        <small class="small">လိုင်းတစ်လိုင်း = color ၁ခု (မပြည့်လည်း loop လုပ်မယ်)</small>
       </div>
 
+      <!-- Assets Upload -->
       <div class="field">
         <label>Page Background Image (Upload)</label>
         <input id="pageBgFile" type="file" accept="image/*" />
@@ -231,7 +269,6 @@
       <div class="field">
         <label>Wheel Banner Logo PNG (Upload)</label>
         <input id="wheelBannerFile" type="file" accept="image/*" />
-        <small class="small">Wheel အောက် Logo (PNG) ထည့်နိုင်ပါတယ်</small>
       </div>
 
       <div class="field">
@@ -239,10 +276,21 @@
         <input id="bgSongFile" type="file" accept="audio/*" />
       </div>
 
+      <!-- ✅ History Export in Settings -->
+      <div class="field">
+        <label>History Export</label>
+        <div class="row">
+          <button class="btn" id="settingsHistoryPdfBtn">Export History PDF</button>
+          <button class="btn" id="settingsHistoryCsvBtn">Export History CSV</button>
+        </div>
+        <small class="small">PDF/CSV ကို UI ဘက်ကနေ ထုတ်ယူနိုင်ပါတယ်</small>
+      </div>
+
+      <!-- Quick Preview -->
       <div class="field">
         <label>Member List (Preview)</label>
         <button class="btn" id="refreshMembersInSettingsBtn">Refresh Members</button>
-        <div id="membersInSettings" class="small" style="margin-top:8px; max-height:220px; overflow:auto"></div>
+        <div id="membersInSettings" class="small" style="margin-top: 8px; max-height: 220px; overflow:auto"></div>
       </div>
 
       <div class="drawer-actions">
@@ -251,20 +299,13 @@
       </div>
 
       <p class="hint">
-        ⚠️ Banner/MP3 Upload တွေက refresh လုပ်ရင် ပြန်ရွေးရနိုင်ပါတယ် (browser security). <br />
+        ⚠️ Banner/MP3 Upload တွေက refresh လုပ်ရင် ပြန်ရွေးရနိုင်ပါတယ် (browser security).<br />
         ✅ Prize/Color/Image settings တွေက LocalStorage ထဲမှာသိမ်းထားပါတယ်။
       </p>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading hidden">
-      <div class="loading-card">
-        <div class="spinner"></div>
-        <div class="loading-text" id="loadingText">Loading...</div>
-        <button class="btn mini" id="loadingCancelBtn" style="margin-top:10px;">Cancel</button>
-      </div>
-    </div>
-
+    <!-- If you want PDF export library later:
+         jsPDF/html2pdf can be added in script.js side. -->
     <script src="./script.js"></script>
   </body>
 </html>
