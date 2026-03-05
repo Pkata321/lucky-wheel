@@ -562,6 +562,29 @@ textarea { resize: vertical; }
   border-top-color: rgba(214, 178, 94, 0.95);
   animation: spin 0.85s linear infinite;
 }
+
+/* =================================================
+   ✅ EDGE-TO-EDGE (KEEP STYLE, ONLY WIDTH FIX)
+   - keeps your banner look, just expands to screen edges
+================================================= */
+:root { --page-pad: 14px; }
+
+/* Topbar full width (optional, မလိုရင်ဖျက်) */
+.topbar.edge {
+  width: calc(100% + (var(--page-pad) * 2));
+  margin-left: calc(var(--page-pad) * -1);
+  margin-right: calc(var(--page-pad) * -1);
+  border-radius: 0;
+}
+
+/* Banner full width */
+.banner-img.edge {
+  width: calc(100% + (var(--page-pad) * 2));
+  margin-left: calc(var(--page-pad) * -1);
+  margin-right: calc(var(--page-pad) * -1);
+  border-radius: 0;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
