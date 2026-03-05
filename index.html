@@ -11,7 +11,8 @@
     <div class="bg" id="bgLayer"></div>
 
     <div class="page">
-      <div class="topbar">
+      <!-- ✅ topbar edge-to-edge (optional but you wanted like banner) -->
+      <div class="topbar edge">
         <div class="brand">
           <h1>🎡 Lucky Spin Wheel</h1>
           <p>Luxury • Prize Turn • Member No-Repeat • Telegram Contact</p>
@@ -23,8 +24,8 @@
         </div>
       </div>
 
-      <!-- Top Banner -->
-      <div class="banner-img">
+      <!-- ✅ Top Banner (edge-to-edge) -->
+      <div class="banner-img edge">
         <img id="topBannerImg" alt="Top Banner" style="display: none" />
         <div id="topBannerFallback" class="banner-fallback">
           Top Banner (Settings ထဲကနေ Upload ထည့်နိုင်ပါတယ်)
@@ -34,7 +35,7 @@
       <div class="main">
         <div class="wheel-card">
           <div class="wheel-wrap" id="wheelWrap">
-            <!-- ✅ Arrow / Pointer (TOP) -->
+            <!-- ✅ Arrow / Pointer -->
             <div class="pointer" aria-hidden="true"></div>
 
             <canvas id="wheel" width="520" height="520"></canvas>
@@ -87,8 +88,8 @@
         </div>
       </div>
 
-      <!-- Bottom Banner -->
-      <div class="banner-img">
+      <!-- ✅ Bottom Banner (edge-to-edge) -->
+      <div class="banner-img edge">
         <img id="bottomBannerImg" alt="Bottom Banner" style="display: none" />
         <div id="bottomBannerFallback" class="banner-fallback">
           Bottom Banner (Settings ထဲကနေ Upload ထည့်နိုင်ပါတယ်)
@@ -145,11 +146,33 @@
         <label>Test Mode</label>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <button class="btn" id="testModeBtn">Test: OFF</button>
-          <button class="btn mini danger" id="clearTestHistoryBtn" title="Clear test winners file">Clear Test File</button>
+          <button class="btn mini danger" id="clearTestHistoryBtn" title="Clear quick winner map">Clear Test File</button>
         </div>
         <small class="small">
-          ✅ OFF = Event အမှန် (Render pool/history အလုပ်လုပ်မယ်)<br/>
-          ✅ ON = စမ်းသပ် (Render မထိဘဲ local “file” ထဲကိုပဲ Winner သိမ်းမယ်)
+          ✅ OFF = Event အမှန် (အတည် Winner History သိမ်းမယ်)<br/>
+          ✅ ON = စမ်းသပ် (မသိမ်းပါ)
+        </small>
+      </div>
+
+      <!-- ✅ Event History (Real Mode only) -->
+      <div class="field" id="eventHistoryField">
+        <label>Event Winner History (Test OFF only)</label>
+
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button class="btn mini" id="refreshEventHistoryBtn">Refresh History</button>
+          <button class="btn mini" id="exportEventHistoryBtn">Export JSON</button>
+          <button class="btn mini danger" id="clearEventHistoryBtn">Clear All History</button>
+        </div>
+
+        <div id="eventHistoryViewer" class="small"
+             style="margin-top:8px;max-height:260px;overflow:auto;">
+          —
+        </div>
+
+        <small class="small">
+          ✅ Restart Spin = Session အသစ်စတင်<br/>
+          ✅ Pool 0 ဖြစ်သွားတဲ့နေ့ = Session Completed သိမ်းမယ်<br/>
+          ✅ Prize Done status ပါပဲ သိမ်းမယ်
         </small>
       </div>
 
@@ -199,13 +222,6 @@
       <div class="field">
         <label>Bottom Banner Image (Upload)</label>
         <input id="bottomBannerFile" type="file" accept="image/*" />
-      </div>
-
-      <!-- ✅ Wheel Banner PNG -->
-      <div class="field">
-        <label>Wheel Banner Logo PNG (Upload)</label>
-        <input id="wheelBannerFile" type="file" accept="image/*" />
-        <small class="small">Transparent PNG ထည့်ရင် Wheel အောက်က Banner ပေါ်မှာပဲ ပေါ်မယ်</small>
       </div>
 
       <div class="field">
