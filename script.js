@@ -1031,3 +1031,141 @@ function recordTodayWinner({ prize, winner, turn }) {
     renderWinnerList();
   }
 }
+/* ===========================
+ PART 6 — MEMBERS PANEL (FAST + CACHE)
+ - Members button -> /members
+ - Render table with active/inactive
+ - Telegram / Notice actions
+ - Local cache for instant open
+=========================== */
+
+const membersPanel = $("membersPanel");
+const membersCloseBtn = $("membersCloseBtn");
+const membersTable = $("membersTable");
+const membersTotalText = $("membersTotalText");
+
+function openMembersPanel() {
+  membersPanel.classList.remove("hidden");
+
+  // ✅ instant render from cache first
+  const cache = readMembersCache();
+  if (cache && cache.length) {
+    renderMembers(cache, true);
+  } else {
+    membersTable.innerHTML = `<div class="small">Loading members...</div>`;
+  }
+
+  // then fetch fresh
+  refreshMembers();
+}
+
+function closeMembersPanel() {
+  membersPanel.classList.add("hidden");
+}
+
+membersBtn.addEventListener("click", openMembersPanel);
+membersCloseBtn.addEventListener("click", closeMembersPanel);
+
+function statusBadge(active) {
+  return active
+    ? `<span style="font-weight:1000;color:#16a34a;">ACTIVE</span>`
+    : `<span style="font-weight:1000;color:#ef4444;">INACTIVE</span>`;
+}
+
+function renderMembers(list, fromCache = false) {
+  const arr = Array.isArray(list) ? list : [];
+  membersTotalText.textContent = arr.length ? ` • Total: ${arr.length}${fromCache ? " (cache)" : ""}` : "";
+
+  if (!arr.length) {
+    membersTable.innerHTML = `<div class="small">No members</div>`;
+    return;
+  }
+
+  // sort active first
+  arr.sort((a, b) => (b.active === true) - (a.active === true));
+
+  const rows = arr.map(m => {
+    const username = String(m.username || "").replace("@", "").trim();
+    const display = String(m.display || m.name || (username ? "@"+username : m.id) || "-");
+    const uid = String(m.id || "");
+
+    return `
+      <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;border-bottom:1px solid rgba(16,19,24,0.08);padding:10px 0;">
+        <div style="min-width:0;">
+          <div style="font-weight:1000;word-break:break-word;">${esc(display)}</div>
+          <div class="small" style="margin-top:4px;">
+            ID: ${esc(uid)} • ${statusBadge(!!m.active)}
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+          ${
+            username
+              ? `<button class="btn mini" data-act="tg" data-user="${esc(username)}">Telegram</button>`
+              : `<button class="btn mini" data-act="notice" data-uid="${esc(uid)}">Notice</button>`
+          }
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  membersTable.innerHTML = rows;
+}
+
+async function refreshMembers() {
+  setBusy(membersBtn, true, "Members...");
+
+  try {
+    const res = await apiGet("/members", 15000); // ✅ 12–15s
+    if (!res?.ok) throw new Error(res?.error || "members_error");
+
+    const list = Array.isArray(res.members) ? res.members : [];
+    cacheMembers(list);
+    renderMembers(list, false);
+
+  } catch (e) {
+    const cache = readMembersCache();
+    if (cache && cache.length) {
+      renderMembers(cache, true);
+      membersTable.insertAdjacentHTML("afterbegin",
+        `<div class="small" style="margin-bottom:8px;">⚠️ Live fetch error, showing cache</div>`
+      );
+    } else {
+      membersTable.innerHTML = `<div class="small">Members error: ${esc(e?.message || e)}</div>`;
+    }
+  } finally {
+    setBusy(membersBtn, false);
+  }
+}
+
+/* ===== Members action buttons ===== */
+membersTable.addEventListener("click", async (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+
+  const act = b.dataset.act;
+
+  if (act === "tg") {
+    const user = String(b.dataset.user || "").replace("@", "").trim();
+    if (!user) return;
+    window.open(`https://t.me/${user}`, "_blank");
+    return;
+  }
+
+  if (act === "notice") {
+    const uid = String(b.dataset.uid || "").trim();
+    if (!uid) return;
+
+    setBusy(b, true, "Sending...");
+    try {
+      const r = await apiPost("/notice", { user_id: uid, prize: "" }, 12000);
+      if (!r?.ok) throw new Error(r?.error || "notice_failed");
+      alert("✅ Notice (DM) ပို့ပြီးပါပြီ");
+    } catch (err) {
+      alert("Notice error: " + (err?.message || err));
+    } finally {
+      setBusy(b, false);
+    }
+    return;
+  }
+});
