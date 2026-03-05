@@ -40,12 +40,15 @@ body {
   background: radial-gradient(800px 500px at 50% 10%, rgba(0, 0, 0, 0.04), transparent 60%);
 }
 
+/* ✅ page view = centered like original */
 .page {
   min-height: 100vh;
   padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
 .topbar {
@@ -120,22 +123,26 @@ button:disabled,
 }
 
 .banner-img {
-  max-width: 1100px;
   width: 100%;
-  margin: 0 auto;
   border-radius: 18px;
   overflow: hidden;
   border: 1px solid var(--stroke);
   background: var(--card);
   box-shadow: var(--shadow);
 }
-.banner-img img { width: 100%; height: 140px; object-fit: cover; display: block; }
+
+/* ✅ banner height auto => top/bottom better */
+.banner-img img {
+  width: 100%;
+  height: auto !important;
+  max-height: 190px;
+  object-fit: cover;
+  display: block;
+}
 .banner-fallback { padding: 14px; text-align: center; color: var(--muted); font-weight: 900; }
 
 .main {
   width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
@@ -194,27 +201,16 @@ button:disabled,
 
   border-left: 18px solid transparent;
   border-right: 18px solid transparent;
-  border-top: 34px solid var(--gold); /* points DOWN */
+  border-top: 34px solid var(--gold);
 
   filter: drop-shadow(0 6px 10px rgba(0,0,0,0.22));
 }
 
-/* small base behind arrow */
-.pointer::after {
-  content: "";
-  display: block;
-  width: 28px;
-  height: 16px;
-  margin-left: -14px;
-  margin-top: -6px;
-  border-radius: 10px;
-  background: rgba(214,178,94,0.82);
-  border: 1px solid rgba(16,19,24,0.10);
-  transform: translateX(50%);
-}
+/* ✅ REMOVE the knob/base (မလိုတဲ့ အလုံး) */
+.pointer::after { display: none !important; }
 
 /* =================================================
-   ✅ Wheel Banner
+   ✅ Wheel Banner (clean border)
 ================================================= */
 .wheel-banner {
   position: relative;
@@ -226,11 +222,12 @@ button:disabled,
   border-radius: 18px;
   overflow: hidden;
 }
+
 .wheel-banner-slab {
   position: absolute;
   inset: 0;
   border-radius: 18px;
-  border: 1px solid rgba(16, 19, 24, 0.12);
+  border: 1px solid rgba(16, 19, 24, 0.14);
   background:
     linear-gradient(180deg, rgba(255,255,255,0.20), rgba(0,0,0,0.06)),
     radial-gradient(900px 300px at 50% 0%, rgba(255,255,255,0.35), transparent 60%),
@@ -238,20 +235,10 @@ button:disabled,
   box-shadow: 0 18px 70px rgba(0,0,0,0.18);
   backdrop-filter: blur(8px);
 }
+
+/* ✅ remove side decorations causing border broken look */
 .wheel-banner-slab::before,
-.wheel-banner-slab::after {
-  content: "";
-  position: absolute;
-  top: 18px;
-  width: 80px;
-  height: 84px;
-  border-radius: 18px;
-  background: rgba(255,255,255,0.18);
-  border: 1px solid rgba(16,19,24,0.08);
-  filter: blur(0.2px);
-}
-.wheel-banner-slab::before { left: -22px; transform: skewX(-10deg); }
-.wheel-banner-slab::after  { right: -22px; transform: skewX(10deg); }
+.wheel-banner-slab::after { display:none !important; }
 
 #wheelBannerImg {
   position: relative;
