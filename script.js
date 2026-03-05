@@ -217,6 +217,41 @@ function isTestMode(){
   return localStorage.getItem("lucky77_test_mode") === "1";
 }
 
+/* ===== MEMBERS CACHE ===== */
+
+function cacheMembers(list){
+
+  try{
+
+    localStorage.setItem(LS_CACHE_MEMBERS,JSON.stringify(list||[]));
+    localStorage.setItem(LS_CACHE_MEMBERS_AT,String(Date.now()));
+
+  }catch{}
+
+}
+
+function readMembersCache(){
+
+  try{
+
+    const raw = localStorage.getItem(LS_CACHE_MEMBERS);
+
+    if(!raw) return null;
+
+    const arr = JSON.parse(raw);
+
+    if(!Array.isArray(arr)) return null;
+
+    return arr;
+
+  }catch{
+
+    return null;
+
+  }
+
+}
+
 /* ===========================
  PART 2 — UI BOOT
 =========================== */
