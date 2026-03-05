@@ -40,7 +40,6 @@ body {
   background: radial-gradient(800px 500px at 50% 10%, rgba(0, 0, 0, 0.04), transparent 60%);
 }
 
-/* ✅ page view = centered like original */
 .page {
   min-height: 100vh;
   padding: 14px;
@@ -131,7 +130,6 @@ button:disabled,
   box-shadow: var(--shadow);
 }
 
-/* ✅ banner height auto => top/bottom better */
 .banner-img img {
   width: 100%;
   height: auto !important;
@@ -180,9 +178,7 @@ button:disabled,
   box-shadow: 0 22px 80px rgba(0, 0, 0, 0.18);
 }
 
-/* =================================================
-   ✅ Pointer Arrow (TOP) - points DOWN into wheel
-================================================= */
+/* Pointer (TOP, points DOWN) */
 .pointer {
   position: absolute;
   top: 6px;
@@ -191,27 +187,18 @@ button:disabled,
   z-index: 6;
   filter: drop-shadow(0 10px 18px rgba(0,0,0,0.25));
 }
-
-/* Arrow head (triangle pointing DOWN) */
 .pointer::before {
   content: "";
   display: block;
   width: 0;
   height: 0;
-
   border-left: 18px solid transparent;
   border-right: 18px solid transparent;
   border-top: 34px solid var(--gold);
-
   filter: drop-shadow(0 6px 10px rgba(0,0,0,0.22));
 }
-
-/* ✅ REMOVE the knob/base (မလိုတဲ့ အလုံး) */
 .pointer::after { display: none !important; }
 
-/* =================================================
-   ✅ Wheel Banner (clean border)
-================================================= */
 .wheel-banner {
   position: relative;
   width: min(520px, 92vw);
@@ -222,7 +209,6 @@ button:disabled,
   border-radius: 18px;
   overflow: hidden;
 }
-
 .wheel-banner-slab {
   position: absolute;
   inset: 0;
@@ -235,8 +221,6 @@ button:disabled,
   box-shadow: 0 18px 70px rgba(0,0,0,0.18);
   backdrop-filter: blur(8px);
 }
-
-/* ✅ remove side decorations causing border broken look */
 .wheel-banner-slab::before,
 .wheel-banner-slab::after { display:none !important; }
 
@@ -246,7 +230,6 @@ button:disabled,
   max-width: 88%;
   max-height: 88%;
   object-fit: contain;
-  image-rendering: auto;
   filter: drop-shadow(0 10px 20px rgba(0,0,0,0.25));
 }
 .wheel-banner-fallback {
@@ -349,7 +332,7 @@ button:disabled,
   width: min(420px, 92vw);
   height: 100vh;
   background: rgba(255, 255, 255, 0.96);
-  border-left: 1px solid rgba(16, 19, 24, 0.1);
+  border-left: က်1px solid rgba(16, 19, 24, 0.1);
   box-shadow: -18px 0 90px rgba(0, 0, 0, 0.18);
   padding: 14px;
   z-index: 9999;
@@ -422,7 +405,7 @@ textarea { resize: vertical; }
   cursor: pointer;
 }
 
-/* ✅ BIG WINNER MODAL */
+/* WINNER MODAL */
 .modal.hidden { display: none; }
 .modal {
   position: fixed;
@@ -494,7 +477,7 @@ textarea { resize: vertical; }
   justify-content: center;
 }
 
-/* simple confetti */
+/* confetti */
 .fx span {
   position: absolute;
   top: -20px;
@@ -563,21 +546,15 @@ textarea { resize: vertical; }
   animation: spin 0.85s linear infinite;
 }
 
-/* =================================================
-   ✅ EDGE-TO-EDGE (KEEP STYLE, ONLY WIDTH FIX)
-   - keeps your banner look, just expands to screen edges
-================================================= */
+/* EDGE-TO-EDGE width */
 :root { --page-pad: 14px; }
 
-/* Topbar full width (optional, မလိုရင်ဖျက်) */
 .topbar.edge {
   width: calc(100% + (var(--page-pad) * 2));
   margin-left: calc(var(--page-pad) * -1);
   margin-right: calc(var(--page-pad) * -1);
   border-radius: 0;
 }
-
-/* Banner full width */
 .banner-img.edge {
   width: calc(100% + (var(--page-pad) * 2));
   margin-left: calc(var(--page-pad) * -1);
