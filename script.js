@@ -213,8 +213,10 @@ function setBusy(btn,busy,text){
 
 }
 
+const LS_TEST_MODE = "lucky77_test_mode_v1";
+
 function isTestMode(){
-  return localStorage.getItem("lucky77_test_mode") === "1";
+  return localStorage.getItem(LS_TEST_MODE) === "1";
 }
 
 /* ===== MEMBERS CACHE ===== */
@@ -735,9 +737,10 @@ async function doSpin(){
 
   try{
 
-    res = await apiPost("/spin",{},12000);
-
-    if(!res.ok) throw new Error(res.error||"spin error");
+    const r = await apiPost("/event/reset",{},12000);
+if(!r?.ok){
+  alert("Reset error: " + (r?.error || "unknown"));
+}
 
   }catch(e){
 
