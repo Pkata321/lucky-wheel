@@ -1,11 +1,10 @@
 "use strict";
 
 /* ===========================
-   PART 1/5 — BASE + DOM + LOADING + MUSIC + UTILS
+   PART 1/3 — BASE + DOM + LOADING + MUSIC + UTILS
 =========================== */
 const DEFAULT_API_BASE = "https://lucky77-wheel-bot.onrender.com";
 const DEFAULT_API_KEY  = "Lucky77_luckywheel_77";
-
 const TAU = Math.PI * 2;
 
 /* ---------- DOM ---------- */
@@ -34,27 +33,32 @@ const bottomBannerFile = document.getElementById("bottomBannerFile");
 const pageBgFile = document.getElementById("pageBgFile");
 const wheelBgFile = document.getElementById("wheelBgFile");
 const bgSongFile = document.getElementById("bgSongFile");
+const wheelBannerFile = document.getElementById("wheelBannerFile");
 
 const topBannerImg = document.getElementById("topBannerImg");
 const bottomBannerImg = document.getElementById("bottomBannerImg");
 const topBannerFallback = document.getElementById("topBannerFallback");
 const bottomBannerFallback = document.getElementById("bottomBannerFallback");
 
+const wheelBannerImg = document.getElementById("wheelBannerImg");
+const wheelBannerFallback = document.getElementById("wheelBannerFallback");
+
 const bgLayer = document.getElementById("bgLayer");
 const wheelWrap = document.getElementById("wheelWrap");
 
 const restartSpinBtn = document.getElementById("restartSpinBtn");
 const membersBtn = document.getElementById("membersBtn");
-const historyBtn = document.getElementById("historyBtn");
+const winnerListBtn = document.getElementById("winnerListBtn");
 
 const membersPanel = document.getElementById("membersPanel");
 const membersCloseBtn = document.getElementById("membersCloseBtn");
 const membersTable = document.getElementById("membersTable");
 const membersTotalText = document.getElementById("membersTotalText");
 
-const historyPanel = document.getElementById("historyPanel");
-const historyCloseBtn = document.getElementById("historyCloseBtn");
-const historyList = document.getElementById("historyList");
+const winnerListPanel = document.getElementById("winnerListPanel");
+const winnerListCloseBtn = document.getElementById("winnerListCloseBtn");
+const winnerListBody = document.getElementById("winnerListBody");
+const winnerListTotalText = document.getElementById("winnerListTotalText");
 
 const refreshMembersInSettingsBtn = document.getElementById("refreshMembersInSettingsBtn");
 const membersInSettings = document.getElementById("membersInSettings");
@@ -70,11 +74,11 @@ const noticeBtn = document.getElementById("noticeBtn");
 const winnerCloseBtn = document.getElementById("winnerCloseBtn");
 const winnerHint = document.getElementById("winnerHint");
 
-/* Test Mode UI (exists in your HTML) */
+/* Test Mode UI */
 const testModeBtn = document.getElementById("testModeBtn");
 const clearTestHistoryBtn = document.getElementById("clearTestHistoryBtn");
 
-/* Event History UI (you must add in HTML) */
+/* Winner History (Sessions) UI */
 const refreshEventHistoryBtn = document.getElementById("refreshEventHistoryBtn");
 const exportEventHistoryBtn  = document.getElementById("exportEventHistoryBtn");
 const clearEventHistoryBtn   = document.getElementById("clearEventHistoryBtn");
@@ -164,24 +168,32 @@ function esc(str) {
     .replaceAll("'", "&#039;");
 }
 
-function nowISO() { return new Date().toISOString(); }
+function dateKeyNow(ts = Date.now()){
+  return new Date(ts).toISOString().slice(0,10);
+}
 
 function openSettings() { drawer?.classList.add("open"); }
 function closeSettings() { drawer?.classList.remove("open"); }
 settingsBtn?.addEventListener("click", openSettings);
 closeSettingsBtn?.addEventListener("click", closeSettings);
 /* ===========================
-   PART 2/5 — STORAGE + TEST MODE + EVENT SESSIONS
+   PART 2/3 — STORAGE + TEST MODE + SESSIONS (00:00 AUTO SAVE) + THEME + IMAGES + API + PRIZE BUILDER
 =========================== */
+
+/* ---------- Storage Keys ---------- */
 const STORAGE_KEY = "lucky77_vercel_v2";
 const CACHE_MEMBERS_KEY = "lucky77_cache_members";
-const LS_WINNERS_KEY = "lucky77_winner_prize_map_v1"; // quick map (id => prize/done)
+
+/* quick map (id => {prize, done, at}) for tables/buttons */
+const LS_WINNERS_KEY = "lucky77_winner_prize_map_v1";
 const LS_TEST_MODE = "lucky77_test_mode_v1";
 
-/* Real Event Session History (Test OFF only) */
-const LS_EVENT_HISTORY  = "lucky77_event_sessions_v1";
-const LS_CURRENT_SESSION = "lucky77_current_session_v1";
+/* Real Session History (Test OFF only) */
+const LS_EVENT_HISTORY   = "lucky77_event_sessions_v1";     // saved sessions array
+const LS_CURRENT_SESSION = "lucky77_current_session_v1";    // current session object
+const LS_LAST_DATEKEY    = "lucky77_last_datekey_v1";       // last seen dateKey (for 00:00 detect)
 
+/* ---------- Default Settings ---------- */
 const defaultSettings = {
   apiBase: DEFAULT_API_BASE,
   apiKey: DEFAULT_API_KEY,
@@ -202,12 +214,15 @@ const defaultSettings = {
   wheelBgDataUrl: "",
   topBannerDataUrl: "",
   bottomBannerDataUrl: "",
+  wheelBannerDataUrl: "",   // ✅ wheel banner logo
 };
 
+/* ---------- Clone ---------- */
 function clone(x) {
   try { return structuredClone(x); } catch { return JSON.parse(JSON.stringify(x)); }
 }
 
+/* ---------- Settings Load/Save ---------- */
 function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -222,6 +237,7 @@ function saveSettingsLocal(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+/* ---------- Cache (members) ---------- */
 function saveCache(key, value) {
   try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), value })); } catch {}
 }
@@ -237,7 +253,9 @@ function clearCache() {
   try { localStorage.removeItem(CACHE_MEMBERS_KEY); } catch {}
 }
 
-/* ---------- Test Mode ---------- */
+/* ===========================
+   Test Mode
+=========================== */
 function isTestMode() {
   return localStorage.getItem(LS_TEST_MODE) === "1";
 }
@@ -251,18 +269,21 @@ if (testModeBtn) {
     setTestMode(next);
     alert(next ? "Test Mode ON (မသိမ်းပါ)" : "Test Mode OFF (အတည် သိမ်းမယ်)");
     renderEventHistoryViewer();
+    renderWinnerListPanel(); // sync UI
   });
 }
 if (clearTestHistoryBtn) {
   clearTestHistoryBtn.addEventListener("click", () => {
-    // keep button but clear quick map (not sessions)
     if (!confirm("Clear winner prize map (local) လုပ်မလား?")) return;
     localStorage.removeItem(LS_WINNERS_KEY);
     alert("Cleared ✅");
+    renderWinnerListPanel();
   });
 }
 
-/* ---------- Winner Prize Map (quick) ---------- */
+/* ===========================
+   Winner Prize Map (Quick)
+=========================== */
 function loadWinnerPrizeMap() {
   try { return JSON.parse(localStorage.getItem(LS_WINNERS_KEY) || "{}"); }
   catch { return {}; }
@@ -285,47 +306,55 @@ function togglePrizeDone(id) {
   return map[k].done;
 }
 
-/* ---------- Real Event Sessions (Test OFF only) ---------- */
-function loadEventSessions(){
+/* ===========================
+   Real Sessions (Test OFF)
+   - Pool 0 => mark completed (but NOT saved to history yet)
+   - Day change 00:00 => auto-save yesterday session into history
+=========================== */
+function loadEventSessions() {
   try { return JSON.parse(localStorage.getItem(LS_EVENT_HISTORY) || "[]"); }
   catch { return []; }
 }
-function saveEventSessions(arr){
+function saveEventSessions(arr) {
   try { localStorage.setItem(LS_EVENT_HISTORY, JSON.stringify(arr || [])); } catch {}
 }
-function loadCurrentSession(){
+function loadCurrentSession() {
   try { return JSON.parse(localStorage.getItem(LS_CURRENT_SESSION) || "null"); }
   catch { return null; }
 }
-function saveCurrentSession(obj){
+function saveCurrentSession(obj) {
   try { localStorage.setItem(LS_CURRENT_SESSION, JSON.stringify(obj || null)); } catch {}
 }
-function clearCurrentSession(){
+function clearCurrentSession() {
   try { localStorage.removeItem(LS_CURRENT_SESSION); } catch {}
 }
 
-function startNewSession(){
+function startNewSession() {
   const now = Date.now();
-  const dateKey = new Date(now).toISOString().slice(0,10); // YYYY-MM-DD
+  const dateKey = dateKeyNow(now);
   const sid = `${dateKey}_${now}`;
   const session = {
     id: sid,
     dateKey,
     startedAt: now,
     endedAt: null,
-    completed: false,
-    winners: [] // {at, order, id, display, username, prize, done}
+    completed: false,      // pool 0 => true
+    autoSaved: false,      // day change => true
+    winners: []            // {at, order, id, display, username, prize, done}
   };
   saveCurrentSession(session);
   return session;
 }
-function ensureSession(){
+
+function ensureSession() {
   if (isTestMode()) return null;
   let s = loadCurrentSession();
   if (!s) s = startNewSession();
   return s;
 }
-function finalizeSessionIfPoolEmpty(poolCount){
+
+/* pool 0 => completed mark only (မသိမ်းသေး) */
+function markSessionCompletedIfPoolEmpty(poolCount) {
   if (isTestMode()) return;
   if (Number(poolCount) !== 0) return;
 
@@ -335,16 +364,60 @@ function finalizeSessionIfPoolEmpty(poolCount){
   s.completed = true;
   s.endedAt = Date.now();
   saveCurrentSession(s);
-
-  const all = loadEventSessions();
-  all.push(s);
-  saveEventSessions(all);
-
-  // session ကိုထားချင်ရင်မဖျက် (default)
-  // clearCurrentSession();
 }
+
+/* ✅ 00:00 day change => auto-save yesterday session into history */
+function autoSaveSessionOnDayChange() {
+  if (isTestMode()) return;
+
+  const nowKey = dateKeyNow();
+  const lastKey = localStorage.getItem(LS_LAST_DATEKEY) || nowKey;
+
+  if (lastKey !== nowKey) {
+    // Day changed!
+    const s = loadCurrentSession();
+
+    // Save yesterday session only if it exists, not already saved, has winners or completed
+    if (s && !s.autoSaved) {
+      const shouldSave = (s.completed === true) || ((s.winners || []).length > 0);
+
+      if (shouldSave) {
+        s.autoSaved = true;
+        // if not ended yet, end it at day-change moment
+        if (!s.endedAt) s.endedAt = Date.now();
+
+        // push to history
+        const all = loadEventSessions();
+        all.push(s);
+        saveEventSessions(all);
+
+        // start a new clean session for new day (optional)
+        // we will start fresh to avoid mixing winners across days
+        startNewSession();
+      } else {
+        // no winners, just start new day session
+        startNewSession();
+      }
+    } else {
+      // no current session: create today
+      startNewSession();
+    }
+
+    localStorage.setItem(LS_LAST_DATEKEY, nowKey);
+    renderEventHistoryViewer();
+    renderWinnerListPanel();
+    return;
+  }
+
+  // same day: just keep updated
+  localStorage.setItem(LS_LAST_DATEKEY, nowKey);
+}
+
+/* check day-change every 20 seconds (lightweight) */
+setInterval(autoSaveSessionOnDayChange, 20000);
+
 /* ===========================
-   PART 3/5 — THEME + IMAGES + API + PRIZE BUILDER
+   Theme + Images
 =========================== */
 function applyThemeUI(uiColor, wheelAccent) {
   document.documentElement.style.setProperty("--ui", uiColor);
@@ -361,6 +434,7 @@ function fileToDataURL(file) {
     r.readAsDataURL(file);
   });
 }
+
 function applyBanner(dataUrl, imgEl, fallbackEl) {
   if (!imgEl || !fallbackEl) return;
   if (dataUrl) {
@@ -392,8 +466,21 @@ function applyWheelBg(dataUrl) {
     wheelWrap.style.backgroundImage = "";
   }
 }
+function applyWheelBanner(dataUrl) {
+  if (!wheelBannerImg || !wheelBannerFallback) return;
+  if (dataUrl) {
+    wheelBannerImg.src = dataUrl;
+    wheelBannerImg.style.display = "block";
+    wheelBannerFallback.style.display = "none";
+  } else {
+    wheelBannerImg.style.display = "none";
+    wheelBannerFallback.style.display = "block";
+  }
+}
 
-/* ---------- API ---------- */
+/* ===========================
+   API helpers
+=========================== */
 function getApiBase() {
   const s = loadSettings();
   return (s.apiBase || DEFAULT_API_BASE).replace(/\/+$/, "");
@@ -414,6 +501,7 @@ async function fetchJsonWithTimeout(url, opt = {}, timeoutMs = 9000) {
     let json = null;
     try { json = JSON.parse(text); }
     catch { json = { ok:false, error:"Invalid JSON", raw:String(text||"").slice(0,250) }; }
+
     if (!r.ok && json && json.ok !== true) {
       return { ok:false, error: json?.error || `HTTP ${r.status}` };
     }
@@ -443,7 +531,9 @@ async function apiPost(path, body, timeoutMs = 12000) {
   }, timeoutMs);
 }
 
-/* ---------- Prize Builder ---------- */
+/* ===========================
+   Prize Builder
+=========================== */
 function buildPrizeText(prizesArr) {
   return (prizesArr || [])
     .filter((p) => p && String(p.name || "").trim())
@@ -456,6 +546,7 @@ function parseWheelColors(text) {
   return colors.length ? colors : ["#ffffff", "#f1f5ff"];
 }
 
+/* unique prizes for wheel display only (spin shows prize once) */
 function uniquePrizesFromPrizeText(prizeText) {
   const lines = String(prizeText || "").split("\n").map((x) => x.trim()).filter(Boolean);
   const out = [];
@@ -554,20 +645,25 @@ async function pushPrizeConfigToRender(prizeText) {
   return r;
 }
 /* ===========================
-   PART 4/5 — WHEEL DRAW (PRIZE MATCH FIX)
+   PART 3/3 — WHEEL + WINNER LIST (Spin #) + MEMBERS + HISTORY VIEWER + INIT
+   ✅ Winner History button text => Winner List (UI)
+   ✅ Winner List panel shows: Spin #1 - Prize + Done + Telegram/Notice
+   ✅ Prize Done syncs: (1) Quick Map (2) Current Session (Test OFF)
+=========================== */
+
+/* ===========================
+   WHEEL DRAW (Prize Match)
 =========================== */
 let wheelPrizes = [];
 let sliceColors = [];
 let currentAngle = 0;
 let spinning = false;
 
-/* pointer is on RIGHT side, pointing LEFT into wheel
-   => selection point is at angle 0 (east) */
-const POINTER_ANGLE = 0;
+/* pointer selection point at TOP (because your CSS pointer is TOP) 
+   Canvas: angle -90deg = top. We'll use POINTER_ANGLE = -PI/2 */
+const POINTER_ANGLE = -Math.PI / 2;
 
-function normalizePrizeName(x) {
-  return String(x || "").trim();
-}
+function normalizePrizeName(x) { return String(x || "").trim(); }
 
 function drawWheel() {
   const cx = wheelCanvas.width / 2;
@@ -593,10 +689,9 @@ function drawWheel() {
   ctx.lineWidth = 10;
   ctx.stroke();
 
-  // normal direction
   for (let i = 0; i < wheelPrizes.length; i++) {
     const start = currentAngle + i * slice;
-    const end   = start + slice;
+    const end = start + slice;
 
     ctx.beginPath();
     ctx.moveTo(cx, cy);
@@ -634,14 +729,12 @@ function drawWheel() {
 /* calculate angle to land prize at POINTER_ANGLE */
 function calcAngleToLandOnPrize(prize) {
   const p = normalizePrizeName(prize);
-  const idx = wheelPrizes.findIndex(x => normalizePrizeName(x) === p);
+  const idx = wheelPrizes.findIndex((x) => normalizePrizeName(x) === p);
   if (idx < 0 || wheelPrizes.length < 2) return null;
 
   const slice = TAU / wheelPrizes.length;
 
   // want: center of idx slice at POINTER_ANGLE
-  // centerAngle = currentAngle + (idx+0.5)*slice
-  // => currentAngle_target = POINTER_ANGLE - (idx+0.5)*slice
   let target = POINTER_ANGLE - (idx + 0.5) * slice;
 
   // jitter small
@@ -652,8 +745,9 @@ function calcAngleToLandOnPrize(prize) {
   target = ((target % TAU) + TAU) % TAU;
   return target;
 }
+
 /* ===========================
-   PART 5/5 — UI + SPIN + EVENT SAVE/VIEW + INIT
+   WINNER MODAL
 =========================== */
 let lastWinner = null;
 
@@ -664,7 +758,9 @@ function showWinnerModal(prize, winnerObj) {
   const hasUsername = !!username;
 
   const name = String(winnerObj.name || "").trim();
-  const display = String(winnerObj.display || name || (username ? `@${username}` : String(winnerObj.id || "-")));
+  const display = String(
+    winnerObj.display || name || (username ? `@${username}` : String(winnerObj.id || "-"))
+  );
 
   winnerPrizeTitle.textContent = "WINNER";
   winnerTitleText.textContent = String(prize || "—");
@@ -721,31 +817,46 @@ noticeBtn?.addEventListener("click", async () => {
   }
 });
 
-/* ---------- Panels ---------- */
+/* ===========================
+   PANELS: Members + Winner List (reuse historyPanel UI)
+   ✅ Rename "Winner History" -> "Winner List" (UI text only)
+=========================== */
 function showMembersPanel() { membersPanel?.classList.remove("hidden"); }
 function hideMembersPanel() { membersPanel?.classList.add("hidden"); }
 membersCloseBtn?.addEventListener("click", hideMembersPanel);
 
-function showHistoryPanel() { historyPanel?.classList.remove("hidden"); }
-function hideHistoryPanel() { historyPanel?.classList.add("hidden"); }
-historyCloseBtn?.addEventListener("click", hideHistoryPanel);
+function showWinnerListPanel() {
+  historyPanel?.classList.remove("hidden");
+  if (historyTitleText) historyTitleText.textContent = "Winner List";
+}
+function hideWinnerListPanel() { historyPanel?.classList.add("hidden"); }
+historyCloseBtn?.addEventListener("click", hideWinnerListPanel);
 
-/* ---------- Pool ---------- */
+/* ===========================
+   POOL
+=========================== */
 async function refreshPoolUI() {
   try {
     const data = await apiGet("/pool", 7000);
     if (!data?.ok) throw new Error(data?.error || "pool error");
     poolText.textContent = `${data.count || 0} people in pool`;
 
-    // ✅ auto finalize session when pool empty (Test OFF)
-    finalizeSessionIfPoolEmpty(data.count || 0);
+    // pool 0 => completed mark only (NOT save yet)
+    markSessionCompletedIfPoolEmpty(data.count || 0);
+
+    // 00:00 auto save check
+    autoSaveSessionOnDayChange();
+
     renderEventHistoryViewer();
+    renderWinnerListPanel();
   } catch {
     poolText.textContent = "Pool: error";
   }
 }
 
-/* ---------- Members UI ---------- */
+/* ===========================
+   MEMBERS UI
+=========================== */
 function contactButtonHTML(m) {
   const username = m.username ? String(m.username).replace("@", "").trim() : "";
   const id = String(m.id || "");
@@ -754,45 +865,6 @@ function contactButtonHTML(m) {
   if (m.active === false) return `<span class="small">inactive</span>`;
   if (username) return `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`;
   return `<button class="btn mini js-notice" data-id="${esc(id)}" data-prize="" data-name="${esc(name)}">Notice</button>`;
-}
-function contactButtonHTMLWithPrize(m, prizeText) {
-  const username = m.username ? String(m.username).replace("@", "").trim() : "";
-  const id = String(m.id || "");
-  const name = String(m.display || m.name || "-");
-
-  if (m.active === false) return `<span class="small">inactive</span>`;
-  if (username) return `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`;
-  return `<button class="btn mini js-notice" data-id="${esc(id)}" data-prize="${esc(String(prizeText||""))}" data-name="${esc(name)}">Notice</button>`;
-}
-
-function renderMembersTable(list) {
-  const rows = (list || [])
-    .map((m, i) => {
-      const username = m.username ? `@${String(m.username).replace("@", "")}` : "-";
-      const won = m.isWinner ? "✅" : "";
-      const status = (m.active === false) ? "❌ INACTIVE" : "✅ ACTIVE";
-      return `<tr>
-        <td>${i + 1}</td>
-        <td>${esc(m.display || "-")}</td>
-        <td>${esc(username)}</td>
-        <td>${esc(String(m.id || "-"))}</td>
-        <td>${won}</td>
-        <td>${status}</td>
-        <td>${contactButtonHTML(m)}</td>
-      </tr>`;
-    })
-    .join("");
-
-  membersTable.innerHTML = `
-    <table class="table">
-      <thead>
-        <tr>
-          <th>No.</th><th>Name</th><th>Username</th><th>ID</th><th>Won</th><th>Status</th><th>Action</th>
-        </tr>
-      </thead>
-      <tbody>${rows || `<tr><td colspan="7">No members yet</td></tr>`}</tbody>
-    </table>
-  `;
 }
 
 async function loadMembersUI() {
@@ -825,6 +897,36 @@ async function loadMembersUI() {
   }
 }
 
+function renderMembersTable(list) {
+  const rows = (list || [])
+    .map((m, i) => {
+      const username = m.username ? `@${String(m.username).replace("@", "")}` : "-";
+      const won = m.isWinner ? "✅" : "";
+      const status = (m.active === false) ? "❌ INACTIVE" : "✅ ACTIVE";
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${esc(m.display || "-")}</td>
+        <td>${esc(username)}</td>
+        <td>${esc(String(m.id || "-"))}</td>
+        <td>${won}</td>
+        <td>${status}</td>
+        <td>${contactButtonHTML(m)}</td>
+      </tr>`;
+    })
+    .join("");
+
+  membersTable.innerHTML = `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>No.</th><th>Name</th><th>Username</th><th>ID</th><th>Won</th><th>Status</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="7">No members yet</td></tr>`}</tbody>
+    </table>
+  `;
+}
+
 async function loadMembersInSettings() {
   if (!membersInSettings) return;
   membersInSettings.innerHTML = "Loading...";
@@ -845,79 +947,86 @@ async function loadMembersInSettings() {
   }
 }
 
-/* ---------- Winner History Table (from quick map) ---------- */
-function doneBtnStyle(done) {
+/* ===========================
+   WINNER LIST PANEL (Spin #)
+   - source of truth: Current Session winners (Test OFF)
+   - fallback: Quick Map + members cache (if needed)
+=========================== */
+function btnDoneStyle(done) {
   return done ? `style="background:#16a34a;color:#fff;border-color:#16a34a;"` : ``;
 }
-function renderPrizeHistoryTable(members) {
-  const map = loadWinnerPrizeMap();
-  const total = (members || []).length;
 
-  const rows = (members || []).map((m, i) => {
-    const username = m.username ? `@${String(m.username).replace("@", "")}` : "-";
-    const id = String(m.id || "-");
-    const rec = map[id];
-    const wonPrize = rec?.prize ? String(rec.prize) : "-";
-    const done = !!rec?.done;
+function actionBtnForWinner(w) {
+  const username = String(w.username || "").replace("@", "").trim();
+  const id = String(w.id || "");
+  const name = String(w.display || "-");
 
-    const doneBtnDisabled = (wonPrize === "-" || wonPrize.trim() === "-") ? "disabled" : "";
+  if (username) {
+    return `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`;
+  }
+  return `<button class="btn mini js-notice" data-id="${esc(id)}" data-prize="${esc(String(w.prize||""))}" data-name="${esc(name)}">Notice</button>`;
+}
+
+function renderWinnerListPanel() {
+  if (!historyList) return;
+
+  // UI title already changed in showWinnerListPanel()
+  if (isTestMode()) {
+    historyList.innerHTML = `<div class="small">Test Mode ON → Winner List မသိမ်းပါ</div>`;
+    return;
+  }
+
+  const s = loadCurrentSession();
+  const winners = Array.isArray(s?.winners) ? s.winners : [];
+
+  if (!winners.length) {
+    historyList.innerHTML = `<div class="small">Winner List: (empty)</div>`;
+    return;
+  }
+
+  const rows = winners.map((w, idx) => {
+    const done = !!w.done;
     const doneBtn = `
-      <button class="btn mini js-prize-done" data-id="${esc(id)}" ${doneBtnStyle(done)} ${doneBtnDisabled}>
+      <button class="btn mini js-prize-done" data-id="${esc(String(w.id||""))}" ${btnDoneStyle(done)}>
         ${done ? "Done ✅" : "Prize Done"}
       </button>
     `;
-
     return `<tr>
-      <td>${i + 1}</td>
-      <td>${esc(m.display || "-")}</td>
-      <td>${esc(username)}</td>
-      <td>${esc(id)}</td>
-      <td>${esc(wonPrize)}</td>
+      <td>${idx + 1}</td>
+      <td><b>Spin #${idx + 1}</b> - ${esc(String(w.prize || "-"))}</td>
+      <td>${esc(String(w.display || "-"))}</td>
+      <td>${esc(String(w.id || "-"))}</td>
       <td>${doneBtn}</td>
-      <td>${contactButtonHTMLWithPrize(m, wonPrize)}</td>
+      <td>${actionBtnForWinner(w)}</td>
     </tr>`;
   }).join("");
 
   historyList.innerHTML = `
     <div class="small" style="margin-bottom:8px;">
-      Winner History • Total: <b>${total}</b>
+      Winner List • Total: <b>${winners.length}</b>
+      ${s?.completed ? ` • <span style="color:var(--gold);font-weight:900;">Event Completed (Pool 0)</span>` : ``}
     </div>
     <table class="table">
       <thead>
         <tr>
-          <th>No.</th><th>Name</th><th>Username</th><th>ID</th><th>Won Prize</th><th>Turn Done ✅</th><th>Action</th>
+          <th>No.</th><th>Spin</th><th>Name</th><th>ID</th><th>Prize Done ✅</th><th>Action</th>
         </tr>
       </thead>
-      <tbody>${rows || `<tr><td colspan="7">No members yet</td></tr>`}</tbody>
+      <tbody>${rows}</tbody>
     </table>
   `;
 }
 
-async function loadHistoryUI() {
-  showHistoryPanel();
+/* Winner List button (use existing historyBtn) */
+historyBtn?.addEventListener("click", () => {
+  showWinnerListPanel();
+  renderWinnerListPanel();
+});
 
-  const cachedMembers = readCache(CACHE_MEMBERS_KEY);
-  if (Array.isArray(cachedMembers)) renderPrizeHistoryTable(cachedMembers);
-  else historyList.innerHTML = `<div class="small">Loading...</div>`;
-
-  showLoading("Loading Winner History...");
-  try {
-    const data = await apiGet("/members", 15000);
-    if (!data?.ok) throw new Error(data?.error || "members error");
-    const list = Array.isArray(data.members) ? data.members : [];
-    saveCache(CACHE_MEMBERS_KEY, list);
-    renderPrizeHistoryTable(list);
-  } catch (e) {
-    historyList.insertAdjacentHTML(
-      "afterbegin",
-      `<div class="small" style="margin-bottom:8px;">⚠️ ${esc(e.message || e)}</div>`
-    );
-  } finally {
-    hideLoading();
-  }
-}
-
-/* ---------- Delegation buttons ---------- */
+/* ===========================
+   Delegation Buttons (Telegram / Notice / Done)
+   ✅ Done syncs to: quick map + current session
+=========================== */
 document.addEventListener("click", async (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
@@ -953,7 +1062,7 @@ document.addEventListener("click", async (e) => {
 
     const doneNow = togglePrizeDone(id);
 
-    // update button UI
+    // button UI
     if (doneNow) {
       btn.textContent = "Done ✅";
       btn.style.background = "#16a34a";
@@ -966,24 +1075,30 @@ document.addEventListener("click", async (e) => {
       btn.style.borderColor = "";
     }
 
-    // ✅ also update current session (Test OFF)
+    // sync to current session (Test OFF)
     if (!isTestMode()) {
       const s = loadCurrentSession();
       if (s && Array.isArray(s.winners)) {
-        const rec = s.winners.find(x => String(x.id) === String(id));
+        const rec = s.winners.find((x) => String(x.id) === String(id));
         if (rec) {
           rec.done = doneNow;
           rec.at = Date.now();
           saveCurrentSession(s);
         }
       }
-      renderEventHistoryViewer();
     }
+
+    renderEventHistoryViewer();
+    renderWinnerListPanel();
     return;
   }
 });
 
-/* ---------- Restart Spin ---------- */
+/* ===========================
+   Restart Spin
+   - Render /restart-spin
+   - start new session (Real Mode only)
+=========================== */
 restartSpinBtn?.addEventListener("click", async () => {
   showLoading("Restarting Spin...");
   restartSpinBtn.disabled = true;
@@ -992,10 +1107,10 @@ restartSpinBtn?.addEventListener("click", async () => {
     if (!data?.ok) throw new Error(data?.error || "restart error");
     hideWinnerModal();
 
-    // ✅ new session start (Real Mode only)
     if (!isTestMode()) startNewSession();
 
     await refreshPoolUI();
+    renderWinnerListPanel();
     alert("Restart Spin ✅");
   } catch (e) {
     alert("Restart error: " + (e.message || e));
@@ -1005,7 +1120,9 @@ restartSpinBtn?.addEventListener("click", async () => {
   }
 });
 
-/* ---------- Spin (PRIZE MATCH 100%) ---------- */
+/* ===========================
+   Spin (Prize match 100%)
+=========================== */
 async function spin() {
   if (spinning) return;
 
@@ -1045,7 +1162,6 @@ async function spin() {
 
   const extraSpins = 7 + Math.random() * 6;
 
-  // make sure we travel forward smoothly
   const currentNorm = ((currentAngle % TAU) + TAU) % TAU;
   const delta = ((targetAngle - currentNorm) + TAU) % TAU;
   const finalAngle = currentAngle + extraSpins * TAU + delta;
@@ -1074,19 +1190,19 @@ async function spin() {
     if (t < 1) {
       requestAnimationFrame(animate);
     } else {
-      // ✅ landedPrize = API prize (now math matches pointer)
       const landedPrize = prize;
 
-      // quick map (for table)
       const wid = winner?.id ?? winner?.user_id ?? winner?.winner_id;
       if (wid) setWinnerPrize(wid, landedPrize);
 
-      // ✅ real session save (Test OFF only)
+      // save into current session (Test OFF)
       if (!isTestMode()) {
         const s = ensureSession();
         if (s) {
-          const username = String(winner?.username || "").replace("@","").trim();
-          const display = String(winner?.display || winner?.name || (username ? `@${username}` : String(wid || "-")));
+          const username = String(winner?.username || "").replace("@", "").trim();
+          const display = String(
+            winner?.display || winner?.name || (username ? `@${username}` : String(wid || "-"))
+          );
           const order = (s.winners?.length || 0) + 1;
 
           s.winners = Array.isArray(s.winners) ? s.winners : [];
@@ -1097,20 +1213,17 @@ async function spin() {
             display,
             username,
             prize: landedPrize,
-            done: false
+            done: false,
           });
           saveCurrentSession(s);
-          renderEventHistoryViewer();
         }
       }
 
       showWinnerModal(landedPrize, winner);
-      refreshPoolUI();
 
-      if (!historyPanel.classList.contains("hidden")) {
-        const cachedMembers = readCache(CACHE_MEMBERS_KEY);
-        if (Array.isArray(cachedMembers)) renderPrizeHistoryTable(cachedMembers);
-      }
+      // update UI
+      renderWinnerListPanel();
+      refreshPoolUI();
 
       spinning = false;
       spinBtn.disabled = false;
@@ -1122,12 +1235,14 @@ async function spin() {
 }
 spinBtn?.addEventListener("click", spin);
 
-/* ---------- Save / Reset / Upload ---------- */
+/* ===========================
+   Save / Reset / Upload (Settings)
+=========================== */
 saveBtn?.addEventListener("click", async () => {
   const s = loadSettings();
 
   s.apiBase = (apiBaseInput.value || DEFAULT_API_BASE).trim();
-  s.apiKey  = (apiKeyInput.value  || DEFAULT_API_KEY).trim();
+  s.apiKey = (apiKeyInput.value || DEFAULT_API_KEY).trim();
 
   s.uiColor = uiColorInput.value || "#ffffff";
   s.wheelAccent = wheelAccentInput.value || "#d6b25e";
@@ -1139,7 +1254,7 @@ saveBtn?.addEventListener("click", async () => {
   sliceColors = parseWheelColors(s.wheelColorsText);
 
   const prizeText = buildPrizeText(s.prizes);
-  wheelPrizes = uniquePrizesFromPrizeText(prizeText); // ✅ NO reverse
+  wheelPrizes = uniquePrizesFromPrizeText(prizeText);
   drawWheel();
 
   saveBtn.disabled = true;
@@ -1162,17 +1277,22 @@ saveBtn?.addEventListener("click", async () => {
 
 resetBtn?.addEventListener("click", () => {
   if (!confirm("Reset settings လုပ်မလား?")) return;
+
   saveSettingsLocal(clone(defaultSettings));
   clearCache();
   localStorage.removeItem(LS_WINNERS_KEY);
-  // do not auto clear sessions unless you want:
+
+  // keep sessions by default (do not delete)
   // localStorage.removeItem(LS_EVENT_HISTORY);
   // localStorage.removeItem(LS_CURRENT_SESSION);
+
   init();
   alert("Reset done ✅");
 });
 
-/* ---------- File inputs ---------- */
+/* ===========================
+   File Inputs (Images + MP3)
+=========================== */
 pageBgFile?.addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
@@ -1181,6 +1301,7 @@ pageBgFile?.addEventListener("change", async (e) => {
   saveSettingsLocal(s);
   applyPageBg(s.pageBgDataUrl);
 });
+
 wheelBgFile?.addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
@@ -1189,6 +1310,7 @@ wheelBgFile?.addEventListener("change", async (e) => {
   saveSettingsLocal(s);
   applyWheelBg(s.wheelBgDataUrl);
 });
+
 topBannerFile?.addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
@@ -1197,6 +1319,7 @@ topBannerFile?.addEventListener("change", async (e) => {
   saveSettingsLocal(s);
   applyBanner(s.topBannerDataUrl, topBannerImg, topBannerFallback);
 });
+
 bottomBannerFile?.addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
@@ -1205,6 +1328,18 @@ bottomBannerFile?.addEventListener("change", async (e) => {
   saveSettingsLocal(s);
   applyBanner(s.bottomBannerDataUrl, bottomBannerImg, bottomBannerFallback);
 });
+
+/* ✅ Wheel Banner Logo (PNG) */
+const wheelBannerFile = document.getElementById("wheelBannerFile");
+wheelBannerFile?.addEventListener("change", async (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  const s = loadSettings();
+  s.wheelBannerDataUrl = await fileToDataURL(f);
+  saveSettingsLocal(s);
+  applyWheelBanner(s.wheelBannerDataUrl);
+});
+
 bgSongFile?.addEventListener("change", (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
@@ -1213,39 +1348,46 @@ bgSongFile?.addEventListener("change", (e) => {
   if (musicOn) bgMusic.play().catch(() => {});
 });
 
-/* ---------- Buttons ---------- */
+/* Buttons */
 membersBtn?.addEventListener("click", loadMembersUI);
-historyBtn?.addEventListener("click", loadHistoryUI);
 refreshMembersInSettingsBtn?.addEventListener("click", loadMembersInSettings);
 
-/* ---------- Event History Viewer ---------- */
-function fmtTime(ts){
-  try { return new Date(ts).toLocaleString(); } catch { return String(ts||""); }
+/* ===========================
+   Event History Viewer (Saved Sessions)
+   - shows saved sessions (auto-saved at day change)
+   - shows current running session too
+=========================== */
+function fmtTime(ts) {
+  try { return new Date(ts).toLocaleString(); } catch { return String(ts || ""); }
 }
-function renderEventHistoryViewer(){
+
+function renderEventHistoryViewer() {
   if (!eventHistoryViewer) return;
-
-  const sessions = loadEventSessions();
-  const cur = loadCurrentSession();
-
-  let html = "";
 
   if (isTestMode()) {
     eventHistoryViewer.innerHTML = "Test Mode ON → မသိမ်းပါ";
     return;
   }
 
-  if (cur && !cur.completed) {
+  const sessions = loadEventSessions();
+  const cur = loadCurrentSession();
+
+  let html = "";
+
+  if (cur && !cur.autoSaved) {
     html += `<div style="margin-bottom:10px;">
-      <b>Current Session (Running)</b><br>
+      <b>Current Session</b><br>
       Date: ${esc(cur.dateKey)}<br>
       Started: ${esc(fmtTime(cur.startedAt))}<br>
+      Completed(Pool0): <b>${cur.completed ? "✅" : "❌"}</b><br>
       Winners: <b>${(cur.winners||[]).length}</b>
       <hr style="border:0;border-top:1px solid rgba(16,19,24,0.1);margin:8px 0;">
     </div>`;
+
     html += (cur.winners||[]).map(w =>
       `${w.order}. <b>${esc(w.prize)}</b> • ${esc(w.display)} • ${esc(w.id)} • Done: ${w.done ? "✅" : "❌"}`
     ).join("<br>") || "—";
+
     html += `<hr style="border:0;border-top:2px solid rgba(16,19,24,0.12);margin:10px 0;">`;
   }
 
@@ -1257,13 +1399,13 @@ function renderEventHistoryViewer(){
 
   html += `<b>Saved Sessions (By Date)</b><br><br>`;
   html += sessions.slice().reverse().map((s) => {
-    const total = (s.winners||[]).length;
-    const doneCount = (s.winners||[]).filter(x => x.done).length;
+    const total = (s.winners || []).length;
+    const doneCount = (s.winners || []).filter(x => x.done).length;
     return `
       <div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(16,19,24,0.1);">
         <b>${esc(s.dateKey)}</b> • Winners: <b>${total}</b> • Done: <b>${doneCount}</b><br>
         <span style="opacity:.8">Start: ${esc(fmtTime(s.startedAt))}</span><br>
-        <span style="opacity:.8">End: ${esc(fmtTime(s.endedAt||""))}</span><br>
+        <span style="opacity:.8">End: ${esc(fmtTime(s.endedAt || ""))}</span><br>
         <div style="margin-top:6px;">
           ${(s.winners||[]).map(w =>
             `${w.order}. <b>${esc(w.prize)}</b> • ${esc(w.display)} • ${esc(w.id)} • Done: ${w.done ? "✅" : "❌"}`
@@ -1276,10 +1418,15 @@ function renderEventHistoryViewer(){
   eventHistoryViewer.innerHTML = html;
 }
 
-refreshEventHistoryBtn?.addEventListener("click", renderEventHistoryViewer);
+refreshEventHistoryBtn?.addEventListener("click", () => {
+  autoSaveSessionOnDayChange();
+  renderEventHistoryViewer();
+  renderWinnerListPanel();
+});
+
 exportEventHistoryBtn?.addEventListener("click", () => {
   const data = { saved: loadEventSessions(), current: loadCurrentSession() };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -1287,20 +1434,24 @@ exportEventHistoryBtn?.addEventListener("click", () => {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
+
 clearEventHistoryBtn?.addEventListener("click", () => {
   if (!confirm("Clear ALL Event History လုပ်မလား?")) return;
   localStorage.removeItem(LS_EVENT_HISTORY);
   localStorage.removeItem(LS_CURRENT_SESSION);
   renderEventHistoryViewer();
+  renderWinnerListPanel();
   alert("Cleared ✅");
 });
 
-/* ---------- Init ---------- */
+/* ===========================
+   INIT
+=========================== */
 function init() {
   const s = loadSettings();
 
   apiBaseInput.value = s.apiBase || DEFAULT_API_BASE;
-  apiKeyInput.value  = s.apiKey  || DEFAULT_API_KEY;
+  apiKeyInput.value = s.apiKey || DEFAULT_API_KEY;
 
   uiColorInput.value = s.uiColor || "#ffffff";
   wheelAccentInput.value = s.wheelAccent || "#d6b25e";
@@ -1312,18 +1463,28 @@ function init() {
   applyWheelBg(s.wheelBgDataUrl || "");
   applyBanner(s.topBannerDataUrl || "", topBannerImg, topBannerFallback);
   applyBanner(s.bottomBannerDataUrl || "", bottomBannerImg, bottomBannerFallback);
+  applyWheelBanner(s.wheelBannerDataUrl || "");
 
   renderPrizeBuilder(s.prizes || clone(defaultSettings.prizes));
 
   sliceColors = parseWheelColors(s.wheelColorsText);
   const prizeText = buildPrizeText(s.prizes || []);
-  wheelPrizes = uniquePrizesFromPrizeText(prizeText); // ✅ NO reverse
+  wheelPrizes = uniquePrizesFromPrizeText(prizeText);
 
   drawWheel();
 
   updateMusicBtn();
   setTestMode(isTestMode());
+
+  // ensure dateKey tracking
+  localStorage.setItem(LS_LAST_DATEKEY, dateKeyNow());
+
+  // make sure we have a session in real mode
+  if (!isTestMode()) ensureSession();
+
   refreshPoolUI();
   renderEventHistoryViewer();
+  renderWinnerListPanel();
 }
 init();
+
