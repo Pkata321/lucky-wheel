@@ -826,11 +826,19 @@ function hideMembersPanel() { membersPanel?.classList.add("hidden"); }
 membersCloseBtn?.addEventListener("click", hideMembersPanel);
 
 function showWinnerListPanel() {
-  historyPanel?.classList.remove("hidden");
-  if (historyTitleText) historyTitleText.textContent = "Winner List";
+  winnerListPanel?.classList.remove("hidden");
 }
-function hideWinnerListPanel() { historyPanel?.classList.add("hidden"); }
-historyCloseBtn?.addEventListener("click", hideWinnerListPanel);
+
+function hideWinnerListPanel() {
+  winnerListPanel?.classList.add("hidden");
+}
+
+winnerListBtn?.addEventListener("click", () => {
+  showWinnerListPanel();
+  renderWinnerListPanel();
+});
+
+winnerListCloseBtn?.addEventListener("click", hideWinnerListPanel);
 
 /* ===========================
    POOL
