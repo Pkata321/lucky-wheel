@@ -741,7 +741,7 @@ async function doSpin(){
 
  showWinnerModal(prize,winner,res.turn);
 
-showWinnerModal(prize,winner,res.turn);
+recordTodayWinner({ prize, winner, turn: res.turn });
 
 recordTodayWinner({ prize, winner, turn: res.turn });
 
@@ -754,6 +754,21 @@ recordTodayWinner({ prize, winner, turn: res.turn });
 }
 
 spinBtn.onclick = doSpin;
+restartSpinBtn.onclick = async ()=>{
+
+  setBusy(restartSpinBtn,true,"Restarting...");
+
+  const r = await apiPost("/event/reset",{});
+
+  if(!r.ok){
+    alert("Reset error");
+  }
+
+  refreshPool();
+
+  setBusy(restartSpinBtn,false);
+
+};
 
 /* ===========================
  PART 5/7 — WINNER MODAL + TODAY WINNER LIST (TEST AWARE)
