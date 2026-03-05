@@ -721,38 +721,55 @@ async function doSpin(){
 
   if(spinning) return;
 
-  if(!wheelPrizes.length){
-
+  if(!wheelPrizes.length || wheelPrizes[0] === "EMPTY"){
     alert("Prize မရှိသေးပါ");
-
     return;
-
   }
 
   spinning = true;
-
   setBusy(spinBtn,true,"SPIN...");
 
   let res;
 
-  try{
-
-    const r = await apiPost("/event/reset",{},12000);
-if(!r?.ok){
-  alert("Reset error: " + (r?.error || "unknown"));
+try{
+  res = await apiPost("/spin",{},12000);
+  if(!res?.ok) throw new Error(res?.error || "spin error");
+}catch(e){
+  spinning=false;
+  setBusy(spinBtn,false);
+  alert("Spin error: " + (e?.message || e));
+  return;
 }
 
-  }catch(e){
+  const prize = String(res.prize || "").trim();
+  const winner = res.winner || {};
+  const turn = res.turn;
 
-    spinning=false;
+  let idx = findPrizeIndex(prize);
 
-    setBusy(spinBtn,false);
-
-    alert("Spin error: "+e.message);
-
-    return;
-
+  if(idx<0){
+    buildWheelPrizes();
+    drawWheel();
+    idx = findPrizeIndex(prize);
   }
+
+  if(idx<0){
+    idx = Math.floor(Math.random()*wheelPrizes.length);
+  }
+
+  const target = calcTargetAngle(idx);
+
+  await animateSpin(target,3200);
+
+  // ✅ modal + save list
+  try{ showWinnerModal(prize,winner,turn); }catch{}
+  try{ recordTodayWinner({ prize, winner, turn }); }catch{}
+
+  refreshPool();
+
+  spinning=false;
+  setBusy(spinBtn,false);
+}
 
   const prize = String(res.prize||"");
 
@@ -795,19 +812,16 @@ recordTodayWinner({ prize, winner, turn: res.turn });
 
 spinBtn.onclick = doSpin;
 restartSpinBtn.onclick = async ()=>{
-
   setBusy(restartSpinBtn,true,"Restarting...");
-
-  const r = await apiPost("/event/reset",{});
-
-  if(!r.ok){
-    alert("Reset error");
+  try{
+    const r = await apiPost("/event/reset",{},12000);
+    if(!r?.ok) alert("Reset error: " + (r?.error || "unknown"));
+    refreshPool();
+  }catch(e){
+    alert("Reset error: " + (e?.message || e));
+  }finally{
+    setBusy(restartSpinBtn,false);
   }
-
-  refreshPool();
-
-  setBusy(restartSpinBtn,false);
-
 };
 
 /* ===========================
