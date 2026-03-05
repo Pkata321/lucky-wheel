@@ -1,16 +1,25 @@
 "use strict";
 
 /* ===========================
+   Lucky77 Vercel script.js (Latest Patched)
+   - Safe esc()
+   - Reset clears caches + winner map
+   - Increased timeouts for /members & /history
+   - AbortController tied to Cancel
+   - Guards for missing HTML elements (prevents JS crash)
+=========================== */
+
+/* ===========================
    HARD DEFAULTS
 =========================== */
 const DEFAULT_API_BASE = "https://lucky77-wheel-bot.onrender.com";
 const DEFAULT_API_KEY = "Lucky77_luckywheel_77";
 
 /* ===========================
-   DOM
+   DOM (with guards)
 =========================== */
 const wheelCanvas = document.getElementById("wheel");
-const ctx = wheelCanvas.getContext("2d");
+const ctx = wheelCanvas ? wheelCanvas.getContext("2d") : null;
 
 const spinBtn = document.getElementById("spinBtn");
 const poolText = document.getElementById("poolText");
@@ -34,6 +43,11 @@ const bottomBannerFile = document.getElementById("bottomBannerFile");
 const pageBgFile = document.getElementById("pageBgFile");
 const wheelBgFile = document.getElementById("wheelBgFile");
 const bgSongFile = document.getElementById("bgSongFile");
+
+/* ✅ Wheel Banner Logo (PNG) */
+const wheelBannerFile = document.getElementById("wheelBannerFile");
+const wheelBannerImg = document.getElementById("wheelBannerImg");
+const wheelBannerFallback = document.getElementById("wheelBannerFallback");
 
 const topBannerImg = document.getElementById("topBannerImg");
 const bottomBannerImg = document.getElementById("bottomBannerImg");
@@ -59,6 +73,10 @@ const historyList = document.getElementById("historyList");
 const refreshMembersInSettingsBtn = document.getElementById("refreshMembersInSettingsBtn");
 const membersInSettings = document.getElementById("membersInSettings");
 
+/* ✅ Test Mode UI (exists in your HTML) */
+const testModeBtn = document.getElementById("testModeBtn");
+const clearTestHistoryBtn = document.getElementById("clearTestHistoryBtn");
+
 /* ✅ Winner Modal */
 const winnerModal = document.getElementById("winnerModal");
 const winnerBackdrop = document.getElementById("winnerBackdrop");
@@ -71,11 +89,34 @@ const winnerCloseBtn = document.getElementById("winnerCloseBtn");
 const winnerHint = document.getElementById("winnerHint");
 
 /* ===========================
-   Loading Overlay (no stuck loading)
+   Utils (SAFE)
 =========================== */
-let loadingEl = null;
+function esc(input) {
+  // robust HTML escape + null-safe
+  const s = (input === null || input === undefined) ? "" : String(input);
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/`/g, "&#96;")
+    .replace(/=/g, "&#61;")
+    .replace(/\//g, "&#47;");
+}
+function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+function safeJsonParse(str, fallback) { try { return JSON.parse(str); } catch { return fallback; } }
+
+/* ===========================
+   Loading Overlay (use existing HTML if present)
+=========================== */
+let loadingEl = document.getElementById("loadingOverlay") || null;
+let activeAbort = null;
+
 function ensureLoadingEl() {
   if (loadingEl) return loadingEl;
+
+  // fallback create (if user removed HTML overlay)
   loadingEl = document.createElement("div");
   loadingEl.id = "loadingOverlay";
   loadingEl.className = "loading hidden";
@@ -87,16 +128,22 @@ function ensureLoadingEl() {
     </div>
   `;
   document.body.appendChild(loadingEl);
-  loadingEl.querySelector("#loadingCancelBtn").addEventListener("click", hideLoading);
   return loadingEl;
 }
-let activeAbort = null;
+
 function showLoading(text = "Loading...") {
   const el = ensureLoadingEl();
   el.classList.remove("hidden");
   const t = el.querySelector("#loadingText");
   if (t) t.textContent = text;
+
+  const cancelBtn = el.querySelector("#loadingCancelBtn");
+  if (cancelBtn && !cancelBtn.__bound) {
+    cancelBtn.__bound = true;
+    cancelBtn.addEventListener("click", hideLoading);
+  }
 }
+
 function hideLoading() {
   const el = ensureLoadingEl();
   el.classList.add("hidden");
@@ -116,23 +163,26 @@ bgMusic.volume = 0.55;
 let musicOn = false;
 
 function updateMusicBtn() {
+  if (!musicBtn) return;
   musicBtn.textContent = musicOn ? "🎵 Music: ON" : "🎵 Music: OFF";
   musicBtn.classList.toggle("primary", musicOn);
 }
-musicBtn.addEventListener("click", async () => {
-  musicOn = !musicOn;
-  if (musicOn) {
-    if (bgMusic.src) {
-      try { await bgMusic.play(); } catch {}
+if (musicBtn) {
+  musicBtn.addEventListener("click", async () => {
+    musicOn = !musicOn;
+    if (musicOn) {
+      if (bgMusic.src) {
+        try { await bgMusic.play(); } catch {}
+      } else {
+        alert("Settings ထဲမှာ MP3 Upload လုပ်ပါ");
+        musicOn = false;
+      }
     } else {
-      alert("Settings ထဲမှာ MP3 Upload လုပ်ပါ");
-      musicOn = false;
+      bgMusic.pause();
     }
-  } else {
-    bgMusic.pause();
-  }
-  updateMusicBtn();
-});
+    updateMusicBtn();
+  });
+}
 
 // tick sound (WebAudio)
 let audioCtx = null;
@@ -161,16 +211,15 @@ function winChime() {
 =========================== */
 const STORAGE_KEY = "lucky77_vercel_v2";
 const CACHE_MEMBERS_KEY = "lucky77_cache_members";
-const CACHE_HISTORY_KEY = "lucky77_cache_history"; // kept but not used (history API broken)
+const CACHE_HISTORY_KEY = "lucky77_cache_history";
 
-/* ✅ Frontend Winner History (Prize Map)
+/* ✅ Frontend Winner Prize Map
    id => { prize, done, at }
 */
 const LS_WINNERS_KEY = "lucky77_winner_prize_map_v1";
 
 function loadWinnerPrizeMap() {
-  try { return JSON.parse(localStorage.getItem(LS_WINNERS_KEY) || "{}"); }
-  catch { return {}; }
+  return safeJsonParse(localStorage.getItem(LS_WINNERS_KEY) || "{}", {});
 }
 function saveWinnerPrizeMap(map) {
   try { localStorage.setItem(LS_WINNERS_KEY, JSON.stringify(map || {})); } catch {}
@@ -180,11 +229,7 @@ function clearWinnerPrizeMap() {
 }
 function setWinnerPrize(id, prizeText) {
   const map = loadWinnerPrizeMap();
-  map[String(id)] = {
-    prize: String(prizeText || "-"),
-    done: false,       // ✅ new winner default not done
-    at: Date.now()
-  };
+  map[String(id)] = { prize: String(prizeText || "-"), done: false, at: Date.now() };
   saveWinnerPrizeMap(map);
 }
 function togglePrizeDone(id) {
@@ -217,12 +262,13 @@ const defaultSettings = {
   wheelBgDataUrl: "",
   topBannerDataUrl: "",
   bottomBannerDataUrl: "",
+
+  wheelBannerDataUrl: "",  // ✅ NEW: wheel banner png stored
 };
 
 function clone(x) {
   try { return structuredClone(x); } catch { return JSON.parse(JSON.stringify(x)); }
 }
-
 function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -233,9 +279,7 @@ function loadSettings() {
     return clone(defaultSettings);
   }
 }
-function saveSettingsLocal(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
+function saveSettingsLocal(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 
 function saveCache(key, value) {
   try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), value })); } catch {}
@@ -278,6 +322,7 @@ function fileToDataURL(file) {
 }
 
 function applyBanner(dataUrl, imgEl, fallbackEl) {
+  if (!imgEl || !fallbackEl) return;
   if (dataUrl) {
     imgEl.src = dataUrl;
     imgEl.style.display = "block";
@@ -287,8 +332,20 @@ function applyBanner(dataUrl, imgEl, fallbackEl) {
     fallbackEl.style.display = "block";
   }
 }
+function applyWheelBanner(dataUrl) {
+  if (!wheelBannerImg || !wheelBannerFallback) return;
+  if (dataUrl) {
+    wheelBannerImg.src = dataUrl;
+    wheelBannerImg.style.display = "block";
+    wheelBannerFallback.style.display = "none";
+  } else {
+    wheelBannerImg.style.display = "none";
+    wheelBannerFallback.style.display = "block";
+  }
+}
 
 function applyPageBg(dataUrl) {
+  if (!bgLayer) return;
   if (dataUrl) {
     bgLayer.classList.add("has-img");
     bgLayer.style.backgroundImage = `url("${dataUrl}")`;
@@ -297,8 +354,8 @@ function applyPageBg(dataUrl) {
     bgLayer.style.backgroundImage = "";
   }
 }
-
 function applyWheelBg(dataUrl) {
+  if (!wheelWrap) return;
   if (dataUrl) {
     wheelWrap.classList.add("has-img");
     wheelWrap.style.backgroundImage = `url("${dataUrl}")`;
@@ -311,13 +368,13 @@ function applyWheelBg(dataUrl) {
 /* ===========================
    Drawer
 =========================== */
-function openSettings() { drawer.classList.add("open"); }
-function closeSettings() { drawer.classList.remove("open"); }
-settingsBtn.addEventListener("click", openSettings);
-closeSettingsBtn.addEventListener("click", closeSettings);
+function openSettings() { if (drawer) drawer.classList.add("open"); }
+function closeSettings() { if (drawer) drawer.classList.remove("open"); }
+if (settingsBtn) settingsBtn.addEventListener("click", openSettings);
+if (closeSettingsBtn) closeSettingsBtn.addEventListener("click", closeSettings);
 
 /* ===========================
-   API Helpers (timeout + no stuck loading)
+   API Helpers (timeout + abort)
 =========================== */
 function getApiBase() {
   const s = loadSettings();
@@ -328,7 +385,7 @@ function getApiKey() {
   return s.apiKey || DEFAULT_API_KEY;
 }
 
-async function fetchJsonWithTimeout(url, opt = {}, timeoutMs = 8000) {
+async function fetchJsonWithTimeout(url, opt = {}, timeoutMs = 10000) {
   const ctrl = new AbortController();
   activeAbort = ctrl;
   const id = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -336,9 +393,7 @@ async function fetchJsonWithTimeout(url, opt = {}, timeoutMs = 8000) {
   try {
     const r = await fetch(url, { ...opt, signal: ctrl.signal });
     const text = await r.text();
-    let json = null;
-    try { json = JSON.parse(text); }
-    catch { json = { ok: false, error: "Invalid JSON", raw: String(text || "").slice(0, 250) }; }
+    const json = safeJsonParse(text, { ok: false, error: "Invalid JSON", raw: String(text || "").slice(0, 250) });
 
     if (!r.ok && json && json.ok !== true) {
       return { ok: false, error: json?.error || `HTTP ${r.status}` };
@@ -352,17 +407,17 @@ async function fetchJsonWithTimeout(url, opt = {}, timeoutMs = 8000) {
   }
 }
 
-async function apiGet(path, timeoutMs = 9000) {
+async function apiGet(path, timeoutMs = 11000) {
   const base = getApiBase();
   const key = getApiKey();
-  const url = `${base}${path}?key=${encodeURIComponent(key)}`;
+  const url = `${base}${path}${path.includes("?") ? "&" : "?"}key=${encodeURIComponent(key)}`;
   return fetchJsonWithTimeout(url, {}, timeoutMs);
 }
 
-async function apiPost(path, body, timeoutMs = 12000) {
+async function apiPost(path, body, timeoutMs = 14000) {
   const base = getApiBase();
   const key = getApiKey();
-  const url = `${base}${path}?key=${encodeURIComponent(key)}`;
+  const url = `${base}${path}${path.includes("?") ? "&" : "?"}key=${encodeURIComponent(key)}`;
   return fetchJsonWithTimeout(
     url,
     {
@@ -373,23 +428,21 @@ async function apiPost(path, body, timeoutMs = 12000) {
     timeoutMs
   );
 }
-
 /* ===========================
    Prize Builder (Stepper) + Add/Remove Prize
 =========================== */
-function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
-
 function buildPrizeText(prizesArr) {
-  return prizesArr
+  return (prizesArr || [])
     .filter((p) => p && String(p.name || "").trim())
     .map((p) => `${String(p.name).trim()} ${clamp(Number(p.times || 1), 1, 9999)}time`)
     .join("\n");
 }
 
 function renderPrizeBuilder(prizesArr) {
+  if (!prizeBuilder) return;
   prizeBuilder.innerHTML = "";
 
-  prizesArr.forEach((p, idx) => {
+  (prizesArr || []).forEach((p, idx) => {
     const row = document.createElement("div");
     row.className = "prize-row";
 
@@ -418,6 +471,7 @@ function renderPrizeBuilder(prizesArr) {
   addBtn.textContent = "+ Add Prize";
   addBtn.addEventListener("click", () => {
     const s = loadSettings();
+    s.prizes = s.prizes || [];
     s.prizes.push({ name: "", times: 1 });
     saveSettingsLocal(s);
     renderPrizeBuilder(s.prizes);
@@ -429,6 +483,7 @@ function renderPrizeBuilder(prizesArr) {
       const i = Number(b.dataset.i);
       const act = b.dataset.act;
       const s = loadSettings();
+      s.prizes = s.prizes || [];
       if (!s.prizes[i]) return;
 
       if (act === "remove") {
@@ -451,6 +506,7 @@ function renderPrizeBuilder(prizesArr) {
       const i = Number(inp.dataset.i);
       const k = String(inp.dataset.k);
       const s = loadSettings();
+      s.prizes = s.prizes || [];
       if (!s.prizes[i]) return;
 
       if (k === "times") s.prizes[i].times = clamp(Number(inp.value || 1), 1, 9999);
@@ -462,7 +518,6 @@ function renderPrizeBuilder(prizesArr) {
 
 /* ===========================
    Wheel drawing (REVERSED)
-   ✅ Fix: popup prize = landed prize
 =========================== */
 let wheelPrizes = [];
 let sliceColors = [];
@@ -471,7 +526,6 @@ let spinning = false;
 
 const TAU = Math.PI * 2;
 
-// ✅ reverse rotation + reverse label order
 function parseWheelColors(text) {
   const colors = String(text || "").split("\n").map((x) => x.trim()).filter(Boolean);
   return colors.length ? colors : ["#ffffff", "#f1f5ff"];
@@ -490,12 +544,11 @@ function uniquePrizesFromPrizeText(prizeText) {
   }
   return Array.from(set);
 }
-
-function normalizePrizeName(x) {
-  return String(x || "").trim();
-}
+function normalizePrizeName(x) { return String(x || "").trim(); }
 
 function drawWheel() {
+  if (!wheelCanvas || !ctx) return;
+
   const cx = wheelCanvas.width / 2;
   const cy = wheelCanvas.height / 2;
   const radius = Math.min(cx, cy) - 12;
@@ -518,7 +571,7 @@ function drawWheel() {
   ctx.lineWidth = 10;
   ctx.stroke();
 
-  // ✅ reverse direction: use -currentAngle
+  // reverse direction: use -currentAngle
   const base = -currentAngle;
 
   for (let i = 0; i < wheelPrizes.length; i++) {
@@ -565,104 +618,111 @@ let lastWinner = null;
 function showWinnerModal(prize, winnerObj) {
   lastWinner = { prize, winner: winnerObj };
 
-  const username = String(winnerObj.username || "").replace("@", "").trim();
+  const username = String(winnerObj?.username || "").replace("@", "").trim();
   const hasUsername = !!username;
 
-  const name = String(winnerObj.name || "").trim();
-  const display = String(
-    winnerObj.display ||
-    name ||
-    (username ? `@${username}` : String(winnerObj.id || "-"))
-  );
+  const name = String(winnerObj?.name || "").trim();
+  const display = String(winnerObj?.display || name || (username ? `@${username}` : String(winnerObj?.id || "-")));
 
-  winnerPrizeTitle.textContent = "WINNER";
-  winnerTitleText.textContent = String(prize || "—");
-  winnerNameText.textContent = display;
+  if (winnerPrizeTitle) winnerPrizeTitle.textContent = "WINNER";
+  if (winnerTitleText) winnerTitleText.textContent = String(prize || "—");
+  if (winnerNameText) winnerNameText.textContent = display;
 
-  contactBtn.style.display = hasUsername ? "inline-flex" : "none";
-  noticeBtn.style.display = hasUsername ? "none" : "inline-flex";
+  if (contactBtn) contactBtn.style.display = hasUsername ? "inline-flex" : "none";
+  if (noticeBtn) noticeBtn.style.display = hasUsername ? "none" : "inline-flex";
 
-  winnerHint.textContent = hasUsername
-    ? "✅ Username ရှိလို့ Telegram အကောင့်ကို တန်းဖွင့်နိုင်ပါတယ်"
-    : "✅ Username မရှိလို့ Notice နှိပ်ရင် Bot က DM ပို့မယ်";
+  if (winnerHint) {
+    winnerHint.textContent = hasUsername
+      ? "✅ Username ရှိလို့ Telegram အကောင့်ကို တန်းဖွင့်နိုင်ပါတယ်"
+      : "✅ Username မရှိလို့ Notice နှိပ်ရင် Bot က DM ပို့မယ်";
+  }
 
-  winnerModal.classList.remove("hidden");
-  winnerModal.setAttribute("aria-hidden", "false");
+  if (winnerModal) {
+    winnerModal.classList.remove("hidden");
+    winnerModal.setAttribute("aria-hidden", "false");
+  }
   winChime();
 }
 
 function hideWinnerModal() {
-  winnerModal.classList.add("hidden");
-  winnerModal.setAttribute("aria-hidden", "true");
+  if (winnerModal) {
+    winnerModal.classList.add("hidden");
+    winnerModal.setAttribute("aria-hidden", "true");
+  }
   lastWinner = null;
 }
-winnerCloseBtn.addEventListener("click", hideWinnerModal);
-winnerBackdrop.addEventListener("click", hideWinnerModal);
+if (winnerCloseBtn) winnerCloseBtn.addEventListener("click", hideWinnerModal);
+if (winnerBackdrop) winnerBackdrop.addEventListener("click", hideWinnerModal);
 
-contactBtn.addEventListener("click", () => {
-  if (!lastWinner) return;
-  const u = String(lastWinner.winner.username || "").replace("@", "").trim();
-  if (!u) return;
-  window.open(`https://t.me/${u}`, "_blank");
-});
+if (contactBtn) {
+  contactBtn.addEventListener("click", () => {
+    if (!lastWinner) return;
+    const u = String(lastWinner.winner?.username || "").replace("@", "").trim();
+    if (!u) return;
+    window.open(`https://t.me/${u}`, "_blank");
+  });
+}
 
-noticeBtn.addEventListener("click", async () => {
-  if (!lastWinner) return;
-  const w = lastWinner.winner;
-  const prize = lastWinner.prize;
+if (noticeBtn) {
+  noticeBtn.addEventListener("click", async () => {
+    if (!lastWinner) return;
+    const w = lastWinner.winner || {};
+    const prize = lastWinner.prize;
 
-  const username = String(w.username || "").replace("@", "").trim();
-  if (username) {
-    window.open(`https://t.me/${username}`, "_blank");
-    return;
-  }
+    const username = String(w.username || "").replace("@", "").trim();
+    if (username) {
+      window.open(`https://t.me/${username}`, "_blank");
+      return;
+    }
 
-  showLoading("Sending Notice (DM)...");
-  try {
-    const r = await apiPost("/notice", { user_id: w.id, prize }, 10000);
-    if (!r?.ok) throw new Error(r?.error || "notice failed");
-    if (r.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
-    else alert("⚠️ DM မပို့နိုင်သေးပါ။ User က Bot ကို Start မလုပ်သေးနိုင်ပါတယ်");
-  } catch (e) {
-    alert("Notice error: " + (e.message || e));
-  } finally {
-    hideLoading();
-  }
-});
+    showLoading("Sending Notice (DM)...");
+    try {
+      const r = await apiPost("/notice", { user_id: w.id, prize }, 12000);
+      if (!r?.ok) throw new Error(r?.error || "notice failed");
+      if (r.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
+      else alert("⚠️ DM မပို့နိုင်သေးပါ။ User က Bot ကို Start မလုပ်သေးနိုင်ပါတယ်");
+    } catch (e) {
+      alert("Notice error: " + (e.message || e));
+    } finally {
+      hideLoading();
+    }
+  });
+}
 
 /* ===========================
    Panels
 =========================== */
-function showMembersPanel() { membersPanel.classList.remove("hidden"); }
-function hideMembersPanel() { membersPanel.classList.add("hidden"); }
-membersCloseBtn.addEventListener("click", hideMembersPanel);
+function showMembersPanel() { if (membersPanel) membersPanel.classList.remove("hidden"); }
+function hideMembersPanel() { if (membersPanel) membersPanel.classList.add("hidden"); }
+if (membersCloseBtn) membersCloseBtn.addEventListener("click", hideMembersPanel);
 
-function showHistoryPanel() { historyPanel.classList.remove("hidden"); }
-function hideHistoryPanel() { historyPanel.classList.add("hidden"); }
-historyCloseBtn.addEventListener("click", hideHistoryPanel);
+function showHistoryPanel() { if (historyPanel) historyPanel.classList.remove("hidden"); }
+function hideHistoryPanel() { if (historyPanel) historyPanel.classList.add("hidden"); }
+if (historyCloseBtn) historyCloseBtn.addEventListener("click", hideHistoryPanel);
 
 /* ===========================
-   Pool UI (no stuck)
+   Pool UI
 =========================== */
 async function refreshPoolUI() {
+  if (!poolText) return;
   try {
-    const data = await apiGet("/pool", 7000);
+    const data = await apiGet("/pool", 9000);
     if (!data?.ok) throw new Error(data?.error || "pool error");
     poolText.textContent = `${data.count || 0} people in pool`;
   } catch {
     poolText.textContent = "Pool: error";
   }
 }
-
 /* ===========================
-   Members UI (show cache first)
+   Members UI (cache first)
+   ✅ timeout increased to 20s
 =========================== */
 function contactButtonHTML(m) {
-  const username = m.username ? String(m.username).replace("@", "").trim() : "";
-  const id = String(m.id || "");
-  const name = String(m.display || m.name || "-");
+  const username = m?.username ? String(m.username).replace("@", "").trim() : "";
+  const id = String(m?.id || "");
+  const name = String(m?.display || m?.name || "-");
 
-  if (m.active === false) return `<span class="small">inactive</span>`;
+  if (m?.active === false) return `<span class="small">inactive</span>`;
 
   if (username) {
     return `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`;
@@ -671,11 +731,11 @@ function contactButtonHTML(m) {
 }
 
 function contactButtonHTMLWithPrize(m, prizeText) {
-  const username = m.username ? String(m.username).replace("@", "").trim() : "";
-  const id = String(m.id || "");
-  const name = String(m.display || m.name || "-");
+  const username = m?.username ? String(m.username).replace("@", "").trim() : "";
+  const id = String(m?.id || "");
+  const name = String(m?.display || m?.name || "-");
 
-  if (m.active === false) return `<span class="small">inactive</span>`;
+  if (m?.active === false) return `<span class="small">inactive</span>`;
 
   if (username) {
     return `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`;
@@ -684,16 +744,18 @@ function contactButtonHTMLWithPrize(m, prizeText) {
 }
 
 function renderMembersTable(list) {
-  const rows = list
+  if (!membersTable) return;
+
+  const rows = (list || [])
     .map((m, i) => {
-      const username = m.username ? `@${String(m.username).replace("@", "")}` : "-";
-      const won = m.isWinner ? "✅" : "";
-      const status = (m.active === false) ? "❌ INACTIVE" : "✅ ACTIVE";
+      const username = m?.username ? `@${String(m.username).replace("@", "")}` : "-";
+      const won = m?.isWinner ? "✅" : "";
+      const status = (m?.active === false) ? "❌ INACTIVE" : "✅ ACTIVE";
       return `<tr>
         <td>${i + 1}</td>
-        <td>${esc(m.display || "-")}</td>
+        <td>${esc(m?.display || "-")}</td>
         <td>${esc(username)}</td>
-        <td>${esc(String(m.id || "-"))}</td>
+        <td>${esc(String(m?.id || "-"))}</td>
         <td>${won}</td>
         <td>${status}</td>
         <td>${contactButtonHTML(m)}</td>
@@ -715,47 +777,50 @@ function renderMembersTable(list) {
 
 async function loadMembersUI() {
   showMembersPanel();
-  membersTotalText.textContent = "";
+  if (membersTotalText) membersTotalText.textContent = "";
 
   const cached = readCache(CACHE_MEMBERS_KEY);
   if (Array.isArray(cached)) {
-    membersTotalText.textContent = ` • Total: ${cached.length} (cached)`;
+    if (membersTotalText) membersTotalText.textContent = ` • Total: ${cached.length} (cached)`;
     renderMembersTable(cached);
-  } else {
+  } else if (membersTable) {
     membersTable.innerHTML = `<div class="small">Loading...</div>`;
   }
 
   showLoading("Loading Members...");
   try {
-    const data = await apiGet("/members", 15000);
+    const data = await apiGet("/members", 20000); // ✅ increased
     if (!data?.ok) throw new Error(data?.error || "members error");
 
     const list = Array.isArray(data.members) ? data.members : [];
-    membersTotalText.textContent = ` • Total: ${list.length}`;
+    if (membersTotalText) membersTotalText.textContent = ` • Total: ${list.length}`;
     renderMembersTable(list);
     saveCache(CACHE_MEMBERS_KEY, list);
   } catch (e) {
-    membersTable.insertAdjacentHTML(
-      "afterbegin",
-      `<div class="small" style="margin-bottom:8px;">⚠️ ${esc(e.message || e)}</div>`
-    );
+    if (membersTable) {
+      membersTable.insertAdjacentHTML(
+        "afterbegin",
+        `<div class="small" style="margin-bottom:8px;">⚠️ ${esc(e.message || e)}</div>`
+      );
+    }
   } finally {
     hideLoading();
   }
 }
 
 async function loadMembersInSettings() {
+  if (!membersInSettings) return;
   membersInSettings.innerHTML = "Loading...";
   try {
-    const data = await apiGet("/members", 15000);
+    const data = await apiGet("/members", 20000); // ✅ increased
     if (!data?.ok) throw new Error(data?.error || "members error");
     const list = Array.isArray(data.members) ? data.members : [];
     membersInSettings.innerHTML = list.length
       ? list
           .map((m, i) => {
-            const u = m.username ? `@${String(m.username).replace("@", "")}` : "-";
-            const st = (m.active === false) ? "INACTIVE" : "ACTIVE";
-            return `${i + 1}. ${esc(m.display || "-")} (${esc(u)}) [${esc(String(m.id || "-"))}] • ${st}`;
+            const u = m?.username ? `@${String(m.username).replace("@", "")}` : "-";
+            const st = (m?.active === false) ? "INACTIVE" : "ACTIVE";
+            return `${i + 1}. ${esc(m?.display || "-")} (${esc(u)}) [${esc(String(m?.id || "-"))}] • ${st}`;
           })
           .join("<br>")
       : "No members yet";
@@ -767,22 +832,19 @@ async function loadMembersInSettings() {
 
 /* ===========================
    Winner History UI (Frontend-only)
-   - Total
-   - Prize Done button (green when done)
 =========================== */
 function doneBtnStyle(done) {
-  return done
-    ? `style="background:#16a34a;color:#fff;border-color:#16a34a;"`
-    : ``;
+  return done ? `style="background:#16a34a;color:#fff;border-color:#16a34a;"` : ``;
 }
-
 function renderPrizeHistoryTable(members) {
+  if (!historyList) return;
+
   const map = loadWinnerPrizeMap();
   const total = (members || []).length;
 
   const rows = (members || []).map((m, i) => {
-    const username = m.username ? `@${String(m.username).replace("@", "")}` : "-";
-    const id = String(m.id || "-");
+    const username = m?.username ? `@${String(m.username).replace("@", "")}` : "-";
+    const id = String(m?.id || "-");
     const rec = map[id];
     const wonPrize = rec?.prize ? String(rec.prize) : "-";
     const done = !!rec?.done;
@@ -796,7 +858,7 @@ function renderPrizeHistoryTable(members) {
 
     return `<tr>
       <td>${i + 1}</td>
-      <td>${esc(m.display || "-")}</td>
+      <td>${esc(m?.display || "-")}</td>
       <td>${esc(username)}</td>
       <td>${esc(id)}</td>
       <td>${esc(wonPrize)}</td>
@@ -826,29 +888,32 @@ async function loadHistoryUI() {
   const cachedMembers = readCache(CACHE_MEMBERS_KEY);
   if (Array.isArray(cachedMembers)) {
     renderPrizeHistoryTable(cachedMembers);
-  } else {
+  } else if (historyList) {
     historyList.innerHTML = `<div class="small">Loading...</div>`;
   }
 
   showLoading("Loading Winner History...");
   try {
-    const data = await apiGet("/members", 15000);
+    // ✅ even if /history exists, we use /members list for "rows"
+    const data = await apiGet("/members", 20000); // ✅ increased
     if (!data?.ok) throw new Error(data?.error || "members error");
     const list = Array.isArray(data.members) ? data.members : [];
     saveCache(CACHE_MEMBERS_KEY, list);
     renderPrizeHistoryTable(list);
   } catch (e) {
-    historyList.insertAdjacentHTML(
-      "afterbegin",
-      `<div class="small" style="margin-bottom:8px;">⚠️ ${esc(e.message || e)}</div>`
-    );
+    if (historyList) {
+      historyList.insertAdjacentHTML(
+        "afterbegin",
+        `<div class="small" style="margin-bottom:8px;">⚠️ ${esc(e.message || e)}</div>`
+      );
+    }
   } finally {
     hideLoading();
   }
 }
 
 /* ===========================
-   Delegation
+   Delegation (telegram / notice / prize done)
 =========================== */
 document.addEventListener("click", async (e) => {
   const btn = e.target.closest("button");
@@ -868,7 +933,7 @@ document.addEventListener("click", async (e) => {
 
     showLoading("Sending Notice (DM)...");
     try {
-      const r = await apiPost("/notice", { user_id: userId, prize }, 12000);
+      const r = await apiPost("/notice", { user_id: userId, prize }, 14000);
       if (r?.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
       else alert("⚠️ DM မပို့နိုင်သေးပါ");
     } catch (err) {
@@ -884,7 +949,6 @@ document.addEventListener("click", async (e) => {
     if (!id) return;
 
     const doneNow = togglePrizeDone(id);
-    // update button UI
     if (doneNow) {
       btn.textContent = "Done ✅";
       btn.style.background = "#16a34a";
@@ -903,22 +967,24 @@ document.addEventListener("click", async (e) => {
 /* ===========================
    Restart Spin (no stuck)
 =========================== */
-restartSpinBtn.addEventListener("click", async () => {
-  showLoading("Restarting Spin...");
-  restartSpinBtn.disabled = true;
-  try {
-    const data = await apiPost("/restart-spin", {}, 12000);
-    if (!data?.ok) throw new Error(data?.error || "restart error");
-    hideWinnerModal();
-    await refreshPoolUI();
-    alert("Restart Spin ✅");
-  } catch (e) {
-    alert("Restart error: " + (e.message || e));
-  } finally {
-    restartSpinBtn.disabled = false;
-    hideLoading();
-  }
-});
+if (restartSpinBtn) {
+  restartSpinBtn.addEventListener("click", async () => {
+    showLoading("Restarting Spin...");
+    restartSpinBtn.disabled = true;
+    try {
+      const data = await apiPost("/restart-spin", {}, 14000);
+      if (!data?.ok) throw new Error(data?.error || "restart error");
+      hideWinnerModal();
+      await refreshPoolUI();
+      alert("Restart Spin ✅");
+    } catch (e) {
+      alert("Restart error: " + (e.message || e));
+    } finally {
+      restartSpinBtn.disabled = false;
+      hideLoading();
+    }
+  });
+}
 
 /* ===========================
    Spin (REVERSED + prize match fix)
@@ -930,23 +996,17 @@ function calcAngleToLandOnPrize(prize) {
 
   const slice = TAU / wheelPrizes.length;
 
-  // Pointer at top (up)
+  // Pointer at top
   const pointerAngle = (Math.PI * 3) / 2;
-
-  // Where should the wheel DISPLAYED rotation be?
-  // displayedAngle = pointerAngle - centerOffset (+ jitter)
   const centerOffset = (idx + 0.5) * slice;
+
   let displayedTarget = pointerAngle - centerOffset;
 
-  // small random
   const jitter = (Math.random() * 0.6 - 0.3) * (slice * 0.6);
   displayedTarget += jitter;
 
-  // But we draw using base = -currentAngle
-  // So we need currentAngle such that (-currentAngle) == displayedTarget
+  // draw uses base = -currentAngle
   let target = -displayedTarget;
-
-  // normalize
   target = ((target % TAU) + TAU) % TAU;
   return target;
 }
@@ -960,19 +1020,19 @@ async function spin() {
   }
 
   spinning = true;
-  spinBtn.disabled = true;
-  const oldText = spinBtn.textContent;
-  spinBtn.textContent = "SPIN...";
+  if (spinBtn) spinBtn.disabled = true;
+  const oldText = spinBtn ? spinBtn.textContent : "SPIN";
+  if (spinBtn) spinBtn.textContent = "SPIN...";
 
   let result;
   showLoading("Spinning...");
   try {
-    result = await apiPost("/spin", {}, 12000);
+    result = await apiPost("/spin", {}, 14000);
     if (!result?.ok) throw new Error(result?.error || "spin error");
   } catch (e) {
     spinning = false;
-    spinBtn.disabled = false;
-    spinBtn.textContent = oldText;
+    if (spinBtn) spinBtn.disabled = false;
+    if (spinBtn) spinBtn.textContent = oldText;
     hideLoading();
     alert("Spin error: " + (e.message || e));
     return;
@@ -990,7 +1050,6 @@ async function spin() {
 
   const extraSpins = 7 + Math.random() * 6;
 
-  // ✅ because we compare currentAngle directly (we normalized in calc already)
   const currentNorm = ((currentAngle % TAU) + TAU) % TAU;
   const delta = ((targetAngle - currentNorm) + TAU) % TAU;
   const finalAngle = currentAngle + extraSpins * TAU + delta;
@@ -1019,135 +1078,193 @@ async function spin() {
     if (t < 1) {
       requestAnimationFrame(animate);
     } else {
-      // ✅ save frontend history
       const wid = winner?.id ?? winner?.user_id ?? winner?.winner_id;
       if (wid) setWinnerPrize(wid, prize);
 
       showWinnerModal(prize, winner);
       refreshPoolUI();
 
-      // ✅ if history panel open, refresh instantly (using cached members)
-      if (!historyPanel.classList.contains("hidden")) {
+      if (historyPanel && !historyPanel.classList.contains("hidden")) {
         const cachedMembers = readCache(CACHE_MEMBERS_KEY);
         if (Array.isArray(cachedMembers)) renderPrizeHistoryTable(cachedMembers);
       }
 
       spinning = false;
-      spinBtn.disabled = false;
-      spinBtn.textContent = oldText;
+      if (spinBtn) spinBtn.disabled = false;
+      if (spinBtn) spinBtn.textContent = oldText;
     }
   }
 
   requestAnimationFrame(animate);
 }
-spinBtn.addEventListener("click", spin);
+if (spinBtn) spinBtn.addEventListener("click", spin);
 
 /* ===========================
-   Save / Reset / Upload
+   Save / Reset
 =========================== */
 async function pushPrizeConfigToRender(prizeText) {
-  const r = await apiPost("/config/prizes", { prizeText }, 12000);
+  const r = await apiPost("/config/prizes", { prizeText }, 14000);
   if (!r?.ok) throw new Error(r?.error || "config/prizes error");
   return r;
 }
 
-saveBtn.addEventListener("click", async () => {
-  const s = loadSettings();
+if (saveBtn) {
+  saveBtn.addEventListener("click", async () => {
+    const s = loadSettings();
 
-  s.apiBase = (apiBaseInput.value || DEFAULT_API_BASE).trim();
-  s.apiKey = (apiKeyInput.value || DEFAULT_API_KEY).trim();
+    s.apiBase = (apiBaseInput?.value || DEFAULT_API_BASE).trim();
+    s.apiKey = (apiKeyInput?.value || DEFAULT_API_KEY).trim();
 
-  s.uiColor = uiColorInput.value || "#ffffff";
-  s.wheelAccent = wheelAccentInput.value || "#d6b25e";
-  s.wheelColorsText = wheelColorsInput.value || defaultSettings.wheelColorsText;
+    s.uiColor = uiColorInput?.value || "#ffffff";
+    s.wheelAccent = wheelAccentInput?.value || "#d6b25e";
+    s.wheelColorsText = wheelColorsInput?.value || defaultSettings.wheelColorsText;
 
-  saveSettingsLocal(s);
+    saveSettingsLocal(s);
 
-  applyThemeUI(s.uiColor, s.wheelAccent);
-  sliceColors = parseWheelColors(s.wheelColorsText);
+    applyThemeUI(s.uiColor, s.wheelAccent);
+    sliceColors = parseWheelColors(s.wheelColorsText);
 
-  const prizeText = buildPrizeText(s.prizes);
+    const prizeText = buildPrizeText(s.prizes || []);
 
-  // ✅ reverse prize order (as requested) to match new direction
-  wheelPrizes = uniquePrizesFromPrizeText(prizeText).reverse();
+    // reverse prize order (as requested)
+    wheelPrizes = uniquePrizesFromPrizeText(prizeText).reverse();
+    drawWheel();
 
-  drawWheel();
+    saveBtn.disabled = true;
+    showLoading("Saving Settings + Uploading Prizes...");
 
-  saveBtn.disabled = true;
-  showLoading("Saving Settings + Uploading Prizes...");
+    try {
+      await pushPrizeConfigToRender(prizeText);
+      await refreshPoolUI();
+      closeSettings();
+      alert("Save ✅");
+    } catch (e) {
+      alert("Save to Render error: " + (e.message || e));
+    } finally {
+      saveBtn.disabled = false;
+      hideLoading();
+    }
+  });
+}
 
-  try {
-    await pushPrizeConfigToRender(prizeText);
-    await refreshPoolUI();
-    closeSettings();
-    alert("Save ✅");
-  } catch (e) {
-    alert("Save to Render error: " + (e.message || e));
-  } finally {
-    saveBtn.disabled = false;
-    hideLoading();
-  }
-});
+if (resetBtn) {
+  resetBtn.addEventListener("click", () => {
+    if (!confirm("Reset settings လုပ်မလား?")) return;
 
-resetBtn.addEventListener("click", () => {
-  if (!confirm("Reset settings လုပ်မလား?")) return;
-  saveSettingsLocal(clone(defaultSettings));
-  clearCache();
-  clearWinnerPrizeMap(); // ✅ clear winner history too
-  init();
-  alert("Reset done ✅");
-});
+    saveSettingsLocal(clone(defaultSettings));
 
-pageBgFile.addEventListener("change", async (e) => {
-  const f = e.target.files?.[0];
-  if (!f) return;
-  const s = loadSettings();
-  s.pageBgDataUrl = await fileToDataURL(f);
-  saveSettingsLocal(s);
-  applyPageBg(s.pageBgDataUrl);
-});
+    // ✅ clear caches + winner map
+    clearCache();
+    clearWinnerPrizeMap();
 
-wheelBgFile.addEventListener("change", async (e) => {
-  const f = e.target.files?.[0];
-  if (!f) return;
-  const s = loadSettings();
-  s.wheelBgDataUrl = await fileToDataURL(f);
-  saveSettingsLocal(s);
-  applyWheelBg(s.wheelBgDataUrl);
-});
+    init();
+    alert("Reset done ✅");
+  });
+}
 
-topBannerFile.addEventListener("change", async (e) => {
-  const f = e.target.files?.[0];
-  if (!f) return;
-  const s = loadSettings();
-  s.topBannerDataUrl = await fileToDataURL(f);
-  saveSettingsLocal(s);
-  applyBanner(s.topBannerDataUrl, topBannerImg, topBannerFallback);
-});
+/* ===========================
+   Upload handlers
+=========================== */
+if (pageBgFile) {
+  pageBgFile.addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const s = loadSettings();
+    s.pageBgDataUrl = await fileToDataURL(f);
+    saveSettingsLocal(s);
+    applyPageBg(s.pageBgDataUrl);
+  });
+}
 
-bottomBannerFile.addEventListener("change", async (e) => {
-  const f = e.target.files?.[0];
-  if (!f) return;
-  const s = loadSettings();
-  s.bottomBannerDataUrl = await fileToDataURL(f);
-  saveSettingsLocal(s);
-  applyBanner(s.bottomBannerDataUrl, bottomBannerImg, bottomBannerFallback);
-});
+if (wheelBgFile) {
+  wheelBgFile.addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const s = loadSettings();
+    s.wheelBgDataUrl = await fileToDataURL(f);
+    saveSettingsLocal(s);
+    applyWheelBg(s.wheelBgDataUrl);
+  });
+}
 
-bgSongFile.addEventListener("change", (e) => {
-  const f = e.target.files?.[0];
-  if (!f) return;
-  const url = URL.createObjectURL(f);
-  bgMusic.src = url;
-  if (musicOn) bgMusic.play().catch(() => {});
-});
+if (topBannerFile) {
+  topBannerFile.addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const s = loadSettings();
+    s.topBannerDataUrl = await fileToDataURL(f);
+    saveSettingsLocal(s);
+    applyBanner(s.topBannerDataUrl, topBannerImg, topBannerFallback);
+  });
+}
+
+if (bottomBannerFile) {
+  bottomBannerFile.addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const s = loadSettings();
+    s.bottomBannerDataUrl = await fileToDataURL(f);
+    saveSettingsLocal(s);
+    applyBanner(s.bottomBannerDataUrl, bottomBannerImg, bottomBannerFallback);
+  });
+}
+
+if (wheelBannerFile) {
+  wheelBannerFile.addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const s = loadSettings();
+    s.wheelBannerDataUrl = await fileToDataURL(f);
+    saveSettingsLocal(s);
+    applyWheelBanner(s.wheelBannerDataUrl);
+  });
+}
+
+if (bgSongFile) {
+  bgSongFile.addEventListener("change", (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    bgMusic.src = url;
+    if (musicOn) bgMusic.play().catch(() => {});
+  });
+}
 
 /* ===========================
    Buttons
 =========================== */
-membersBtn.addEventListener("click", loadMembersUI);
-historyBtn.addEventListener("click", loadHistoryUI);
-refreshMembersInSettingsBtn.addEventListener("click", loadMembersInSettings);
+if (membersBtn) membersBtn.addEventListener("click", loadMembersUI);
+if (historyBtn) historyBtn.addEventListener("click", loadHistoryUI);
+if (refreshMembersInSettingsBtn) refreshMembersInSettingsBtn.addEventListener("click", loadMembersInSettings);
+
+/* ===========================
+   Test Mode (UI-only toggle)
+   - (You can later connect to /config/testmode if you want)
+=========================== */
+let localTestMode = false;
+function setTestModeUI(on) {
+  localTestMode = !!on;
+  if (testModeBtn) testModeBtn.textContent = localTestMode ? "Test: ON" : "Test: OFF";
+  if (testModeBtn) testModeBtn.classList.toggle("primary", localTestMode);
+}
+if (testModeBtn) {
+  testModeBtn.addEventListener("click", () => {
+    setTestModeUI(!localTestMode);
+    alert(localTestMode ? "Test Mode ON ✅ (UI only)" : "Test Mode OFF ✅ (UI only)");
+  });
+}
+if (clearTestHistoryBtn) {
+  clearTestHistoryBtn.addEventListener("click", () => {
+    if (!confirm("Clear winner prize map (local file) လုပ်မလား?")) return;
+    clearWinnerPrizeMap();
+    alert("Cleared ✅");
+    // refresh history panel if open
+    const cachedMembers = readCache(CACHE_MEMBERS_KEY);
+    if (historyPanel && !historyPanel.classList.contains("hidden") && Array.isArray(cachedMembers)) {
+      renderPrizeHistoryTable(cachedMembers);
+    }
+  });
+}
 
 /* ===========================
    Init
@@ -1155,12 +1272,12 @@ refreshMembersInSettingsBtn.addEventListener("click", loadMembersInSettings);
 function init() {
   const s = loadSettings();
 
-  apiBaseInput.value = s.apiBase || DEFAULT_API_BASE;
-  apiKeyInput.value = s.apiKey || DEFAULT_API_KEY;
+  if (apiBaseInput) apiBaseInput.value = s.apiBase || DEFAULT_API_BASE;
+  if (apiKeyInput) apiKeyInput.value = s.apiKey || DEFAULT_API_KEY;
 
-  uiColorInput.value = s.uiColor || "#ffffff";
-  wheelAccentInput.value = s.wheelAccent || "#d6b25e";
-  wheelColorsInput.value = s.wheelColorsText || defaultSettings.wheelColorsText;
+  if (uiColorInput) uiColorInput.value = s.uiColor || "#ffffff";
+  if (wheelAccentInput) wheelAccentInput.value = s.wheelAccent || "#d6b25e";
+  if (wheelColorsInput) wheelColorsInput.value = s.wheelColorsText || defaultSettings.wheelColorsText;
 
   applyThemeUI(s.uiColor, s.wheelAccent);
 
@@ -1168,30 +1285,18 @@ function init() {
   applyWheelBg(s.wheelBgDataUrl || "");
   applyBanner(s.topBannerDataUrl || "", topBannerImg, topBannerFallback);
   applyBanner(s.bottomBannerDataUrl || "", bottomBannerImg, bottomBannerFallback);
+  applyWheelBanner(s.wheelBannerDataUrl || "");
 
   renderPrizeBuilder(s.prizes || clone(defaultSettings.prizes));
 
   sliceColors = parseWheelColors(s.wheelColorsText);
   const prizeText = buildPrizeText(s.prizes || []);
 
-  // ✅ reverse prize order (as requested)
   wheelPrizes = uniquePrizesFromPrizeText(prizeText).reverse();
-
   drawWheel();
 
   updateMusicBtn();
   refreshPoolUI();
+  setTestModeUI(false);
 }
 init();
-
-/* ===========================
-   Utils
-=========================== */
-function esc(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
