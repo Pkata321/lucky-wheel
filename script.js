@@ -1,13 +1,12 @@
 "use strict";
 
-/* ===========================
-   Lucky77 Vercel script.js (Latest Patched)
-   - Safe esc()
-   - Reset clears caches + winner map
-   - Increased timeouts for /members & /history
-   - AbortController tied to Cancel
-   - Guards for missing HTML elements (prevents JS crash)
-=========================== */
+/* =========================================================
+   Lucky77 Vercel UI v2 (Stable)
+   - Prize popup ALWAYS matches wheel landing
+   - Test Mode = local file save + viewer
+   - No stuck loading (timeout + cancel)
+   - Pointer knob removed via CSS
+========================================================= */
 
 /* ===========================
    HARD DEFAULTS
@@ -16,10 +15,10 @@ const DEFAULT_API_BASE = "https://lucky77-wheel-bot.onrender.com";
 const DEFAULT_API_KEY = "Lucky77_luckywheel_77";
 
 /* ===========================
-   DOM (with guards)
+   DOM
 =========================== */
 const wheelCanvas = document.getElementById("wheel");
-const ctx = wheelCanvas ? wheelCanvas.getContext("2d") : null;
+const ctx = wheelCanvas.getContext("2d");
 
 const spinBtn = document.getElementById("spinBtn");
 const poolText = document.getElementById("poolText");
@@ -44,7 +43,7 @@ const pageBgFile = document.getElementById("pageBgFile");
 const wheelBgFile = document.getElementById("wheelBgFile");
 const bgSongFile = document.getElementById("bgSongFile");
 
-/* ✅ Wheel Banner Logo (PNG) */
+// ✅ Wheel Banner Logo PNG
 const wheelBannerFile = document.getElementById("wheelBannerFile");
 const wheelBannerImg = document.getElementById("wheelBannerImg");
 const wheelBannerFallback = document.getElementById("wheelBannerFallback");
@@ -73,7 +72,7 @@ const historyList = document.getElementById("historyList");
 const refreshMembersInSettingsBtn = document.getElementById("refreshMembersInSettingsBtn");
 const membersInSettings = document.getElementById("membersInSettings");
 
-/* ✅ Test Mode UI (exists in your HTML) */
+// ✅ Test Mode buttons (in your HTML already)
 const testModeBtn = document.getElementById("testModeBtn");
 const clearTestHistoryBtn = document.getElementById("clearTestHistoryBtn");
 
@@ -89,34 +88,17 @@ const winnerCloseBtn = document.getElementById("winnerCloseBtn");
 const winnerHint = document.getElementById("winnerHint");
 
 /* ===========================
-   Utils (SAFE)
+   Loading Overlay (no stuck loading)
 =========================== */
-function esc(input) {
-  // robust HTML escape + null-safe
-  const s = (input === null || input === undefined) ? "" : String(input);
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
-    .replace(/`/g, "&#96;")
-    .replace(/=/g, "&#61;")
-    .replace(/\//g, "&#47;");
-}
-function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
-function safeJsonParse(str, fallback) { try { return JSON.parse(str); } catch { return fallback; } }
-
-/* ===========================
-   Loading Overlay (use existing HTML if present)
-=========================== */
-let loadingEl = document.getElementById("loadingOverlay") || null;
+let loadingEl = null;
 let activeAbort = null;
 
 function ensureLoadingEl() {
-  if (loadingEl) return loadingEl;
+  // Your HTML already has loading overlay, but keep safe fallback:
+  const exists = document.getElementById("loadingOverlay");
+  if (exists) return exists;
 
-  // fallback create (if user removed HTML overlay)
+  if (loadingEl) return loadingEl;
   loadingEl = document.createElement("div");
   loadingEl.id = "loadingOverlay";
   loadingEl.className = "loading hidden";
@@ -128,6 +110,7 @@ function ensureLoadingEl() {
     </div>
   `;
   document.body.appendChild(loadingEl);
+  loadingEl.querySelector("#loadingCancelBtn").addEventListener("click", hideLoading);
   return loadingEl;
 }
 
@@ -136,12 +119,6 @@ function showLoading(text = "Loading...") {
   el.classList.remove("hidden");
   const t = el.querySelector("#loadingText");
   if (t) t.textContent = text;
-
-  const cancelBtn = el.querySelector("#loadingCancelBtn");
-  if (cancelBtn && !cancelBtn.__bound) {
-    cancelBtn.__bound = true;
-    cancelBtn.addEventListener("click", hideLoading);
-  }
 }
 
 function hideLoading() {
@@ -163,26 +140,23 @@ bgMusic.volume = 0.55;
 let musicOn = false;
 
 function updateMusicBtn() {
-  if (!musicBtn) return;
   musicBtn.textContent = musicOn ? "🎵 Music: ON" : "🎵 Music: OFF";
   musicBtn.classList.toggle("primary", musicOn);
 }
-if (musicBtn) {
-  musicBtn.addEventListener("click", async () => {
-    musicOn = !musicOn;
-    if (musicOn) {
-      if (bgMusic.src) {
-        try { await bgMusic.play(); } catch {}
-      } else {
-        alert("Settings ထဲမှာ MP3 Upload လုပ်ပါ");
-        musicOn = false;
-      }
+musicBtn.addEventListener("click", async () => {
+  musicOn = !musicOn;
+  if (musicOn) {
+    if (bgMusic.src) {
+      try { await bgMusic.play(); } catch {}
     } else {
-      bgMusic.pause();
+      alert("Settings ထဲမှာ MP3 Upload လုပ်ပါ");
+      musicOn = false;
     }
-    updateMusicBtn();
-  });
-}
+  } else {
+    bgMusic.pause();
+  }
+  updateMusicBtn();
+});
 
 // tick sound (WebAudio)
 let audioCtx = null;
@@ -205,18 +179,24 @@ function winChime() {
   setTimeout(() => tickSound(1320, 0.06, 0.08), 80);
   setTimeout(() => tickSound(1760, 0.08, 0.08), 180);
 }
-
 /* ===========================
    Storage
 =========================== */
-const STORAGE_KEY = "lucky77_vercel_v2";
+const STORAGE_KEY = "lucky77_vercel_v2_stable";
 const CACHE_MEMBERS_KEY = "lucky77_cache_members";
 const CACHE_HISTORY_KEY = "lucky77_cache_history";
 
-/* ✅ Frontend Winner Prize Map
-   id => { prize, done, at }
-*/
+/* ✅ Frontend Winner History (Prize Map) */
 const LS_WINNERS_KEY = "lucky77_winner_prize_map_v1";
+
+/* ✅ Test Mode local file */
+const LS_TEST_FILE = "lucky77_test_winners_file_v1";
+/* ✅ Test Mode state */
+const LS_TEST_MODE = "lucky77_test_mode_v1";
+
+function safeJsonParse(raw, fallback) {
+  try { return JSON.parse(raw); } catch { return fallback; }
+}
 
 function loadWinnerPrizeMap() {
   return safeJsonParse(localStorage.getItem(LS_WINNERS_KEY) || "{}", {});
@@ -242,6 +222,24 @@ function togglePrizeDone(id) {
   return map[k].done;
 }
 
+/* Test file helpers */
+function loadTestFile() {
+  return safeJsonParse(localStorage.getItem(LS_TEST_FILE) || "[]", []);
+}
+function saveTestFile(arr) {
+  try { localStorage.setItem(LS_TEST_FILE, JSON.stringify(arr || [])); } catch {}
+}
+function clearTestFile() {
+  try { localStorage.removeItem(LS_TEST_FILE); } catch {}
+}
+function isTestMode() {
+  return (localStorage.getItem(LS_TEST_MODE) || "0") === "1";
+}
+function setTestModeLocal(on) {
+  localStorage.setItem(LS_TEST_MODE, on ? "1" : "0");
+}
+
+/* Settings defaults */
 const defaultSettings = {
   apiBase: DEFAULT_API_BASE,
   apiKey: DEFAULT_API_KEY,
@@ -262,37 +260,33 @@ const defaultSettings = {
   wheelBgDataUrl: "",
   topBannerDataUrl: "",
   bottomBannerDataUrl: "",
+  wheelBannerDataUrl: "",
 
-  wheelBannerDataUrl: "",  // ✅ NEW: wheel banner png stored
+  musicOn: false,
 };
 
 function clone(x) {
   try { return structuredClone(x); } catch { return JSON.parse(JSON.stringify(x)); }
 }
+
 function loadSettings() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return clone(defaultSettings);
-    const data = JSON.parse(raw);
-    return { ...clone(defaultSettings), ...data };
-  } catch {
-    return clone(defaultSettings);
-  }
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return clone(defaultSettings);
+  const data = safeJsonParse(raw, {});
+  return { ...clone(defaultSettings), ...data };
 }
-function saveSettingsLocal(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function saveSettingsLocal(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
 
 function saveCache(key, value) {
   try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), value })); } catch {}
 }
 function readCache(key) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const obj = JSON.parse(raw);
-    return obj?.value ?? null;
-  } catch {
-    return null;
-  }
+  const raw = localStorage.getItem(key);
+  if (!raw) return null;
+  const obj = safeJsonParse(raw, null);
+  return obj?.value ?? null;
 }
 function clearCache() {
   try { localStorage.removeItem(CACHE_MEMBERS_KEY); } catch {}
@@ -322,7 +316,6 @@ function fileToDataURL(file) {
 }
 
 function applyBanner(dataUrl, imgEl, fallbackEl) {
-  if (!imgEl || !fallbackEl) return;
   if (dataUrl) {
     imgEl.src = dataUrl;
     imgEl.style.display = "block";
@@ -330,6 +323,24 @@ function applyBanner(dataUrl, imgEl, fallbackEl) {
   } else {
     imgEl.style.display = "none";
     fallbackEl.style.display = "block";
+  }
+}
+function applyPageBg(dataUrl) {
+  if (dataUrl) {
+    bgLayer.classList.add("has-img");
+    bgLayer.style.backgroundImage = `url("${dataUrl}")`;
+  } else {
+    bgLayer.classList.remove("has-img");
+    bgLayer.style.backgroundImage = "";
+  }
+}
+function applyWheelBg(dataUrl) {
+  if (dataUrl) {
+    wheelWrap.classList.add("has-img");
+    wheelWrap.style.backgroundImage = `url("${dataUrl}")`;
+  } else {
+    wheelWrap.classList.remove("has-img");
+    wheelWrap.style.backgroundImage = "";
   }
 }
 function applyWheelBanner(dataUrl) {
@@ -344,37 +355,15 @@ function applyWheelBanner(dataUrl) {
   }
 }
 
-function applyPageBg(dataUrl) {
-  if (!bgLayer) return;
-  if (dataUrl) {
-    bgLayer.classList.add("has-img");
-    bgLayer.style.backgroundImage = `url("${dataUrl}")`;
-  } else {
-    bgLayer.classList.remove("has-img");
-    bgLayer.style.backgroundImage = "";
-  }
-}
-function applyWheelBg(dataUrl) {
-  if (!wheelWrap) return;
-  if (dataUrl) {
-    wheelWrap.classList.add("has-img");
-    wheelWrap.style.backgroundImage = `url("${dataUrl}")`;
-  } else {
-    wheelWrap.classList.remove("has-img");
-    wheelWrap.style.backgroundImage = "";
-  }
-}
-
 /* ===========================
    Drawer
 =========================== */
-function openSettings() { if (drawer) drawer.classList.add("open"); }
-function closeSettings() { if (drawer) drawer.classList.remove("open"); }
-if (settingsBtn) settingsBtn.addEventListener("click", openSettings);
-if (closeSettingsBtn) closeSettingsBtn.addEventListener("click", closeSettings);
-
+function openSettings() { drawer.classList.add("open"); }
+function closeSettings() { drawer.classList.remove("open"); }
+settingsBtn.addEventListener("click", openSettings);
+closeSettingsBtn.addEventListener("click", closeSettings);
 /* ===========================
-   API Helpers (timeout + abort)
+   API Helpers (timeout + cancel)
 =========================== */
 function getApiBase() {
   const s = loadSettings();
@@ -385,7 +374,7 @@ function getApiKey() {
   return s.apiKey || DEFAULT_API_KEY;
 }
 
-async function fetchJsonWithTimeout(url, opt = {}, timeoutMs = 10000) {
+async function fetchJsonWithTimeout(url, opt = {}, timeoutMs = 8000) {
   const ctrl = new AbortController();
   activeAbort = ctrl;
   const id = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -395,9 +384,7 @@ async function fetchJsonWithTimeout(url, opt = {}, timeoutMs = 10000) {
     const text = await r.text();
     const json = safeJsonParse(text, { ok: false, error: "Invalid JSON", raw: String(text || "").slice(0, 250) });
 
-    if (!r.ok && json && json.ok !== true) {
-      return { ok: false, error: json?.error || `HTTP ${r.status}` };
-    }
+    if (!r.ok && json && json.ok !== true) return { ok: false, error: json?.error || `HTTP ${r.status}` };
     return json;
   } catch (e) {
     return { ok: false, error: e?.name === "AbortError" ? "Timeout/Cancelled" : (e?.message || String(e)) };
@@ -407,14 +394,14 @@ async function fetchJsonWithTimeout(url, opt = {}, timeoutMs = 10000) {
   }
 }
 
-async function apiGet(path, timeoutMs = 11000) {
+async function apiGet(path, timeoutMs = 9000) {
   const base = getApiBase();
   const key = getApiKey();
   const url = `${base}${path}${path.includes("?") ? "&" : "?"}key=${encodeURIComponent(key)}`;
   return fetchJsonWithTimeout(url, {}, timeoutMs);
 }
 
-async function apiPost(path, body, timeoutMs = 14000) {
+async function apiPost(path, body, timeoutMs = 12000) {
   const base = getApiBase();
   const key = getApiKey();
   const url = `${base}${path}${path.includes("?") ? "&" : "?"}key=${encodeURIComponent(key)}`;
@@ -428,9 +415,12 @@ async function apiPost(path, body, timeoutMs = 14000) {
     timeoutMs
   );
 }
+
 /* ===========================
    Prize Builder (Stepper) + Add/Remove Prize
 =========================== */
+function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+
 function buildPrizeText(prizesArr) {
   return (prizesArr || [])
     .filter((p) => p && String(p.name || "").trim())
@@ -438,11 +428,29 @@ function buildPrizeText(prizesArr) {
     .join("\n");
 }
 
-function renderPrizeBuilder(prizesArr) {
-  if (!prizeBuilder) return;
-  prizeBuilder.innerHTML = "";
+function parseWheelColors(text) {
+  const colors = String(text || "").split("\n").map((x) => x.trim()).filter(Boolean);
+  return colors.length ? colors : ["#ffffff", "#f1f5ff"];
+}
 
-  (prizesArr || []).forEach((p, idx) => {
+function uniquePrizesFromPrizeText(prizeText) {
+  const lines = String(prizeText || "").split("\n").map((x) => x.trim()).filter(Boolean);
+  const set = new Set();
+  for (const line of lines) {
+    let m = line.match(/^(.+?)\s+(\d+)\s*time$/i);
+    if (!m) m = line.match(/^(.+?)\s+(\d+)$/i);
+    if (!m) continue;
+    const prize = m[1].trim();
+    if (prize) set.add(prize);
+  }
+  return Array.from(set);
+}
+
+function renderPrizeBuilder(prizesArr) {
+  prizeBuilder.innerHTML = "";
+  const arr = Array.isArray(prizesArr) ? prizesArr : [];
+
+  arr.forEach((p, idx) => {
     const row = document.createElement("div");
     row.className = "prize-row";
 
@@ -471,7 +479,7 @@ function renderPrizeBuilder(prizesArr) {
   addBtn.textContent = "+ Add Prize";
   addBtn.addEventListener("click", () => {
     const s = loadSettings();
-    s.prizes = s.prizes || [];
+    s.prizes = Array.isArray(s.prizes) ? s.prizes : [];
     s.prizes.push({ name: "", times: 1 });
     saveSettingsLocal(s);
     renderPrizeBuilder(s.prizes);
@@ -483,8 +491,7 @@ function renderPrizeBuilder(prizesArr) {
       const i = Number(b.dataset.i);
       const act = b.dataset.act;
       const s = loadSettings();
-      s.prizes = s.prizes || [];
-      if (!s.prizes[i]) return;
+      if (!Array.isArray(s.prizes) || !s.prizes[i]) return;
 
       if (act === "remove") {
         s.prizes.splice(i, 1);
@@ -506,8 +513,7 @@ function renderPrizeBuilder(prizesArr) {
       const i = Number(inp.dataset.i);
       const k = String(inp.dataset.k);
       const s = loadSettings();
-      s.prizes = s.prizes || [];
-      if (!s.prizes[i]) return;
+      if (!Array.isArray(s.prizes) || !s.prizes[i]) return;
 
       if (k === "times") s.prizes[i].times = clamp(Number(inp.value || 1), 1, 9999);
       if (k === "name") s.prizes[i].name = String(inp.value || "");
@@ -515,9 +521,8 @@ function renderPrizeBuilder(prizesArr) {
     });
   });
 }
-
 /* ===========================
-   Wheel drawing (REVERSED)
+   Wheel drawing (REVERSED) + Prize landing match fix
 =========================== */
 let wheelPrizes = [];
 let sliceColors = [];
@@ -526,29 +531,29 @@ let spinning = false;
 
 const TAU = Math.PI * 2;
 
-function parseWheelColors(text) {
-  const colors = String(text || "").split("\n").map((x) => x.trim()).filter(Boolean);
-  return colors.length ? colors : ["#ffffff", "#f1f5ff"];
+function normAngle(a) {
+  a = a % TAU;
+  return a < 0 ? a + TAU : a;
 }
 
-function uniquePrizesFromPrizeText(prizeText) {
-  const lines = String(prizeText || "").split("\n").map((x) => x.trim()).filter(Boolean);
-  const set = new Set();
-  for (const line of lines) {
-    let m = line.match(/^(.+?)\s+(\d+)\s*time$/i);
-    if (!m) m = line.match(/^(.+?)\s+(\d+)$/i);
-    if (!m) continue;
-    const prize = m[1].trim();
-    if (!prize) continue;
-    set.add(prize);
-  }
-  return Array.from(set);
+// ✅ ALWAYS get the prize under the pointer based on FINAL angle
+function prizeAtCurrentAngle() {
+  if (!wheelPrizes || wheelPrizes.length < 2) return "-";
+  const slice = TAU / wheelPrizes.length;
+
+  // drawWheel uses base = -currentAngle
+  const displayed = normAngle(-currentAngle);
+
+  // Pointer at TOP (pointing down)
+  const pointerAngle = (Math.PI * 3) / 2;
+
+  const rel = normAngle(pointerAngle - displayed);
+  const idx = Math.floor(rel / slice);
+
+  return wheelPrizes[idx] || "-";
 }
-function normalizePrizeName(x) { return String(x || "").trim(); }
 
 function drawWheel() {
-  if (!wheelCanvas || !ctx) return;
-
   const cx = wheelCanvas.width / 2;
   const cy = wheelCanvas.height / 2;
   const radius = Math.min(cx, cy) - 12;
@@ -571,7 +576,7 @@ function drawWheel() {
   ctx.lineWidth = 10;
   ctx.stroke();
 
-  // reverse direction: use -currentAngle
+  // ✅ reverse direction: use -currentAngle
   const base = -currentAngle;
 
   for (let i = 0; i < wheelPrizes.length; i++) {
@@ -618,111 +623,103 @@ let lastWinner = null;
 function showWinnerModal(prize, winnerObj) {
   lastWinner = { prize, winner: winnerObj };
 
-  const username = String(winnerObj?.username || "").replace("@", "").trim();
+  const username = String(winnerObj.username || "").replace("@", "").trim();
   const hasUsername = !!username;
 
-  const name = String(winnerObj?.name || "").trim();
-  const display = String(winnerObj?.display || name || (username ? `@${username}` : String(winnerObj?.id || "-")));
+  const name = String(winnerObj.name || "").trim();
+  const display = String(
+    winnerObj.display ||
+    name ||
+    (username ? `@${username}` : String(winnerObj.id || "-"))
+  );
 
-  if (winnerPrizeTitle) winnerPrizeTitle.textContent = "WINNER";
-  if (winnerTitleText) winnerTitleText.textContent = String(prize || "—");
-  if (winnerNameText) winnerNameText.textContent = display;
+  winnerPrizeTitle.textContent = "WINNER";
+  winnerTitleText.textContent = String(prize || "—");
+  winnerNameText.textContent = display;
 
-  if (contactBtn) contactBtn.style.display = hasUsername ? "inline-flex" : "none";
-  if (noticeBtn) noticeBtn.style.display = hasUsername ? "none" : "inline-flex";
+  contactBtn.style.display = hasUsername ? "inline-flex" : "none";
+  noticeBtn.style.display = hasUsername ? "none" : "inline-flex";
 
-  if (winnerHint) {
-    winnerHint.textContent = hasUsername
-      ? "✅ Username ရှိလို့ Telegram အကောင့်ကို တန်းဖွင့်နိုင်ပါတယ်"
-      : "✅ Username မရှိလို့ Notice နှိပ်ရင် Bot က DM ပို့မယ်";
-  }
+  winnerHint.textContent = hasUsername
+    ? "✅ Username ရှိလို့ Telegram အကောင့်ကို တန်းဖွင့်နိုင်ပါတယ်"
+    : "✅ Username မရှိလို့ Notice နှိပ်ရင် Bot က DM ပို့မယ်";
 
-  if (winnerModal) {
-    winnerModal.classList.remove("hidden");
-    winnerModal.setAttribute("aria-hidden", "false");
-  }
+  winnerModal.classList.remove("hidden");
+  winnerModal.setAttribute("aria-hidden", "false");
   winChime();
 }
 
 function hideWinnerModal() {
-  if (winnerModal) {
-    winnerModal.classList.add("hidden");
-    winnerModal.setAttribute("aria-hidden", "true");
-  }
+  winnerModal.classList.add("hidden");
+  winnerModal.setAttribute("aria-hidden", "true");
   lastWinner = null;
 }
-if (winnerCloseBtn) winnerCloseBtn.addEventListener("click", hideWinnerModal);
-if (winnerBackdrop) winnerBackdrop.addEventListener("click", hideWinnerModal);
+winnerCloseBtn.addEventListener("click", hideWinnerModal);
+winnerBackdrop.addEventListener("click", hideWinnerModal);
 
-if (contactBtn) {
-  contactBtn.addEventListener("click", () => {
-    if (!lastWinner) return;
-    const u = String(lastWinner.winner?.username || "").replace("@", "").trim();
-    if (!u) return;
-    window.open(`https://t.me/${u}`, "_blank");
-  });
-}
+contactBtn.addEventListener("click", () => {
+  if (!lastWinner) return;
+  const u = String(lastWinner.winner.username || "").replace("@", "").trim();
+  if (!u) return;
+  window.open(`https://t.me/${u}`, "_blank");
+});
 
-if (noticeBtn) {
-  noticeBtn.addEventListener("click", async () => {
-    if (!lastWinner) return;
-    const w = lastWinner.winner || {};
-    const prize = lastWinner.prize;
+noticeBtn.addEventListener("click", async () => {
+  if (!lastWinner) return;
+  const w = lastWinner.winner;
+  const prize = lastWinner.prize;
 
-    const username = String(w.username || "").replace("@", "").trim();
-    if (username) {
-      window.open(`https://t.me/${username}`, "_blank");
-      return;
-    }
+  const username = String(w.username || "").replace("@", "").trim();
+  if (username) {
+    window.open(`https://t.me/${username}`, "_blank");
+    return;
+  }
 
-    showLoading("Sending Notice (DM)...");
-    try {
-      const r = await apiPost("/notice", { user_id: w.id, prize }, 12000);
-      if (!r?.ok) throw new Error(r?.error || "notice failed");
-      if (r.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
-      else alert("⚠️ DM မပို့နိုင်သေးပါ။ User က Bot ကို Start မလုပ်သေးနိုင်ပါတယ်");
-    } catch (e) {
-      alert("Notice error: " + (e.message || e));
-    } finally {
-      hideLoading();
-    }
-  });
-}
-
+  showLoading("Sending Notice (DM)...");
+  try {
+    const r = await apiPost("/notice", { user_id: w.id, prize }, 12000);
+    if (!r?.ok) throw new Error(r?.error || "notice failed");
+    if (r.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
+    else alert("⚠️ DM မပို့နိုင်သေးပါ။ User က Bot ကို Start မလုပ်သေးနိုင်ပါတယ်");
+  } catch (e) {
+    alert("Notice error: " + (e.message || e));
+  } finally {
+    hideLoading();
+  }
+});
 /* ===========================
    Panels
 =========================== */
-function showMembersPanel() { if (membersPanel) membersPanel.classList.remove("hidden"); }
-function hideMembersPanel() { if (membersPanel) membersPanel.classList.add("hidden"); }
-if (membersCloseBtn) membersCloseBtn.addEventListener("click", hideMembersPanel);
+function showMembersPanel() { membersPanel.classList.remove("hidden"); }
+function hideMembersPanel() { membersPanel.classList.add("hidden"); }
+membersCloseBtn.addEventListener("click", hideMembersPanel);
 
-function showHistoryPanel() { if (historyPanel) historyPanel.classList.remove("hidden"); }
-function hideHistoryPanel() { if (historyPanel) historyPanel.classList.add("hidden"); }
-if (historyCloseBtn) historyCloseBtn.addEventListener("click", hideHistoryPanel);
+function showHistoryPanel() { historyPanel.classList.remove("hidden"); }
+function hideHistoryPanel() { historyPanel.classList.add("hidden"); }
+historyCloseBtn.addEventListener("click", hideHistoryPanel);
 
 /* ===========================
    Pool UI
 =========================== */
 async function refreshPoolUI() {
-  if (!poolText) return;
   try {
-    const data = await apiGet("/pool", 9000);
+    const data = await apiGet("/pool", 7000);
     if (!data?.ok) throw new Error(data?.error || "pool error");
     poolText.textContent = `${data.count || 0} people in pool`;
   } catch {
     poolText.textContent = "Pool: error";
   }
 }
+
 /* ===========================
-   Members UI (cache first)
-   ✅ timeout increased to 20s
+   Members UI
 =========================== */
 function contactButtonHTML(m) {
-  const username = m?.username ? String(m.username).replace("@", "").trim() : "";
-  const id = String(m?.id || "");
-  const name = String(m?.display || m?.name || "-");
+  const username = m.username ? String(m.username).replace("@", "").trim() : "";
+  const id = String(m.id || "");
+  const name = String(m.display || m.name || "-");
 
-  if (m?.active === false) return `<span class="small">inactive</span>`;
+  if (m.active === false) return `<span class="small">inactive</span>`;
 
   if (username) {
     return `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`;
@@ -731,11 +728,11 @@ function contactButtonHTML(m) {
 }
 
 function contactButtonHTMLWithPrize(m, prizeText) {
-  const username = m?.username ? String(m.username).replace("@", "").trim() : "";
-  const id = String(m?.id || "");
-  const name = String(m?.display || m?.name || "-");
+  const username = m.username ? String(m.username).replace("@", "").trim() : "";
+  const id = String(m.id || "");
+  const name = String(m.display || m.name || "-");
 
-  if (m?.active === false) return `<span class="small">inactive</span>`;
+  if (m.active === false) return `<span class="small">inactive</span>`;
 
   if (username) {
     return `<button class="btn mini js-telegram" data-user="${esc(username)}">Telegram</button>`;
@@ -744,18 +741,16 @@ function contactButtonHTMLWithPrize(m, prizeText) {
 }
 
 function renderMembersTable(list) {
-  if (!membersTable) return;
-
   const rows = (list || [])
     .map((m, i) => {
-      const username = m?.username ? `@${String(m.username).replace("@", "")}` : "-";
-      const won = m?.isWinner ? "✅" : "";
-      const status = (m?.active === false) ? "❌ INACTIVE" : "✅ ACTIVE";
+      const username = m.username ? `@${String(m.username).replace("@", "")}` : "-";
+      const won = m.isWinner ? "✅" : "";
+      const status = (m.active === false) ? "❌ INACTIVE" : "✅ ACTIVE";
       return `<tr>
         <td>${i + 1}</td>
-        <td>${esc(m?.display || "-")}</td>
+        <td>${esc(m.display || "-")}</td>
         <td>${esc(username)}</td>
-        <td>${esc(String(m?.id || "-"))}</td>
+        <td>${esc(String(m.id || "-"))}</td>
         <td>${won}</td>
         <td>${status}</td>
         <td>${contactButtonHTML(m)}</td>
@@ -777,50 +772,48 @@ function renderMembersTable(list) {
 
 async function loadMembersUI() {
   showMembersPanel();
-  if (membersTotalText) membersTotalText.textContent = "";
+  membersTotalText.textContent = "";
 
   const cached = readCache(CACHE_MEMBERS_KEY);
   if (Array.isArray(cached)) {
-    if (membersTotalText) membersTotalText.textContent = ` • Total: ${cached.length} (cached)`;
+    membersTotalText.textContent = ` • Total: ${cached.length} (cached)`;
     renderMembersTable(cached);
-  } else if (membersTable) {
+  } else {
     membersTable.innerHTML = `<div class="small">Loading...</div>`;
   }
 
   showLoading("Loading Members...");
   try {
-    const data = await apiGet("/members", 20000); // ✅ increased
+    const data = await apiGet("/members", 20000);
     if (!data?.ok) throw new Error(data?.error || "members error");
 
     const list = Array.isArray(data.members) ? data.members : [];
-    if (membersTotalText) membersTotalText.textContent = ` • Total: ${list.length}`;
+    membersTotalText.textContent = ` • Total: ${list.length}`;
     renderMembersTable(list);
     saveCache(CACHE_MEMBERS_KEY, list);
   } catch (e) {
-    if (membersTable) {
-      membersTable.insertAdjacentHTML(
-        "afterbegin",
-        `<div class="small" style="margin-bottom:8px;">⚠️ ${esc(e.message || e)}</div>`
-      );
-    }
+    membersTable.insertAdjacentHTML(
+      "afterbegin",
+      `<div class="small" style="margin-bottom:8px;">⚠️ ${esc(e.message || e)}</div>`
+    );
   } finally {
     hideLoading();
   }
 }
 
 async function loadMembersInSettings() {
-  if (!membersInSettings) return;
   membersInSettings.innerHTML = "Loading...";
   try {
-    const data = await apiGet("/members", 20000); // ✅ increased
+    const data = await apiGet("/members", 20000);
     if (!data?.ok) throw new Error(data?.error || "members error");
+
     const list = Array.isArray(data.members) ? data.members : [];
     membersInSettings.innerHTML = list.length
       ? list
           .map((m, i) => {
-            const u = m?.username ? `@${String(m.username).replace("@", "")}` : "-";
-            const st = (m?.active === false) ? "INACTIVE" : "ACTIVE";
-            return `${i + 1}. ${esc(m?.display || "-")} (${esc(u)}) [${esc(String(m?.id || "-"))}] • ${st}`;
+            const u = m.username ? `@${String(m.username).replace("@", "")}` : "-";
+            const st = (m.active === false) ? "INACTIVE" : "ACTIVE";
+            return `${i + 1}. ${esc(m.display || "-")} (${esc(u)}) [${esc(String(m.id || "-"))}] • ${st}`;
           })
           .join("<br>")
       : "No members yet";
@@ -836,15 +829,12 @@ async function loadMembersInSettings() {
 function doneBtnStyle(done) {
   return done ? `style="background:#16a34a;color:#fff;border-color:#16a34a;"` : ``;
 }
+
 function renderPrizeHistoryTable(members) {
-  if (!historyList) return;
-
   const map = loadWinnerPrizeMap();
-  const total = (members || []).length;
-
   const rows = (members || []).map((m, i) => {
-    const username = m?.username ? `@${String(m.username).replace("@", "")}` : "-";
-    const id = String(m?.id || "-");
+    const username = m.username ? `@${String(m.username).replace("@", "")}` : "-";
+    const id = String(m.id || "-");
     const rec = map[id];
     const wonPrize = rec?.prize ? String(rec.prize) : "-";
     const done = !!rec?.done;
@@ -858,7 +848,7 @@ function renderPrizeHistoryTable(members) {
 
     return `<tr>
       <td>${i + 1}</td>
-      <td>${esc(m?.display || "-")}</td>
+      <td>${esc(m.display || "-")}</td>
       <td>${esc(username)}</td>
       <td>${esc(id)}</td>
       <td>${esc(wonPrize)}</td>
@@ -869,7 +859,7 @@ function renderPrizeHistoryTable(members) {
 
   historyList.innerHTML = `
     <div class="small" style="margin-bottom:8px;">
-      Winner History • Total: <b>${total}</b>
+      Winner History • Total: <b>${(members || []).length}</b>
     </div>
     <table class="table">
       <thead>
@@ -886,34 +876,25 @@ async function loadHistoryUI() {
   showHistoryPanel();
 
   const cachedMembers = readCache(CACHE_MEMBERS_KEY);
-  if (Array.isArray(cachedMembers)) {
-    renderPrizeHistoryTable(cachedMembers);
-  } else if (historyList) {
-    historyList.innerHTML = `<div class="small">Loading...</div>`;
-  }
+  if (Array.isArray(cachedMembers)) renderPrizeHistoryTable(cachedMembers);
+  else historyList.innerHTML = `<div class="small">Loading...</div>`;
 
   showLoading("Loading Winner History...");
   try {
-    // ✅ even if /history exists, we use /members list for "rows"
-    const data = await apiGet("/members", 20000); // ✅ increased
+    const data = await apiGet("/members", 20000);
     if (!data?.ok) throw new Error(data?.error || "members error");
     const list = Array.isArray(data.members) ? data.members : [];
     saveCache(CACHE_MEMBERS_KEY, list);
     renderPrizeHistoryTable(list);
   } catch (e) {
-    if (historyList) {
-      historyList.insertAdjacentHTML(
-        "afterbegin",
-        `<div class="small" style="margin-bottom:8px;">⚠️ ${esc(e.message || e)}</div>`
-      );
-    }
+    historyList.insertAdjacentHTML("afterbegin", `<div class="small" style="margin-bottom:8px;">⚠️ ${esc(e.message || e)}</div>`);
   } finally {
     hideLoading();
   }
 }
 
 /* ===========================
-   Delegation (telegram / notice / prize done)
+   Delegation
 =========================== */
 document.addEventListener("click", async (e) => {
   const btn = e.target.closest("button");
@@ -933,7 +914,7 @@ document.addEventListener("click", async (e) => {
 
     showLoading("Sending Notice (DM)...");
     try {
-      const r = await apiPost("/notice", { user_id: userId, prize }, 14000);
+      const r = await apiPost("/notice", { user_id: userId, prize }, 12000);
       if (r?.dm_ok) alert("✅ DM ပို့ပြီးပါပြီ");
       else alert("⚠️ DM မပို့နိုင်သေးပါ");
     } catch (err) {
@@ -965,50 +946,84 @@ document.addEventListener("click", async (e) => {
 });
 
 /* ===========================
-   Restart Spin (no stuck)
+   Test Mode Viewer (Settings)
 =========================== */
-if (restartSpinBtn) {
-  restartSpinBtn.addEventListener("click", async () => {
-    showLoading("Restarting Spin...");
-    restartSpinBtn.disabled = true;
-    try {
-      const data = await apiPost("/restart-spin", {}, 14000);
-      if (!data?.ok) throw new Error(data?.error || "restart error");
-      hideWinnerModal();
-      await refreshPoolUI();
-      alert("Restart Spin ✅");
-    } catch (e) {
-      alert("Restart error: " + (e.message || e));
-    } finally {
-      restartSpinBtn.disabled = false;
-      hideLoading();
-    }
-  });
+function ensureTestViewer() {
+  const host = testModeBtn?.closest(".field");
+  if (!host) return;
+
+  if (!host.querySelector("#testFileViewer")) {
+    const box = document.createElement("div");
+    box.id = "testFileViewer";
+    box.className = "small";
+    box.style.marginTop = "8px";
+    box.style.maxHeight = "220px";
+    box.style.overflow = "auto";
+    host.appendChild(box);
+  }
+}
+
+function renderTestViewer() {
+  const el = document.getElementById("testFileViewer");
+  if (!el) return;
+  const arr = loadTestFile();
+  if (!arr.length) { el.innerHTML = "Test File: (empty)"; return; }
+
+  const html = arr.slice().reverse().map((x, i) => {
+    const t = new Date(x.at || Date.now()).toLocaleString();
+    return `${i + 1}. <b>${esc(x.prize || "-")}</b> • ${esc(x.name || "-")} • ${esc(x.id || "-")}<br>
+    <span style="opacity:.7">${esc(t)}</span>`;
+  }).join("<hr style='border:0;border-top:1px solid rgba(16,19,24,0.1);margin:8px 0;'>");
+
+  el.innerHTML = html;
+}
+
+function updateTestModeBtn() {
+  const on = isTestMode();
+  testModeBtn.textContent = on ? "Test: ON" : "Test: OFF";
+  testModeBtn.classList.toggle("primary", on);
 }
 
 /* ===========================
-   Spin (REVERSED + prize match fix)
+   Restart Spin
 =========================== */
-function calcAngleToLandOnPrize(prize) {
-  const p = normalizePrizeName(prize);
-  const idx = wheelPrizes.findIndex(x => normalizePrizeName(x) === p);
-  if (idx < 0 || wheelPrizes.length < 2) return null;
+restartSpinBtn.addEventListener("click", async () => {
+  showLoading("Restarting Spin...");
+  restartSpinBtn.disabled = true;
+  try {
+    const data = await apiPost("/restart-spin", {}, 15000);
+    if (!data?.ok) throw new Error(data?.error || "restart error");
+    hideWinnerModal();
+    await refreshPoolUI();
+    alert("Restart Spin ✅");
+  } catch (e) {
+    alert("Restart error: " + (e.message || e));
+  } finally {
+    restartSpinBtn.disabled = false;
+    hideLoading();
+  }
+});
 
-  const slice = TAU / wheelPrizes.length;
-
-  // Pointer at top
-  const pointerAngle = (Math.PI * 3) / 2;
-  const centerOffset = (idx + 0.5) * slice;
-
-  let displayedTarget = pointerAngle - centerOffset;
-
-  const jitter = (Math.random() * 0.6 - 0.3) * (slice * 0.6);
-  displayedTarget += jitter;
-
-  // draw uses base = -currentAngle
-  let target = -displayedTarget;
-  target = ((target % TAU) + TAU) % TAU;
-  return target;
+/* ===========================
+   Spin
+   - Normal: call Render /spin, animate, THEN compute landed prize (100% match)
+   - Test: local random winner + local file save (no Render touch)
+=========================== */
+function pickLocalWinnerName() {
+  const cached = readCache(CACHE_MEMBERS_KEY);
+  if (Array.isArray(cached) && cached.length) {
+    const m = cached[Math.floor(Math.random() * cached.length)];
+    const username = m?.username ? String(m.username).replace("@", "") : "";
+    return {
+      id: String(m?.id || "test"),
+      name: String(m?.name || ""),
+      username,
+      display: String(m?.display || m?.name || (username ? `@${username}` : String(m?.id || "test"))),
+      dm_ready: !!m?.dm_ready
+    };
+  }
+  // fallback
+  return { id: "test", name: "TEST", username: "", display: "TEST", dm_ready: false };
 }
 
 async function spin() {
@@ -1020,38 +1035,63 @@ async function spin() {
   }
 
   spinning = true;
-  if (spinBtn) spinBtn.disabled = true;
-  const oldText = spinBtn ? spinBtn.textContent : "SPIN";
-  if (spinBtn) spinBtn.textContent = "SPIN...";
+  spinBtn.disabled = true;
+  const oldText = spinBtn.textContent;
+  spinBtn.textContent = "SPIN...";
 
-  let result;
-  showLoading("Spinning...");
-  try {
-    result = await apiPost("/spin", {}, 14000);
-    if (!result?.ok) throw new Error(result?.error || "spin error");
-  } catch (e) {
-    spinning = false;
-    if (spinBtn) spinBtn.disabled = false;
-    if (spinBtn) spinBtn.textContent = oldText;
-    hideLoading();
-    alert("Spin error: " + (e.message || e));
-    return;
-  } finally {
-    hideLoading();
+  let apiPrize = null;
+  let winner = null;
+
+  const testOn = isTestMode();
+
+  if (!testOn) {
+    showLoading("Spinning...");
+    try {
+      const result = await apiPost("/spin", {}, 15000);
+      if (!result?.ok) throw new Error(result?.error || "spin error");
+      apiPrize = String(result.prize || "-");
+      winner = result.winner || {};
+    } catch (e) {
+      spinning = false;
+      spinBtn.disabled = false;
+      spinBtn.textContent = oldText;
+      hideLoading();
+      alert("Spin error: " + (e.message || e));
+      return;
+    } finally {
+      hideLoading();
+    }
+  } else {
+    // ✅ Test mode local spin (no API)
+    apiPrize = wheelPrizes[Math.floor(Math.random() * wheelPrizes.length)] || "-";
+    winner = pickLocalWinnerName();
   }
-
-  const prize = String(result.prize || "-");
-  const winner = result.winner || {};
-
-  let targetAngle = calcAngleToLandOnPrize(prize);
-  if (targetAngle === null) targetAngle = Math.random() * TAU;
 
   if (musicOn && bgMusic.src) bgMusic.play().catch(() => {});
 
+  // Aim to land on apiPrize (visual), but final prize comes from angle calculation
+  const targetAngle = (() => {
+    const p = String(apiPrize || "").trim();
+    const idx = wheelPrizes.findIndex(x => String(x).trim() === p);
+    if (idx < 0) return Math.random() * TAU;
+
+    const slice = TAU / wheelPrizes.length;
+    const pointerAngle = (Math.PI * 3) / 2;
+    const centerOffset = (idx + 0.5) * slice;
+    let displayedTarget = pointerAngle - centerOffset;
+
+    const jitter = (Math.random() * 0.6 - 0.3) * (slice * 0.6);
+    displayedTarget += jitter;
+
+    let target = -displayedTarget;
+    target = normAngle(target);
+    return target;
+  })();
+
   const extraSpins = 7 + Math.random() * 6;
 
-  const currentNorm = ((currentAngle % TAU) + TAU) % TAU;
-  const delta = ((targetAngle - currentNorm) + TAU) % TAU;
+  const currentNorm = normAngle(currentAngle);
+  const delta = normAngle(targetAngle - currentNorm);
   const finalAngle = currentAngle + extraSpins * TAU + delta;
 
   const duration = 3200;
@@ -1078,136 +1118,139 @@ async function spin() {
     if (t < 1) {
       requestAnimationFrame(animate);
     } else {
-      const wid = winner?.id ?? winner?.user_id ?? winner?.winner_id;
-      if (wid) setWinnerPrize(wid, prize);
+      // ✅ FINAL: compute landed prize from angle (100% match)
+      const landedPrize = prizeAtCurrentAngle();
 
-      showWinnerModal(prize, winner);
+      const wid = winner?.id ?? winner?.user_id ?? winner?.winner_id ?? "test";
+      if (wid) setWinnerPrize(wid, landedPrize);
+
+      showWinnerModal(landedPrize, winner);
       refreshPoolUI();
 
-      if (historyPanel && !historyPanel.classList.contains("hidden")) {
+      // ✅ Test mode file save + viewer update
+      if (testOn) {
+        const arr = loadTestFile();
+        arr.push({ at: Date.now(), prize: landedPrize, id: String(wid), name: String(winner?.display || winner?.name || "TEST") });
+        saveTestFile(arr);
+        renderTestViewer();
+      }
+
+      // if history panel open, refresh instantly
+      if (!historyPanel.classList.contains("hidden")) {
         const cachedMembers = readCache(CACHE_MEMBERS_KEY);
         if (Array.isArray(cachedMembers)) renderPrizeHistoryTable(cachedMembers);
       }
 
       spinning = false;
-      if (spinBtn) spinBtn.disabled = false;
-      if (spinBtn) spinBtn.textContent = oldText;
+      spinBtn.disabled = false;
+      spinBtn.textContent = oldText;
     }
   }
 
   requestAnimationFrame(animate);
 }
-if (spinBtn) spinBtn.addEventListener("click", spin);
+spinBtn.addEventListener("click", spin);
 
 /* ===========================
    Save / Reset
 =========================== */
 async function pushPrizeConfigToRender(prizeText) {
-  const r = await apiPost("/config/prizes", { prizeText }, 14000);
+  const r = await apiPost("/config/prizes", { prizeText }, 15000);
   if (!r?.ok) throw new Error(r?.error || "config/prizes error");
   return r;
 }
 
-if (saveBtn) {
-  saveBtn.addEventListener("click", async () => {
-    const s = loadSettings();
+saveBtn.addEventListener("click", async () => {
+  const s = loadSettings();
 
-    s.apiBase = (apiBaseInput?.value || DEFAULT_API_BASE).trim();
-    s.apiKey = (apiKeyInput?.value || DEFAULT_API_KEY).trim();
+  s.apiBase = (apiBaseInput.value || DEFAULT_API_BASE).trim();
+  s.apiKey = (apiKeyInput.value || DEFAULT_API_KEY).trim();
 
-    s.uiColor = uiColorInput?.value || "#ffffff";
-    s.wheelAccent = wheelAccentInput?.value || "#d6b25e";
-    s.wheelColorsText = wheelColorsInput?.value || defaultSettings.wheelColorsText;
+  s.uiColor = uiColorInput.value || "#ffffff";
+  s.wheelAccent = wheelAccentInput.value || "#d6b25e";
+  s.wheelColorsText = wheelColorsInput.value || defaultSettings.wheelColorsText;
 
-    saveSettingsLocal(s);
+  saveSettingsLocal(s);
 
-    applyThemeUI(s.uiColor, s.wheelAccent);
-    sliceColors = parseWheelColors(s.wheelColorsText);
+  applyThemeUI(s.uiColor, s.wheelAccent);
+  sliceColors = parseWheelColors(s.wheelColorsText);
 
-    const prizeText = buildPrizeText(s.prizes || []);
+  const prizeText = buildPrizeText(s.prizes);
+  wheelPrizes = uniquePrizesFromPrizeText(prizeText).reverse(); // keep as you want
+  drawWheel();
 
-    // reverse prize order (as requested)
-    wheelPrizes = uniquePrizesFromPrizeText(prizeText).reverse();
-    drawWheel();
+  saveBtn.disabled = true;
+  showLoading("Saving Settings...");
 
-    saveBtn.disabled = true;
-    showLoading("Saving Settings + Uploading Prizes...");
-
-    try {
+  try {
+    // ✅ IMPORTANT: Test Mode ON => do NOT push prizes to Render
+    if (!isTestMode()) {
+      showLoading("Saving Settings + Uploading Prizes...");
       await pushPrizeConfigToRender(prizeText);
       await refreshPoolUI();
-      closeSettings();
-      alert("Save ✅");
-    } catch (e) {
-      alert("Save to Render error: " + (e.message || e));
-    } finally {
-      saveBtn.disabled = false;
-      hideLoading();
+    } else {
+      await refreshPoolUI();
     }
-  });
-}
 
-if (resetBtn) {
-  resetBtn.addEventListener("click", () => {
-    if (!confirm("Reset settings လုပ်မလား?")) return;
+    closeSettings();
+    alert("Save ✅");
+  } catch (e) {
+    alert("Save error: " + (e.message || e));
+  } finally {
+    saveBtn.disabled = false;
+    hideLoading();
+  }
+});
 
-    saveSettingsLocal(clone(defaultSettings));
-
-    // ✅ clear caches + winner map
-    clearCache();
-    clearWinnerPrizeMap();
-
-    init();
-    alert("Reset done ✅");
-  });
-}
+resetBtn.addEventListener("click", () => {
+  if (!confirm("Reset settings လုပ်မလား?")) return;
+  saveSettingsLocal(clone(defaultSettings));
+  clearCache();
+  clearWinnerPrizeMap();
+  clearTestFile();
+  setTestModeLocal(false);
+  init();
+  alert("Reset done ✅");
+});
 
 /* ===========================
    Upload handlers
 =========================== */
-if (pageBgFile) {
-  pageBgFile.addEventListener("change", async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const s = loadSettings();
-    s.pageBgDataUrl = await fileToDataURL(f);
-    saveSettingsLocal(s);
-    applyPageBg(s.pageBgDataUrl);
-  });
-}
+pageBgFile.addEventListener("change", async (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  const s = loadSettings();
+  s.pageBgDataUrl = await fileToDataURL(f);
+  saveSettingsLocal(s);
+  applyPageBg(s.pageBgDataUrl);
+});
 
-if (wheelBgFile) {
-  wheelBgFile.addEventListener("change", async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const s = loadSettings();
-    s.wheelBgDataUrl = await fileToDataURL(f);
-    saveSettingsLocal(s);
-    applyWheelBg(s.wheelBgDataUrl);
-  });
-}
+wheelBgFile.addEventListener("change", async (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  const s = loadSettings();
+  s.wheelBgDataUrl = await fileToDataURL(f);
+  saveSettingsLocal(s);
+  applyWheelBg(s.wheelBgDataUrl);
+});
 
-if (topBannerFile) {
-  topBannerFile.addEventListener("change", async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const s = loadSettings();
-    s.topBannerDataUrl = await fileToDataURL(f);
-    saveSettingsLocal(s);
-    applyBanner(s.topBannerDataUrl, topBannerImg, topBannerFallback);
-  });
-}
+topBannerFile.addEventListener("change", async (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  const s = loadSettings();
+  s.topBannerDataUrl = await fileToDataURL(f);
+  saveSettingsLocal(s);
+  applyBanner(s.topBannerDataUrl, topBannerImg, topBannerFallback);
+});
 
-if (bottomBannerFile) {
-  bottomBannerFile.addEventListener("change", async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const s = loadSettings();
-    s.bottomBannerDataUrl = await fileToDataURL(f);
-    saveSettingsLocal(s);
-    applyBanner(s.bottomBannerDataUrl, bottomBannerImg, bottomBannerFallback);
-  });
-}
+bottomBannerFile.addEventListener("change", async (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  const s = loadSettings();
+  s.bottomBannerDataUrl = await fileToDataURL(f);
+  saveSettingsLocal(s);
+  applyBanner(s.bottomBannerDataUrl, bottomBannerImg, bottomBannerFallback);
+});
 
 if (wheelBannerFile) {
   wheelBannerFile.addEventListener("change", async (e) => {
@@ -1220,49 +1263,41 @@ if (wheelBannerFile) {
   });
 }
 
-if (bgSongFile) {
-  bgSongFile.addEventListener("change", (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const url = URL.createObjectURL(f);
-    bgMusic.src = url;
-    if (musicOn) bgMusic.play().catch(() => {});
-  });
-}
+bgSongFile.addEventListener("change", (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  const url = URL.createObjectURL(f);
+  bgMusic.src = url;
+  if (musicOn) bgMusic.play().catch(() => {});
+});
 
 /* ===========================
    Buttons
 =========================== */
-if (membersBtn) membersBtn.addEventListener("click", loadMembersUI);
-if (historyBtn) historyBtn.addEventListener("click", loadHistoryUI);
-if (refreshMembersInSettingsBtn) refreshMembersInSettingsBtn.addEventListener("click", loadMembersInSettings);
+membersBtn.addEventListener("click", loadMembersUI);
+historyBtn.addEventListener("click", loadHistoryUI);
+refreshMembersInSettingsBtn.addEventListener("click", loadMembersInSettings);
 
 /* ===========================
-   Test Mode (UI-only toggle)
-   - (You can later connect to /config/testmode if you want)
+   Test Mode button handlers
 =========================== */
-let localTestMode = false;
-function setTestModeUI(on) {
-  localTestMode = !!on;
-  if (testModeBtn) testModeBtn.textContent = localTestMode ? "Test: ON" : "Test: OFF";
-  if (testModeBtn) testModeBtn.classList.toggle("primary", localTestMode);
-}
 if (testModeBtn) {
   testModeBtn.addEventListener("click", () => {
-    setTestModeUI(!localTestMode);
-    alert(localTestMode ? "Test Mode ON ✅ (UI only)" : "Test Mode OFF ✅ (UI only)");
+    const next = !isTestMode();
+    setTestModeLocal(next);
+    updateTestModeBtn();
+    ensureTestViewer();
+    renderTestViewer();
+    alert(next ? "Test Mode ON ✅ (Local only)" : "Test Mode OFF ✅ (Render event)");
   });
 }
+
 if (clearTestHistoryBtn) {
   clearTestHistoryBtn.addEventListener("click", () => {
-    if (!confirm("Clear winner prize map (local file) လုပ်မလား?")) return;
-    clearWinnerPrizeMap();
+    if (!confirm("Clear Test File လုပ်မလား?")) return;
+    clearTestFile();
+    renderTestViewer();
     alert("Cleared ✅");
-    // refresh history panel if open
-    const cachedMembers = readCache(CACHE_MEMBERS_KEY);
-    if (historyPanel && !historyPanel.classList.contains("hidden") && Array.isArray(cachedMembers)) {
-      renderPrizeHistoryTable(cachedMembers);
-    }
   });
 }
 
@@ -1272,12 +1307,12 @@ if (clearTestHistoryBtn) {
 function init() {
   const s = loadSettings();
 
-  if (apiBaseInput) apiBaseInput.value = s.apiBase || DEFAULT_API_BASE;
-  if (apiKeyInput) apiKeyInput.value = s.apiKey || DEFAULT_API_KEY;
+  apiBaseInput.value = s.apiBase || DEFAULT_API_BASE;
+  apiKeyInput.value = s.apiKey || DEFAULT_API_KEY;
 
-  if (uiColorInput) uiColorInput.value = s.uiColor || "#ffffff";
-  if (wheelAccentInput) wheelAccentInput.value = s.wheelAccent || "#d6b25e";
-  if (wheelColorsInput) wheelColorsInput.value = s.wheelColorsText || defaultSettings.wheelColorsText;
+  uiColorInput.value = s.uiColor || "#ffffff";
+  wheelAccentInput.value = s.wheelAccent || "#d6b25e";
+  wheelColorsInput.value = s.wheelColorsText || defaultSettings.wheelColorsText;
 
   applyThemeUI(s.uiColor, s.wheelAccent);
 
@@ -1291,12 +1326,31 @@ function init() {
 
   sliceColors = parseWheelColors(s.wheelColorsText);
   const prizeText = buildPrizeText(s.prizes || []);
-
   wheelPrizes = uniquePrizesFromPrizeText(prizeText).reverse();
+
   drawWheel();
 
+  // music state
+  musicOn = !!s.musicOn;
   updateMusicBtn();
+
+  // test viewer
+  updateTestModeBtn();
+  ensureTestViewer();
+  renderTestViewer();
+
   refreshPoolUI();
-  setTestModeUI(false);
 }
 init();
+
+/* ===========================
+   Utils
+=========================== */
+function esc(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
