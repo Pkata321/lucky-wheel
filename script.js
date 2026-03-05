@@ -633,59 +633,41 @@ renderPrizeBuilder();
 let spinning = false;
 
 /* ===== FIND PRIZE INDEX ===== */
-
 function findPrizeIndex(prize){
-
   const p = String(prize||"").trim();
 
   let idx = wheelPrizes.findIndex(v=>String(v).trim()===p);
-
   if(idx>=0) return idx;
 
   const lower = p.toLowerCase();
-
   idx = wheelPrizes.findIndex(v=>String(v).toLowerCase()===lower);
-
   return idx;
-
 }
 
 /* ===== CALCULATE TARGET ANGLE ===== */
-
 function calcTargetAngle(idx){
-
   const TAU = Math.PI*2;
-
   const total = wheelPrizes.length;
-
   const slice = TAU/total;
 
   const pointer = -Math.PI/2;
-
   let target = pointer - (idx+0.5)*slice;
 
   target = ((target%TAU)+TAU)%TAU;
-
   return target;
-
 }
 
 /* ===== ANIMATE SPIN ===== */
-
 function animateSpin(target,duration=3200){
-
   const TAU = Math.PI*2;
 
   const start = wheelAngle;
-
   const startNorm = ((start%TAU)+TAU)%TAU;
 
   const delta = ((target-startNorm)+TAU)%TAU;
-
   const extra = 6 + Math.random()*4;
 
   const final = start + extra*TAU + delta;
-
   const t0 = performance.now();
 
   function ease(t){
@@ -693,32 +675,22 @@ function animateSpin(target,duration=3200){
   }
 
   return new Promise(resolve=>{
-
     function frame(now){
-
       const p = Math.min((now-t0)/duration,1);
-
       const e = ease(p);
 
       wheelAngle = start + (final-start)*e;
-
       drawWheel();
 
       if(p<1) requestAnimationFrame(frame);
       else resolve();
-
     }
-
     requestAnimationFrame(frame);
-
   });
-
 }
 
 /* ===== SPIN CLICK ===== */
-
 async function doSpin(){
-
   if(spinning) return;
 
   if(!wheelPrizes.length){
@@ -732,19 +704,11 @@ async function doSpin(){
   let res;
 
   try{
-
-    // ✅ correct endpoint
     res = await apiPost("/spin",{},12000);
-
-    if(!res?.ok){
-      throw new Error(res?.error || "spin error");
-    }
-
+    if(!res?.ok) throw new Error(res?.error || "spin error");
   }catch(e){
-
     spinning=false;
     setBusy(spinBtn,false);
-
     alert("Spin error: " + (e?.message || e));
     return;
   }
@@ -769,7 +733,6 @@ async function doSpin(){
   await animateSpin(target,3200);
 
   showWinnerModal(prize,winner,res.turn);
-
   recordTodayWinner({ prize, winner, turn: res.turn });
 
   refreshPool();
@@ -778,51 +741,19 @@ async function doSpin(){
   setBusy(spinBtn,false);
 }
 
-  const prize = String(res.prize||"");
-
-  const winner = res.winner || {};
-
-  let idx = findPrizeIndex(prize);
-
-  if(idx<0){
-
-    buildWheelPrizes();
-    drawWheel();
-
-    idx = findPrizeIndex(prize);
-
-  }
-
-  if(idx<0){
-
-    idx = Math.floor(Math.random()*wheelPrizes.length);
-
-  }
-
-  const target = calcTargetAngle(idx);
-
-  await animateSpin(target,3200);
-
- showWinnerModal(prize,winner,res.turn);
-
-recordTodayWinner({ prize, winner, turn: res.turn });
-
-
-
-  refreshPool();
-
-  spinning=false;
-
-  setBusy(spinBtn,false);
-
-}
-
 spinBtn.onclick = doSpin;
+
+/* ===== RESTART ===== */
 restartSpinBtn.onclick = async ()=>{
   setBusy(restartSpinBtn,true,"Restarting...");
+
   try{
     const r = await apiPost("/event/reset",{},12000);
     if(!r?.ok) alert("Reset error: " + (r?.error || "unknown"));
+
+    // ✅ clear today winners local (optional)
+    try { localStorage.removeItem(todayKey()); } catch {}
+
     refreshPool();
   }catch(e){
     alert("Reset error: " + (e?.message || e));
