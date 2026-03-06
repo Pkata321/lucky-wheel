@@ -1051,3 +1051,937 @@ restartSpinBtn.onclick = async () => {
   }
 
 };
+/* ===========================
+ PART 5 — WINNER LIST PANEL
+ - fetch /winners
+ - show table
+ - done toggle
+ - telegram / notice
+=========================== */
+
+const historyBtn = $("historyBtn");
+const historyPanel = $("historyPanel");
+const historyCloseBtn = $("historyCloseBtn");
+
+const historyTbody = $("historyTbody");
+const historyTotalText = $("historyTotalText");
+
+/* ===== open panel ===== */
+
+historyBtn.onclick = () => {
+
+  historyPanel.classList.remove("hidden");
+
+  loadWinnerList();
+
+};
+
+historyCloseBtn.onclick = () => {
+
+  historyPanel.classList.add("hidden");
+
+};
+
+/* ===== load winners ===== */
+
+async function loadWinnerList(){
+
+  historyTbody.innerHTML = `<tr><td colspan="5">Loading...</td></tr>`;
+
+  try{
+
+    const res = await apiGet("/winners",15000);
+
+    if(!res?.ok){
+      throw new Error(res?.error || "winners_error");
+    }
+
+    const list = res.winners || [];
+
+    historyTotalText.textContent = list.length;
+
+    renderWinnerRows(list);
+
+  }catch(e){
+
+    historyTbody.innerHTML =
+      `<tr><td colspan="5">Error: ${esc(e?.message || e)}</td></tr>`;
+
+  }
+
+}
+
+/* ===== render table ===== */
+
+function renderWinnerRows(list){
+
+  if(!list.length){
+
+    historyTbody.innerHTML =
+      `<tr><td colspan="5">No winners yet</td></tr>`;
+
+    return;
+
+  }
+
+  const rows = list.map(w=>{
+
+    const name = esc(w.name || w.display || "-");
+
+    const id = esc(w.user_id || "-");
+
+    const prize = esc(w.prize || "-");
+
+    const turn = esc(w.turn || "-");
+
+    const username = String(w.username || "").replace("@","");
+
+    const done = w.done;
+
+    let actionHTML = "";
+
+    if(username){
+
+      actionHTML =
+      `<button class="btn mini"
+        data-act="tg"
+        data-user="${esc(username)}">
+        Telegram
+      </button>`;
+
+    }else{
+
+      actionHTML =
+      `<button class="btn mini"
+        data-act="notice"
+        data-uid="${id}"
+        data-prize="${prize}">
+        Notice
+      </button>`;
+
+    }
+
+    const doneBtn =
+      `<button class="btn mini ${done ? "success":""}"
+        data-act="done"
+        data-uid="${id}">
+        ${done ? "Done": "Prize Done"}
+      </button>`;
+
+    return `
+<tr>
+<td>${turn}</td>
+<td>${prize}</td>
+<td>${name}</td>
+<td>${id}</td>
+<td>
+<div style="display:flex;gap:6px;flex-wrap:wrap;">
+${doneBtn}
+${actionHTML}
+</div>
+</td>
+</tr>
+`;
+
+  }).join("");
+
+  historyTbody.innerHTML = rows;
+
+}
+
+/* ===== table actions ===== */
+
+historyTbody.addEventListener("click", async (e)=>{
+
+  const btn = e.target.closest("button");
+
+  if(!btn) return;
+
+  const act = btn.dataset.act;
+
+  /* Telegram open */
+
+  if(act === "tg"){
+
+    const user = btn.dataset.user;
+
+    window.open(`https://t.me/${user}`,"_blank");
+
+    return;
+
+  }
+
+  /* Notice DM */
+
+  if(act === "notice"){
+
+    const uid = btn.dataset.uid;
+
+    const prize = btn.dataset.prize;
+
+    setBusy(btn,true,"Sending...");
+
+    try{
+
+      const r = await apiPost("/notice",
+      {
+        user_id: uid,
+        prize: prize
+      },15000);
+
+      if(!r?.ok){
+        throw new Error(r?.error || "notice_error");
+      }
+
+      alert("✅ DM Notice sent");
+
+    }catch(e){
+
+      alert("Notice error: "+(e?.message || e));
+
+    }finally{
+
+      setBusy(btn,false);
+
+    }
+
+    return;
+
+  }
+
+  /* Prize Done */
+
+  if(act === "done"){
+
+    const uid = btn.dataset.uid;
+
+    setBusy(btn,true,"Saving...");
+
+    try{
+
+      const r = await apiPost("/winner/done",
+      {
+        user_id: uid
+      },15000);
+
+      if(!r?.ok){
+        throw new Error(r?.error || "done_error");
+      }
+
+      loadWinnerList();
+
+    }catch(e){
+
+      alert("Done error: "+(e?.message || e));
+
+    }
+
+  }
+
+});
+/* ===========================
+ PART 6 — MEMBERS PANEL
+ - fetch /members
+ - cache load
+ - active/inactive status
+ - telegram / notice
+=========================== */
+
+const membersBtn = $("membersBtn");
+const membersPanel = $("membersPanel");
+const membersCloseBtn = $("membersCloseBtn");
+
+const membersTable = $("membersTable");
+const membersTotalText = $("membersTotalText");
+
+/* ===== open panel ===== */
+
+membersBtn.onclick = () => {
+
+  membersPanel.classList.remove("hidden");
+
+  const cache = readMembersCache();
+
+  if(cache && cache.length){
+    renderMembers(cache,true);
+  }else{
+    membersTable.innerHTML = `<div class="small">Loading...</div>`;
+  }
+
+  loadMembers();
+
+};
+
+membersCloseBtn.onclick = () => {
+
+  membersPanel.classList.add("hidden");
+
+};
+
+/* ===== status badge ===== */
+
+function statusBadge(active){
+
+  if(active){
+    return `<span style="color:#16a34a;font-weight:900;">ACTIVE</span>`;
+  }
+
+  return `<span style="color:#ef4444;font-weight:900;">INACTIVE</span>`;
+}
+
+/* ===== render members ===== */
+
+function renderMembers(list,fromCache=false){
+
+  const arr = Array.isArray(list) ? list : [];
+
+  membersTotalText.textContent =
+    arr.length ? `Total : ${arr.length}${fromCache ? " (cache)":""}` : "";
+
+  if(!arr.length){
+
+    membersTable.innerHTML = `<div class="small">No members</div>`;
+
+    return;
+
+  }
+
+  arr.sort((a,b)=> (b.active===true) - (a.active===true));
+
+  const rows = arr.map(m=>{
+
+    const username = String(m.username || "").replace("@","");
+
+    const display =
+      m.display ||
+      m.name ||
+      (username ? "@"+username : m.id);
+
+    const uid = String(m.id || "");
+
+    let actionHTML="";
+
+    if(username){
+
+      actionHTML =
+      `<button class="btn mini"
+        data-act="tg"
+        data-user="${esc(username)}">
+        Telegram
+      </button>`;
+
+    }else{
+
+      actionHTML =
+      `<button class="btn mini"
+        data-act="notice"
+        data-uid="${esc(uid)}">
+        Notice
+      </button>`;
+
+    }
+
+    return `
+<div style="display:flex;justify-content:space-between;gap:10px;
+border-bottom:1px solid rgba(16,19,24,0.08);padding:10px 0;">
+
+<div>
+
+<div style="font-weight:900;">
+${esc(display)}
+</div>
+
+<div class="small">
+ID : ${esc(uid)} • ${statusBadge(m.active)}
+</div>
+
+</div>
+
+<div style="display:flex;gap:6px;">
+${actionHTML}
+</div>
+
+</div>
+`;
+
+  }).join("");
+
+  membersTable.innerHTML = rows;
+
+}
+
+/* ===== fetch members ===== */
+
+async function loadMembers(){
+
+  setBusy(membersBtn,true,"Members...");
+
+  try{
+
+    const res = await apiGet("/members",15000);
+
+    if(!res?.ok){
+      throw new Error(res?.error || "members_error");
+    }
+
+    const list = res.members || [];
+
+    cacheMembers(list);
+
+    renderMembers(list,false);
+
+  }catch(e){
+
+    const cache = readMembersCache();
+
+    if(cache && cache.length){
+
+      renderMembers(cache,true);
+
+      membersTable.insertAdjacentHTML(
+        "afterbegin",
+        `<div class="small">⚠️ Live error — showing cache</div>`
+      );
+
+    }else{
+
+      membersTable.innerHTML =
+      `<div class="small">
+      Members error : ${esc(e?.message || e)}
+      </div>`;
+
+    }
+
+  }finally{
+
+    setBusy(membersBtn,false);
+
+  }
+
+}
+
+/* ===== actions ===== */
+
+membersTable.addEventListener("click", async (e)=>{
+
+  const btn = e.target.closest("button");
+
+  if(!btn) return;
+
+  const act = btn.dataset.act;
+
+  /* Telegram */
+
+  if(act === "tg"){
+
+    const user = btn.dataset.user;
+
+    window.open(`https://t.me/${user}`,"_blank");
+
+    return;
+
+  }
+
+  /* Notice */
+
+  if(act === "notice"){
+
+    const uid = btn.dataset.uid;
+
+    setBusy(btn,true,"Sending...");
+
+    try{
+
+      const r = await apiPost("/notice",
+      {
+        user_id: uid,
+        prize: ""
+      },15000);
+
+      if(!r?.ok){
+        throw new Error(r?.error || "notice_error");
+      }
+
+      alert("✅ Notice DM sent");
+
+    }catch(e){
+
+      alert("Notice error: "+(e?.message || e));
+
+    }finally{
+
+      setBusy(btn,false);
+
+    }
+
+  }
+
+});
+/* ===========================
+ PART 7 — SETTINGS + ASSETS + MUSIC + WINNERS(HISTORY) + INIT
+ - Save/Reset settings
+ - Apply images (bg/top/bottom/wheelBanner/wheelBorder)
+ - Music upload & toggle
+ - Winner history panel uses /winners (done/notice/tg)
+=========================== */
+
+/* ===== optional DOM getter (no throw) ===== */
+function $opt(id){
+  return document.getElementById(id);
+}
+
+/* ===== DOM (settings) ===== */
+const saveBtn  = $opt("saveBtn");
+const resetBtn = $opt("resetBtn");
+
+const pageBgFile     = $opt("pageBgFile");
+const wheelBgFile    = $opt("wheelBgFile");
+const topBannerFile  = $opt("topBannerFile");
+const bottomBannerFile = $opt("bottomBannerFile");
+const wheelBannerFile  = $opt("wheelBannerFile");
+const bgSongFile       = $opt("bgSongFile");
+
+const wheelWrap = $opt("wheelWrap");
+const topBannerFallback = $opt("topBannerFallback");
+const bottomBannerFallback = $opt("bottomBannerFallback");
+const wheelBannerFallback = $opt("wheelBannerFallback");
+
+const musicBtn = $opt("musicBtn");
+
+/* ===== DOM (history / winners) ===== */
+const historyBtn = $opt("historyBtn");
+const historyPanel = $opt("historyPanel");
+const historyCloseBtn = $opt("historyCloseBtn");
+const historyList = $opt("historyList");
+
+/* ===== STORAGE (assets + music) ===== */
+const LS_MUSIC_DATAURL = "lucky77_music_dataurl_v1";
+const LS_MUSIC_ON = "lucky77_music_on_v1";
+
+/* ===== music audio ===== */
+let bgAudio = null;
+
+function ensureAudio(){
+  if(bgAudio) return bgAudio;
+  bgAudio = new Audio();
+  bgAudio.loop = true;
+  bgAudio.volume = 0.7;
+
+  const data = localStorage.getItem(LS_MUSIC_DATAURL);
+  if(data) bgAudio.src = data;
+
+  return bgAudio;
+}
+
+function setMusicBtnLabel(){
+  if(!musicBtn) return;
+  const on = localStorage.getItem(LS_MUSIC_ON) === "1";
+  musicBtn.textContent = on ? "🎵 Music: ON" : "🎵 Music: OFF";
+}
+
+async function playMusic(){
+  const a = ensureAudio();
+  if(!a.src){
+    alert("Music file မထည့်ရသေးပါ (Settings > Upload MP3)");
+    return;
+  }
+  try{
+    await a.play();
+    localStorage.setItem(LS_MUSIC_ON,"1");
+    setMusicBtnLabel();
+  }catch(e){
+    alert("Music play blocked (browser). Button ကိုနောက်တစ်ခါနှိပ်ပါ");
+  }
+}
+
+function stopMusic(){
+  const a = ensureAudio();
+  try{ a.pause(); }catch{}
+  localStorage.setItem(LS_MUSIC_ON,"0");
+  setMusicBtnLabel();
+}
+
+/* ===== read file -> dataURL ===== */
+function readFileAsDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = ()=> resolve(String(r.result || ""));
+    r.onerror = ()=> reject(new Error("file_read_error"));
+    r.readAsDataURL(file);
+  });
+}
+
+/* ===== apply images to UI (premium) ===== */
+function applyPremiumImages(){
+
+  // page bg
+  if(bgLayer){
+    if(settings.pageBgDataUrl){
+      bgLayer.style.backgroundImage = `url(${settings.pageBgDataUrl})`;
+      bgLayer.classList.add("has-img");
+    }else{
+      bgLayer.style.backgroundImage = "";
+      bgLayer.classList.remove("has-img");
+    }
+  }
+
+  // wheel border bg (wheelWrap background)
+  if(wheelWrap){
+    if(settings.wheelBgDataUrl){
+      wheelWrap.style.backgroundImage = `url(${settings.wheelBgDataUrl})`;
+      wheelWrap.classList.add("has-wheelbg");
+    }else{
+      wheelWrap.style.backgroundImage = "";
+      wheelWrap.classList.remove("has-wheelbg");
+    }
+  }
+
+  // top banner
+  if(topBannerImg){
+    if(settings.topBannerDataUrl){
+      topBannerImg.src = settings.topBannerDataUrl;
+      topBannerImg.style.display = "block";
+      if(topBannerFallback) topBannerFallback.style.display = "none";
+    }else{
+      topBannerImg.removeAttribute("src");
+      topBannerImg.style.display = "none";
+      if(topBannerFallback) topBannerFallback.style.display = "block";
+    }
+  }
+
+  // bottom banner
+  if(bottomBannerImg){
+    if(settings.bottomBannerDataUrl){
+      bottomBannerImg.src = settings.bottomBannerDataUrl;
+      bottomBannerImg.style.display = "block";
+      if(bottomBannerFallback) bottomBannerFallback.style.display = "none";
+    }else{
+      bottomBannerImg.removeAttribute("src");
+      bottomBannerImg.style.display = "none";
+      if(bottomBannerFallback) bottomBannerFallback.style.display = "block";
+    }
+  }
+
+  // wheel banner png (under wheel)
+  if(wheelBannerImg){
+    if(settings.wheelBannerDataUrl){
+      wheelBannerImg.src = settings.wheelBannerDataUrl;
+      wheelBannerImg.style.display = "block";
+      if(wheelBannerFallback) wheelBannerFallback.style.display = "none";
+    }else{
+      wheelBannerImg.removeAttribute("src");
+      wheelBannerImg.style.display = "none";
+      if(wheelBannerFallback) wheelBannerFallback.style.display = "block";
+    }
+  }
+}
+
+/* ===== push prizes to Render ===== */
+async function pushPrizesToRender(){
+  // settings.prizes -> prizeText
+  const lines = (settings.prizes || [])
+    .map(p=>{
+      const name = String(p?.name || "").trim();
+      const times = Number(p?.times || 0);
+      if(!name || !Number.isFinite(times) || times <= 0) return "";
+      return `${name} ${times}`;
+    })
+    .filter(Boolean);
+
+  const prizeText = lines.join("\n");
+  if(!prizeText.trim()) return;
+
+  // send to Render
+  const r = await apiPost("/config/prizes",{ prizeText },15000);
+  if(!r?.ok) throw new Error(r?.error || "prize_save_failed");
+}
+
+/* ===== settings save/reset ===== */
+async function onSaveAll(){
+
+  if(!saveBtn) return;
+
+  setBusy(saveBtn,true,"Saving...");
+
+  try{
+
+    // pull normal inputs (these exist in Part 2)
+    if(apiBaseInput) settings.apiBase = apiBaseInput.value.trim();
+    if(apiKeyInput)  settings.apiKey  = apiKeyInput.value.trim();
+    if(uiColorInput) settings.uiColor = uiColorInput.value;
+    if(wheelAccentInput) settings.wheelAccent = wheelAccentInput.value;
+
+    // save local first
+    saveSettings(settings);
+    applySettingsUI();
+
+    // apply premium image rules
+    applyPremiumImages();
+
+    // push prizes -> render (optional but premium goal)
+    await pushPrizesToRender();
+
+    alert("✅ Saved");
+
+  }catch(e){
+
+    alert("Save error: " + (e?.message || e));
+
+  }finally{
+
+    setBusy(saveBtn,false);
+
+  }
+}
+
+function onResetAll(){
+
+  if(!confirm("Reset settings ပြန်လုပ်မလား? (local settings ပဲ reset)")) return;
+
+  try{
+    localStorage.removeItem(LS_SETTINGS);
+
+    // music reset optional
+    // localStorage.removeItem(LS_MUSIC_DATAURL);
+    // localStorage.removeItem(LS_MUSIC_ON);
+
+  }catch{}
+
+  settings = loadSettings();
+  applySettingsUI();
+  applyPremiumImages();
+
+  buildWheelPrizes();
+  drawWheel();
+  renderPrizeBuilder();
+
+  alert("✅ Reset done");
+}
+
+/* ===== file inputs ===== */
+async function bindFileToSetting(inputEl, keyName, isAudio=false){
+
+  if(!inputEl) return;
+
+  inputEl.addEventListener("change", async ()=>{
+    const f = inputEl.files && inputEl.files[0];
+    if(!f) return;
+
+    try{
+
+      const dataUrl = await readFileAsDataURL(f);
+
+      if(isAudio){
+        localStorage.setItem(LS_MUSIC_DATAURL, dataUrl);
+        ensureAudio().src = dataUrl;
+
+        // auto play if ON
+        if(localStorage.getItem(LS_MUSIC_ON)==="1"){
+          await playMusic();
+        }
+        alert("✅ Music uploaded");
+        return;
+      }
+
+      settings[keyName] = dataUrl;
+      saveSettings(settings);
+
+      applySettingsUI();
+      applyPremiumImages();
+
+      alert("✅ Image uploaded");
+
+    }catch(e){
+      alert("Upload error: "+(e?.message || e));
+    }
+  });
+
+}
+
+/* ===== music button ===== */
+if(musicBtn){
+  musicBtn.addEventListener("click", async ()=>{
+    const on = localStorage.getItem(LS_MUSIC_ON) === "1";
+    if(on) stopMusic();
+    else await playMusic();
+  });
+}
+
+/* ===== winners/history panel (Render /winners) ===== */
+function openHistoryPanel(){
+  if(!historyPanel) return;
+  historyPanel.classList.remove("hidden");
+  loadWinnersHistory();
+}
+function closeHistoryPanel(){
+  if(!historyPanel) return;
+  historyPanel.classList.add("hidden");
+}
+
+if(historyBtn) historyBtn.addEventListener("click", openHistoryPanel);
+if(historyCloseBtn) historyCloseBtn.addEventListener("click", closeHistoryPanel);
+
+function renderWinnersHistory(winners){
+
+  if(!historyList) return;
+
+  const arr = Array.isArray(winners) ? winners : [];
+
+  if(!arr.length){
+    historyList.innerHTML = `<div class="small">No winners yet</div>`;
+    return;
+  }
+
+  const rows = arr.map((w,i)=>{
+
+    const uid = String(w.user_id || w.id || "");
+    const prize = String(w.prize || "-");
+    const turn = String(w.turn || (i+1));
+    const username = String(w.username || "").replace("@","").trim();
+    const display = String(w.display || w.name || (username? "@"+username : uid));
+
+    const done = !!w.done;
+
+    const doneBtnTxt = done ? "Done ✅" : "Prize Done";
+    const doneCls = done ? "success" : "";
+
+    const action =
+      username
+        ? `<button class="btn mini" data-act="tg" data-user="${esc(username)}">Telegram</button>`
+        : `<button class="btn mini" data-act="notice" data-uid="${esc(uid)}" data-prize="${esc(prize)}">Notice</button>`;
+
+    return `
+<div style="display:flex;justify-content:space-between;gap:10px;
+border-bottom:1px solid rgba(16,19,24,0.08);padding:10px 0;">
+
+<div style="min-width:0;">
+  <div style="font-weight:1000;">#${esc(turn)} • ${esc(prize)}</div>
+  <div class="small" style="margin-top:4px;">
+    ${esc(display)} • ID: ${esc(uid)}
+  </div>
+</div>
+
+<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+  <button class="btn mini ${doneCls}" data-act="done" data-uid="${esc(uid)}">
+    ${doneBtnTxt}
+  </button>
+  ${action}
+</div>
+
+</div>`;
+  }).join("");
+
+  historyList.innerHTML = rows;
+}
+
+async function loadWinnersHistory(){
+
+  if(!historyList) return;
+
+  historyList.innerHTML = `<div class="small">Loading...</div>`;
+
+  try{
+
+    const res = await apiGet("/winners",15000);
+    if(!res?.ok) throw new Error(res?.error || "winners_error");
+
+    renderWinnersHistory(res.winners || []);
+
+  }catch(e){
+
+    historyList.innerHTML = `<div class="small">History error: ${esc(e?.message || e)}</div>`;
+
+  }
+}
+
+/* history actions */
+if(historyList){
+  historyList.addEventListener("click", async (e)=>{
+
+    const b = e.target.closest("button");
+    if(!b) return;
+
+    const act = b.dataset.act;
+
+    if(act === "tg"){
+      const user = String(b.dataset.user||"").replace("@","").trim();
+      if(!user) return;
+      window.open(`https://t.me/${user}`,"_blank");
+      return;
+    }
+
+    if(act === "notice"){
+      const uid = String(b.dataset.uid||"").trim();
+      const prize = String(b.dataset.prize||"").trim();
+
+      if(!uid) return;
+
+      setBusy(b,true,"Sending...");
+
+      try{
+        const r = await apiPost("/notice",{ user_id: uid, prize },15000);
+        if(!r?.ok) throw new Error(r?.error || "notice_failed");
+        alert("✅ Notice DM sent");
+      }catch(err){
+        alert("Notice error: "+(err?.message || err));
+      }finally{
+        setBusy(b,false);
+      }
+      return;
+    }
+
+    if(act === "done"){
+      const uid = String(b.dataset.uid||"").trim();
+      if(!uid) return;
+
+      setBusy(b,true,"Saving...");
+
+      try{
+        const r = await apiPost("/winner/done",{ user_id: uid },15000);
+        if(!r?.ok) throw new Error(r?.error || "done_failed");
+        await loadWinnersHistory();
+      }catch(err){
+        alert("Done error: "+(err?.message || err));
+      }finally{
+        setBusy(b,false);
+      }
+      return;
+    }
+
+  });
+}
+
+/* ===== bind buttons ===== */
+if(saveBtn)  saveBtn.addEventListener("click", onSaveAll);
+if(resetBtn) resetBtn.addEventListener("click", onResetAll);
+
+/* ===== bind file inputs ===== */
+bindFileToSetting(pageBgFile, "pageBgDataUrl");
+bindFileToSetting(topBannerFile, "topBannerDataUrl");
+bindFileToSetting(bottomBannerFile, "bottomBannerDataUrl");
+bindFileToSetting(wheelBannerFile, "wheelBannerDataUrl");
+
+// NEW: wheel border background image
+bindFileToSetting(wheelBgFile, "wheelBgDataUrl");
+
+// music mp3 upload
+bindFileToSetting(bgSongFile, "", true);
+
+/* ===== INIT ===== */
+(function initPremium(){
+
+  // apply images
+  applyPremiumImages();
+
+  // music state
+  setMusicBtnLabel();
+  if(localStorage.getItem(LS_MUSIC_ON)==="1"){
+    // try autoplay on first user gesture later
+    // (browser blocks autoplay; button click will start)
+    ensureAudio();
+  }
+
+  // refresh pool at start (safe)
+  try{ refreshPool(); }catch{}
+
+})();
