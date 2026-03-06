@@ -793,3 +793,53 @@ body{
     top:-6px;
   }
 }
+
+/* ===== FIX: banners align with wheel card ===== */
+
+/* page center */
+.page{
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* main center */
+.main{
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* wheel card fixed max width */
+.wheel-card{
+  width: 100%;
+  max-width: 520px;   /* ✅ ဒီအကျယ်နဲ့ banner ကိုလည်းညီမယ် */
+  margin: 0 auto;
+}
+
+/* banner wrapper same width as wheel card */
+.banner-img{
+  width: 100%;
+  max-width: 520px;   /* ✅ wheel-card နဲ့တူ */
+  margin: 14px auto;  /* ✅ center */
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* banner image full fit */
+.banner-img img{
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* fallback box same width */
+.banner-fallback{
+  width: 100%;
+  min-height: 92px;          /* ✅ မင်းစိတ်ကြိုက်မြင့် */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 14px;
+  border-radius: 16px;
+}
