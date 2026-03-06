@@ -1,303 +1,308 @@
 "use strict";
 
 /* ===========================
- PART 1 — CORE BASE (FIXED)
- - Default API
- - LocalStorage keys
- - DOM helper
- - Utils (esc fixed)
- - Settings model load/save
- - API helpers (abort/timeout)
- - Button busy helper
- - Test mode flag
- - Members/History cache helpers
+  Lucky77 Premium Wheel
+  PART 1 — CORE BASE (Render-linked)
+  - Settings (localStorage)
+  - API helpers (timeout + abort)
+  - Theme color (Luxury default)
+  - Image/Audio upload helpers (dataURL)
+  - Members cache (instant show)
 =========================== */
 
-/* ===== DEFAULT API ===== */
+/* ===== DEFAULT RENDER API ===== */
 const DEFAULT_API_BASE = "https://lucky77-wheel-bot.onrender.com";
-const DEFAULT_API_KEY = "Lucky77_luckywheel_77";
+const DEFAULT_API_KEY  = "Lucky77_luckywheel_77";
 
-/* ===== STORAGE KEYS ===== */
-const LS_SETTINGS = "lucky77_ui_settings_v1";
+/* ===== LOCAL STORAGE KEYS (Premium v2) ===== */
+const LS_SETTINGS          = "lucky77_premium_settings_v2";
+const LS_CACHE_MEMBERS     = "lucky77_cache_members_v2";
+const LS_CACHE_MEMBERS_AT  = "lucky77_cache_members_at_v2";
+const LS_CACHE_HISTORY     = "lucky77_cache_history_v2";
+const LS_CACHE_HISTORY_AT  = "lucky77_cache_history_at_v2";
 
-// cache (members/history) — UI stuck မဖြစ်အောင် cache သုံး
-const LS_CACHE_MEMBERS = "lucky77_cache_members_v1";
-const LS_CACHE_MEMBERS_AT = "lucky77_cache_members_at_v1";
-
-const LS_CACHE_HISTORY = "lucky77_cache_history_v1";
-const LS_CACHE_HISTORY_AT = "lucky77_cache_history_at_v1";
-
-// today winners (per day key)
-const LS_TODAY_WINNERS = "lucky77_today_winners_v1";
-
-// test mode (UI local flag)
-const LS_TEST_MODE = "lucky77_test_mode_v1";
-
-/* ===== DOM HELPER ===== */
-function $(id) {
+/* ===== DOM HELPERS ===== */
+function $req(id){
   const el = document.getElementById(id);
-  if (!el) throw new Error("Missing DOM #" + id);
+  if(!el) throw new Error("Missing DOM #" + id);
   return el;
+}
+function $opt(id){
+  return document.getElementById(id) || null;
 }
 
 /* ===== UTILS ===== */
-function esc(str) {
-  // ✅ COMPLETE escape (prevent XSS & broken HTML)
+function esc(str){
   return String(str ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#39;");
 }
-
-function clamp(n, a, b) {
+function clamp(n,a,b){
   n = Number(n);
-  if (!Number.isFinite(n)) n = a;
+  if(!Number.isFinite(n)) n = a;
   return Math.max(a, Math.min(b, n));
 }
-
-function safeJsonParse(raw, fallback) {
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return fallback;
-  }
+function nowISO(){
+  return new Date().toISOString();
 }
 
-/* ===== SETTINGS MODEL ===== */
+/* ===== DEFAULT SETTINGS MODEL (Luxury) ===== */
 const defaultSettings = {
   apiBase: DEFAULT_API_BASE,
-  apiKey: DEFAULT_API_KEY,
+  apiKey:  DEFAULT_API_KEY,
 
-  uiColor: "#ffffff",
+  /* Luxury theme */
+  uiColor: "#d6b25e",        // premium gold default
   wheelAccent: "#d6b25e",
-
-  wheelColorsText: `#ffffff
+  wheelColorsText:
+`#ffffff
 #f1f5ff
 #fff4d6
 #e9eefc`,
 
+  /* Prize builder */
   prizes: [
     { name: "10000Ks", times: 4 },
-    { name: "5000Ks", times: 2 },
-    { name: "3000Ks", times: 3 },
+    { name: "5000Ks",  times: 2 },
+    { name: "3000Ks",  times: 3 }
   ],
 
+  /* Upload assets (DataURL) */
   pageBgDataUrl: "",
+  wheelBorderBgDataUrl: "",     // ✅ wheel border div background
   topBannerDataUrl: "",
   bottomBannerDataUrl: "",
-  wheelBannerDataUrl: "",
+  wheelBannerDataUrl: "",       // ✅ wheel under banner PNG logo
 
-  // (optional) music / assets
+  /* Music */
   bgSongDataUrl: "",
+  musicEnabled: false,
+  musicVolume: 0.55
 };
 
-/* ===== SETTINGS LOAD/SAVE ===== */
-function loadSettings() {
-  const raw = localStorage.getItem(LS_SETTINGS);
-  if (!raw) return structuredClone(defaultSettings);
-
-  const data = safeJsonParse(raw, null);
-  if (!data || typeof data !== "object") return structuredClone(defaultSettings);
-
-  // merge with defaults (missing fields auto fill)
-  return { ...structuredClone(defaultSettings), ...data };
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(LS_SETTINGS);
+    if(!raw) return structuredClone(defaultSettings);
+    const data = JSON.parse(raw);
+    return { ...structuredClone(defaultSettings), ...(data || {}) };
+  }catch{
+    return structuredClone(defaultSettings);
+  }
+}
+function saveSettings(s){
+  try{
+    localStorage.setItem(LS_SETTINGS, JSON.stringify(s));
+  }catch{}
 }
 
-function saveSettings(s) {
-  localStorage.setItem(LS_SETTINGS, JSON.stringify(s));
+/* ===== APPLY THEME (CSS vars) ===== */
+function applyTheme(settings){
+  const ui = String(settings.uiColor || "#d6b25e");
+  const gold = String(settings.wheelAccent || ui);
+
+  document.documentElement.style.setProperty("--ui", ui);
+  document.documentElement.style.setProperty("--gold", gold);
 }
 
-/* ===== TEST MODE FLAG ===== */
-function isTestMode() {
-  return localStorage.getItem(LS_TEST_MODE) === "1";
-}
-function setTestModeLocal(enabled) {
-  localStorage.setItem(LS_TEST_MODE, enabled ? "1" : "0");
+/* ===== FILE -> DATA URL ===== */
+function fileToDataUrl(file, maxBytes = 6 * 1024 * 1024){
+  return new Promise((resolve, reject) => {
+    if(!file) return resolve("");
+    if(file.size > maxBytes) return reject(new Error("File too large"));
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || ""));
+    r.onerror = () => reject(new Error("File read error"));
+    r.readAsDataURL(file);
+  });
 }
 
-/* ===== API BASE / KEY ===== */
-function getApiBase() {
-  const s = loadSettings();
-  return String(s.apiBase || DEFAULT_API_BASE).replace(/\/+$/, "");
+/* ===== API BASE/KEY ===== */
+function getApiBase(settings){
+  const base = String(settings.apiBase || DEFAULT_API_BASE).trim();
+  return base.replace(/\/+$/,"");
 }
-function getApiKey() {
-  const s = loadSettings();
-  return String(s.apiKey || DEFAULT_API_KEY);
+function getApiKey(settings){
+  return String(settings.apiKey || DEFAULT_API_KEY).trim();
 }
-function buildUrl(path) {
-  // ✅ keep both query key + header key (your backend supports both)
-  const base = getApiBase();
-  const key = getApiKey();
+function buildUrl(settings, path){
+  const base = getApiBase(settings);
+  const key  = getApiKey(settings);
+  // Render supports header x-api-key, but keep ?key too (compat)
   return `${base}${path}?key=${encodeURIComponent(key)}`;
 }
 
-/* ===== FETCH JSON (ABORT/TIMEOUT SAFE) ===== */
-async function fetchJson(url, opt = {}, timeout = 12000) {
+/* ===== FETCH JSON with timeout + abort ===== */
+async function fetchJson(url, opt = {}, timeout = 15000){
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeout);
 
-  try {
+  try{
     const res = await fetch(url, { ...opt, signal: ctrl.signal });
-
-    // read as text first (avoid crash if invalid JSON)
     const txt = await res.text();
-    const json = safeJsonParse(txt, { ok: false, error: "Invalid JSON" });
 
-    if (!res.ok) {
-      // server returned HTTP error
-      return { ok: false, error: json?.error || "HTTP_" + res.status };
+    let json;
+    try{ json = JSON.parse(txt); }
+    catch{ json = { ok:false, error:"invalid_json", raw: txt }; }
+
+    // normalize errors
+    if(!res.ok && !json.ok){
+      return { ok:false, error: json.error || ("HTTP_" + res.status) };
     }
-
     return json;
-  } catch (e) {
-    const msg = String(e?.name || "").toLowerCase().includes("abort")
-      ? "timeout"
-      : (e?.message || String(e));
-    return { ok: false, error: msg };
-  } finally {
+
+  }catch(e){
+    return { ok:false, error: String(e?.message || e) };
+  }finally{
     clearTimeout(t);
   }
 }
 
-async function apiGet(path, timeout) {
-  return fetchJson(buildUrl(path), { method: "GET" }, timeout);
+async function apiGet(settings, path, timeout){
+  return fetchJson(buildUrl(settings, path), { method:"GET" }, timeout);
 }
-
-async function apiPost(path, body, timeout) {
+async function apiPost(settings, path, body, timeout){
+  const headers = {
+    "Content-Type":"application/json",
+    "x-api-key": getApiKey(settings)
+  };
   return fetchJson(
-    buildUrl(path),
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": getApiKey(),
-      },
-      body: JSON.stringify(body || {}),
-    },
+    buildUrl(settings, path),
+    { method:"POST", headers, body: JSON.stringify(body || {}) },
     timeout
   );
 }
 
 /* ===== BUTTON BUSY ===== */
-function setBusy(btn, busy, text) {
-  if (!btn) return;
-
-  if (busy) {
+function setBusy(btn, busy, text){
+  if(!btn) return;
+  if(busy){
     btn.dataset.old = btn.textContent;
     btn.disabled = true;
-    if (text) btn.textContent = text;
-  } else {
+    if(text) btn.textContent = text;
+  }else{
     btn.disabled = false;
-    if (btn.dataset.old) {
+    if(btn.dataset.old){
       btn.textContent = btn.dataset.old;
       delete btn.dataset.old;
     }
   }
 }
 
-/* ===== MEMBERS CACHE ===== */
-function cacheMembers(list) {
-  try {
+/* ===== MEMBERS CACHE (instant open) ===== */
+function cacheMembers(list){
+  try{
     localStorage.setItem(LS_CACHE_MEMBERS, JSON.stringify(list || []));
     localStorage.setItem(LS_CACHE_MEMBERS_AT, String(Date.now()));
-  } catch {}
+  }catch{}
 }
-function readMembersCache() {
-  try {
+function readMembersCache(){
+  try{
     const raw = localStorage.getItem(LS_CACHE_MEMBERS);
-    if (!raw) return null;
-    const arr = safeJsonParse(raw, null);
+    if(!raw) return null;
+    const arr = JSON.parse(raw);
     return Array.isArray(arr) ? arr : null;
-  } catch {
+  }catch{
     return null;
   }
 }
 
-/* ===== HISTORY CACHE ===== */
-function cacheHistory(list) {
-  try {
+/* ===== HISTORY CACHE (for Winners/History table) ===== */
+function cacheHistory(list){
+  try{
     localStorage.setItem(LS_CACHE_HISTORY, JSON.stringify(list || []));
     localStorage.setItem(LS_CACHE_HISTORY_AT, String(Date.now()));
-  } catch {}
+  }catch{}
 }
-function readHistoryCache() {
-  try {
+function readHistoryCache(){
+  try{
     const raw = localStorage.getItem(LS_CACHE_HISTORY);
-    if (!raw) return null;
-    const arr = safeJsonParse(raw, null);
+    if(!raw) return null;
+    const arr = JSON.parse(raw);
     return Array.isArray(arr) ? arr : null;
-  } catch {
+  }catch{
     return null;
   }
 }
 
-/* ===== TODAY WINNERS (PER DAY KEY) ===== */
-function todayKey() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${LS_TODAY_WINNERS}_${y}-${m}-${day}`;
-}
+/* ===== MUSIC ENGINE (DataURL audio) ===== */
+let bgAudio = null;
 
-function readTodayWinners() {
-  try {
-    const raw = localStorage.getItem(todayKey());
-    if (!raw) return [];
-    const arr = safeJsonParse(raw, []);
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
+function ensureAudio(settings){
+  if(bgAudio) return bgAudio;
+  bgAudio = new Audio();
+  bgAudio.loop = true;
+  bgAudio.volume = clamp(settings.musicVolume ?? 0.55, 0, 1);
+  return bgAudio;
+}
+function setMusicSource(settings){
+  const a = ensureAudio(settings);
+  const src = String(settings.bgSongDataUrl || "").trim();
+  if(!src){
+    a.pause();
+    a.src = "";
+    return false;
+  }
+  if(a.src !== src) a.src = src;
+  return true;
+}
+async function playMusic(settings){
+  const ok = setMusicSource(settings);
+  if(!ok) return { ok:false, error:"no_music" };
+
+  const a = ensureAudio(settings);
+  a.volume = clamp(settings.musicVolume ?? 0.55, 0, 1);
+
+  try{
+    await a.play();
+    return { ok:true };
+  }catch(e){
+    return { ok:false, error: String(e?.message || e) };
   }
 }
-function writeTodayWinners(arr) {
-  try {
-    localStorage.setItem(todayKey(), JSON.stringify(arr || []));
-  } catch {}
+function stopMusic(){
+  if(!bgAudio) return;
+  try{ bgAudio.pause(); }catch{}
 }
 
-/* ===== HARD RESET UI LOCAL (used by Reset button) ===== */
-function resetUiLocalAll() {
-  try {
-    localStorage.removeItem(LS_SETTINGS);
+/* ===== GLOBAL STATE (shared for next parts) ===== */
+let settings = loadSettings();
+applyTheme(settings);
+// (Next parts will bind DOM, apply images, build wheel, members/history panels, PDF export)
 
-    localStorage.removeItem(LS_CACHE_MEMBERS);
-    localStorage.removeItem(LS_CACHE_MEMBERS_AT);
-
-    localStorage.removeItem(LS_CACHE_HISTORY);
-    localStorage.removeItem(LS_CACHE_HISTORY_AT);
-
-    localStorage.removeItem(LS_TEST_MODE);
-
-    // today winners key only (today)
-    localStorage.removeItem(todayKey());
-  } catch {}
-}
+/* ===== QUICK SELF CHECK (optional) ===== */
+window.__lucky77 = {
+  get settings(){ return settings; },
+  setSettings(next){ settings = { ...settings, ...(next||{}) }; saveSettings(settings); applyTheme(settings); },
+  apiGet: (path, t)=>apiGet(settings, path, t),
+  apiPost: (path, body, t)=>apiPost(settings, path, body, t),
+  cacheMembers, readMembersCache,
+  cacheHistory, readHistoryCache,
+  playMusic: ()=>playMusic(settings),
+  stopMusic
+};
 /* ===========================
- PART 2 — UI BOOT
- - Settings load
- - Apply UI
- - Drawer open/close
- - Save settings
- - Pool refresh
+ PART 2 — UI BOOT + THEME + MEDIA (Premium Base)
+ - Settings load/apply
+ - Theme color apply (Luxury default)
+ - Background / Banners / Wheel Border BG / Wheel Banner PNG
+ - Music (upload mp3 + toggle)
 =========================== */
 
 let settings = loadSettings();
 
-/* ===== DOM ===== */
-
-const spinBtn = $("spinBtn");
-const restartSpinBtn = $("restartSpinBtn");
-const membersBtn = $("membersBtn");
-const historyBtn = $("historyBtn");
-
-const poolText = $("poolText");
+/* ===== DOM (must exist in HTML) ===== */
+const bgLayer = $("bgLayer");
 
 const settingsBtn = $("settingsBtn");
 const closeSettingsBtn = $("closeSettingsBtn");
 const drawer = $("drawer");
+
+const saveBtn = $("saveBtn");
+const resetBtn = $("resetBtn");
 
 const musicBtn = $("musicBtn");
 
@@ -306,132 +311,286 @@ const apiKeyInput = $("apiKeyInput");
 
 const uiColorInput = $("uiColorInput");
 const wheelAccentInput = $("wheelAccentInput");
+const wheelColorsInput = $("wheelColorsInput");
+
+const pageBgFile = $("pageBgFile");
+const wheelBgFile = $("wheelBgFile");
+const topBannerFile = $("topBannerFile");
+const bottomBannerFile = $("bottomBannerFile");
+const wheelBannerFile = $("wheelBannerFile");
+const bgSongFile = $("bgSongFile");
 
 const topBannerImg = $("topBannerImg");
+const topBannerFallback = $("topBannerFallback");
+
 const bottomBannerImg = $("bottomBannerImg");
+const bottomBannerFallback = $("bottomBannerFallback");
+
 const wheelBannerImg = $("wheelBannerImg");
+const wheelBannerFallback = $("wheelBannerFallback");
 
-const bgLayer = $("bgLayer");
+const wheelWrap = $("wheelWrap");
 
-/* ===== APPLY SETTINGS ===== */
+/* ===== Music engine ===== */
+let bgAudio = null;
 
-function applySettingsUI(){
+function ensureAudio() {
+  if (bgAudio) return bgAudio;
+  bgAudio = new Audio();
+  bgAudio.loop = true;
+  bgAudio.preload = "auto";
+  bgAudio.volume = 0.6;
+  return bgAudio;
+}
 
-  apiBaseInput.value = settings.apiBase;
-  apiKeyInput.value = settings.apiKey;
+function setMusicBtnState() {
+  const a = ensureAudio();
+  const on = !a.paused && !a.ended;
+  musicBtn.textContent = on ? "🎵 Music: ON" : "🎵 Music: OFF";
+}
 
-  uiColorInput.value = settings.uiColor;
-  wheelAccentInput.value = settings.wheelAccent;
+async function playMusic() {
+  const a = ensureAudio();
+  if (!settings.bgSongDataUrl) {
+    alert("MP3 မရွေးထားသေးပါ (Settings > Upload MP3)");
+    return;
+  }
+  a.src = settings.bgSongDataUrl;
+  try {
+    await a.play();
+  } catch (e) {
+    // iOS/Chrome: must be user gesture; this is called from click so usually ok
+    alert("Music play မရပါ: browser permission လိုနိုင်ပါတယ်");
+  }
+  setMusicBtnState();
+}
 
-  document.documentElement.style.setProperty("--ui",settings.uiColor);
-  document.documentElement.style.setProperty("--gold",settings.wheelAccent);
+function stopMusic() {
+  const a = ensureAudio();
+  try { a.pause(); } catch {}
+  setMusicBtnState();
+}
 
-  if(settings.pageBgDataUrl){
+/* ===== File -> DataURL ===== */
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve("");
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result || ""));
+    fr.onerror = () => reject(fr.error || new Error("file read error"));
+    fr.readAsDataURL(file);
+  });
+}
+
+/* ===== Apply settings to UI ===== */
+function applySettingsUI() {
+  // inputs
+  apiBaseInput.value = settings.apiBase || DEFAULT_API_BASE;
+  apiKeyInput.value = settings.apiKey || DEFAULT_API_KEY;
+
+  uiColorInput.value = settings.uiColor || "#ffffff";
+  wheelAccentInput.value = settings.wheelAccent || "#d6b25e";
+  wheelColorsInput.value = settings.wheelColorsText || "";
+
+  // css vars (Luxury)
+  document.documentElement.style.setProperty("--ui", uiColorInput.value);
+  document.documentElement.style.setProperty("--gold", wheelAccentInput.value);
+
+  // page bg
+  if (settings.pageBgDataUrl) {
     bgLayer.style.backgroundImage = `url(${settings.pageBgDataUrl})`;
     bgLayer.classList.add("has-img");
+  } else {
+    bgLayer.style.backgroundImage = "";
+    bgLayer.classList.remove("has-img");
   }
 
-  if(settings.topBannerDataUrl){
+  // wheel border bg (inside wheelWrap)
+  if (settings.wheelBgDataUrl) {
+    wheelWrap.style.setProperty("--wheel-bg", `url(${settings.wheelBgDataUrl})`);
+    wheelWrap.classList.add("has-wheel-bg");
+  } else {
+    wheelWrap.style.removeProperty("--wheel-bg");
+    wheelWrap.classList.remove("has-wheel-bg");
+  }
+
+  // top banner
+  if (settings.topBannerDataUrl) {
     topBannerImg.src = settings.topBannerDataUrl;
     topBannerImg.style.display = "block";
+    topBannerFallback.style.display = "none";
+  } else {
+    topBannerImg.removeAttribute("src");
+    topBannerImg.style.display = "none";
+    topBannerFallback.style.display = "block";
   }
 
-  if(settings.bottomBannerDataUrl){
+  // bottom banner
+  if (settings.bottomBannerDataUrl) {
     bottomBannerImg.src = settings.bottomBannerDataUrl;
     bottomBannerImg.style.display = "block";
+    bottomBannerFallback.style.display = "none";
+  } else {
+    bottomBannerImg.removeAttribute("src");
+    bottomBannerImg.style.display = "none";
+    bottomBannerFallback.style.display = "block";
   }
 
-  if(settings.wheelBannerDataUrl){
+  // wheel banner png
+  if (settings.wheelBannerDataUrl) {
     wheelBannerImg.src = settings.wheelBannerDataUrl;
     wheelBannerImg.style.display = "block";
+    wheelBannerFallback.style.display = "none";
+  } else {
+    wheelBannerImg.removeAttribute("src");
+    wheelBannerImg.style.display = "none";
+    wheelBannerFallback.style.display = "block";
   }
 
+  // music button state
+  setMusicBtnState();
 }
 
-applySettingsUI();
-
-/* ===== SETTINGS DRAWER ===== */
-
-settingsBtn.onclick = ()=>{
-
+/* ===== Open / Close settings ===== */
+settingsBtn.addEventListener("click", () => {
   drawer.classList.add("open");
+});
 
-};
-
-closeSettingsBtn.onclick = ()=>{
-
+closeSettingsBtn.addEventListener("click", () => {
   drawer.classList.remove("open");
+});
 
-};
+/* ===== Save settings from UI ===== */
+function readSettingsFromUI() {
+  settings.apiBase = String(apiBaseInput.value || "").trim() || DEFAULT_API_BASE;
+  settings.apiKey = String(apiKeyInput.value || "").trim() || DEFAULT_API_KEY;
 
-/* ===== SAVE SETTINGS ===== */
+  settings.uiColor = String(uiColorInput.value || "#ffffff");
+  settings.wheelAccent = String(wheelAccentInput.value || "#d6b25e");
 
-function saveSettingsFromUI(){
-
-  settings.apiBase = apiBaseInput.value.trim();
-  settings.apiKey = apiKeyInput.value.trim();
-
-  settings.uiColor = uiColorInput.value;
-  settings.wheelAccent = wheelAccentInput.value;
+  settings.wheelColorsText = String(wheelColorsInput.value || "").trim();
 
   saveSettings(settings);
+  applySettingsUI();
+}
 
+/* ===== Reset (premium defaults) ===== */
+function resetAllSettings() {
+  // stop music first
+  stopMusic();
+
+  // clear local storage keys
+  try { localStorage.removeItem(LS_SETTINGS); } catch {}
+  try { localStorage.removeItem(LS_CACHE_MEMBERS); } catch {}
+  try { localStorage.removeItem(LS_CACHE_MEMBERS_AT); } catch {}
+  // today winners keys are per day; keep or clear? -> keep safe (optional)
+  // try { localStorage.removeItem(todayKey()); } catch {}
+
+  settings = structuredClone(defaultSettings);
+  saveSettings(settings);
   applySettingsUI();
 
+  alert("✅ Reset ပြီးပါပြီ");
 }
 
-/* ===== SAVE BUTTON ===== */
+/* ===== Wire Save/Reset ===== */
+saveBtn.addEventListener("click", () => {
+  readSettingsFromUI();
+  drawer.classList.remove("open");
+  alert("✅ Saved");
+});
 
-const saveBtn = $("saveBtn");
+resetBtn.addEventListener("click", () => {
+  const ok = confirm("Reset လုပ်မလား? (UI settings တွေပြန်စတင်မယ်)");
+  if (!ok) return;
+  resetAllSettings();
+});
 
-saveBtn.onclick = ()=>{
+/* ===== Live theme update ===== */
+uiColorInput.addEventListener("input", () => {
+  settings.uiColor = uiColorInput.value;
+  saveSettings(settings);
+  applySettingsUI();
+});
 
-  saveSettingsFromUI();
+wheelAccentInput.addEventListener("input", () => {
+  settings.wheelAccent = wheelAccentInput.value;
+  saveSettings(settings);
+  applySettingsUI();
+});
 
-  alert("Settings Saved ✅");
+wheelColorsInput.addEventListener("change", () => {
+  settings.wheelColorsText = String(wheelColorsInput.value || "");
+  saveSettings(settings);
+  // wheel redraw handled in Part 3
+});
 
-};
+/* ===== Upload handlers ===== */
+pageBgFile.addEventListener("change", async () => {
+  const f = pageBgFile.files?.[0];
+  if (!f) return;
+  settings.pageBgDataUrl = await readFileAsDataURL(f);
+  saveSettings(settings);
+  applySettingsUI();
+});
 
-/* ===== RESET BUTTON ===== */
+wheelBgFile.addEventListener("change", async () => {
+  const f = wheelBgFile.files?.[0];
+  if (!f) return;
+  settings.wheelBgDataUrl = await readFileAsDataURL(f);
+  saveSettings(settings);
+  applySettingsUI();
+});
 
-const resetBtn = $("resetBtn");
+topBannerFile.addEventListener("change", async () => {
+  const f = topBannerFile.files?.[0];
+  if (!f) return;
+  settings.topBannerDataUrl = await readFileAsDataURL(f);
+  saveSettings(settings);
+  applySettingsUI();
+});
 
-resetBtn.onclick = ()=>{
+bottomBannerFile.addEventListener("change", async () => {
+  const f = bottomBannerFile.files?.[0];
+  if (!f) return;
+  settings.bottomBannerDataUrl = await readFileAsDataURL(f);
+  saveSettings(settings);
+  applySettingsUI();
+});
 
-  if(!confirm("Reset UI settings ?")) return;
+wheelBannerFile.addEventListener("change", async () => {
+  const f = wheelBannerFile.files?.[0];
+  if (!f) return;
+  settings.wheelBannerDataUrl = await readFileAsDataURL(f);
+  saveSettings(settings);
+  applySettingsUI();
+});
 
-  resetUiLocalAll();
+bgSongFile.addEventListener("change", async () => {
+  const f = bgSongFile.files?.[0];
+  if (!f) return;
+  settings.bgSongDataUrl = await readFileAsDataURL(f);
+  saveSettings(settings);
+  alert("✅ MP3 Saved — Music button နဲ့ ON/OFF လုပ်နိုင်ပါပြီ");
+});
 
-  location.reload();
-
-};
-
-/* ===== POOL REFRESH ===== */
-
-async function refreshPool(){
-
-  const res = await apiGet("/pool",8000);
-
-  if(!res?.ok){
-
-    poolText.textContent = "Error";
-
+/* ===== Music toggle ===== */
+musicBtn.addEventListener("click", async () => {
+  const a = ensureAudio();
+  if (!a.paused && !a.ended) {
+    stopMusic();
     return;
-
   }
-
-  poolText.textContent = res.pool ?? "-";
-
-}
+  await playMusic();
+});
 
 /* ===== INIT ===== */
-
-refreshPool();
+applySettingsUI();
 /* ===========================
- PART 3 — WHEEL + PRIZE BUILDER
- - Wheel draw
- - Prize builder
- - Prize sync with Render
+ PART 3 — WHEEL + PRIZE BUILDER (Premium)
+ - Wheel draw with luxury accents
+ - Prize Builder (add/remove/stepper)
+ - Sync prizes to Render: POST /config/prizes
 =========================== */
 
 let wheelAngle = 0;
@@ -440,277 +599,455 @@ let wheelPrizes = [];
 const wheelCanvas = $("wheel");
 const wheelCtx = wheelCanvas.getContext("2d");
 
-/* ===== PARSE WHEEL COLORS ===== */
+/* ===== Prize Builder DOM ===== */
+const prizeBuilder = $("prizeBuilder");
 
-function parseWheelColors(){
-
-  const txt = settings.wheelColorsText || "";
-
+/* ===== helpers ===== */
+function parseWheelColors() {
+  const txt = String(settings.wheelColorsText || "").trim();
   const arr = txt
     .split("\n")
-    .map(v=>v.trim())
-    .filter(v=>v);
+    .map((v) => v.trim())
+    .filter(Boolean);
 
-  if(!arr.length){
-    return ["#ffffff","#f1f5ff","#fff4d6","#e9eefc"];
-  }
-
-  return arr;
+  return arr.length ? arr : ["#ffffff", "#f1f5ff", "#fff4d6", "#e9eefc"];
 }
 
-/* ===== BUILD UNIQUE PRIZES ===== */
+function buildPrizeTextForRender() {
+  // Render format: "PrizeName 3" each line
+  // ignore empty names
+  const lines = [];
+  for (const p of settings.prizes || []) {
+    const name = String(p?.name || "").trim();
+    const times = clamp(p?.times, 1, 9999);
+    if (!name) continue;
+    lines.push(`${name} ${times}`);
+  }
+  return lines.join("\n");
+}
 
-function buildWheelPrizes(){
-
+/* ===== BUILD UNIQUE PRIZES (for wheel slices) ===== */
+function buildWheelPrizes() {
   wheelPrizes = [];
-
   const seen = new Set();
 
-  settings.prizes.forEach(p=>{
-
-    const name = String(p.name || "").trim();
-
-    if(!name) return;
+  (settings.prizes || []).forEach((p) => {
+    const name = String(p?.name || "").trim();
+    if (!name) return;
 
     const key = name.toLowerCase();
-
-    if(seen.has(key)) return;
+    if (seen.has(key)) return;
 
     seen.add(key);
-
     wheelPrizes.push(name);
-
   });
 
-  if(!wheelPrizes.length){
-    wheelPrizes = ["EMPTY"];
-  }
+  if (!wheelPrizes.length) wheelPrizes = ["EMPTY"];
 }
 
 /* ===== DRAW WHEEL ===== */
-
-function drawWheel(){
-
+function drawWheel() {
   const total = wheelPrizes.length;
-
   const TAU = Math.PI * 2;
 
   const w = wheelCanvas.width;
   const h = wheelCanvas.height;
+  const cx = w / 2;
+  const cy = h / 2;
 
-  const cx = w/2;
-  const cy = h/2;
+  const r = Math.min(cx, cy) - 10;
 
-  const r = Math.min(cx,cy) - 10;
+  wheelCtx.clearRect(0, 0, w, h);
 
-  wheelCtx.clearRect(0,0,w,h);
+  // base shadow
+  wheelCtx.save();
+  wheelCtx.beginPath();
+  wheelCtx.arc(cx, cy, r + 2, 0, TAU);
+  wheelCtx.fillStyle = "rgba(0,0,0,0.06)";
+  wheelCtx.fill();
+  wheelCtx.restore();
 
   const colors = parseWheelColors();
+  const slice = TAU / total;
 
-  const slice = TAU/total;
-
-  for(let i=0;i<total;i++){
-
-    const start = wheelAngle + i*slice;
+  for (let i = 0; i < total; i++) {
+    const start = wheelAngle + i * slice;
     const end = start + slice;
 
+    // slice
     wheelCtx.beginPath();
-    wheelCtx.moveTo(cx,cy);
-    wheelCtx.arc(cx,cy,r,start,end);
+    wheelCtx.moveTo(cx, cy);
+    wheelCtx.arc(cx, cy, r, start, end);
     wheelCtx.closePath();
 
     wheelCtx.fillStyle = colors[i % colors.length];
     wheelCtx.fill();
 
-    wheelCtx.strokeStyle = "rgba(0,0,0,0.12)";
+    // divider
+    wheelCtx.strokeStyle = "rgba(16,19,24,0.10)";
+    wheelCtx.lineWidth = 1;
     wheelCtx.stroke();
 
+    // text
     wheelCtx.save();
-
-    wheelCtx.translate(cx,cy);
-    wheelCtx.rotate(start + slice/2);
+    wheelCtx.translate(cx, cy);
+    wheelCtx.rotate(start + slice / 2);
 
     wheelCtx.fillStyle = "#101318";
-    wheelCtx.font = "bold 16px system-ui";
+    wheelCtx.font = "700 16px system-ui";
     wheelCtx.textAlign = "right";
+    wheelCtx.textBaseline = "middle";
 
-    wheelCtx.fillText(
-      wheelPrizes[i],
-      r - 20,
-      6
-    );
+    const label = String(wheelPrizes[i] || "");
+    wheelCtx.fillText(label, r - 18, 0);
 
     wheelCtx.restore();
   }
+
+  // inner ring (luxury accent)
+  wheelCtx.save();
+  wheelCtx.beginPath();
+  wheelCtx.arc(cx, cy, r - 6, 0, TAU);
+  wheelCtx.strokeStyle = "rgba(214,178,94,0.35)";
+  wheelCtx.lineWidth = 4;
+  wheelCtx.stroke();
+  wheelCtx.restore();
+
+  // center cap
+  wheelCtx.save();
+  wheelCtx.beginPath();
+  wheelCtx.arc(cx, cy, 42, 0, TAU);
+  wheelCtx.fillStyle = "rgba(255,255,255,0.85)";
+  wheelCtx.fill();
+  wheelCtx.strokeStyle = "rgba(16,19,24,0.12)";
+  wheelCtx.lineWidth = 1;
+  wheelCtx.stroke();
+  wheelCtx.restore();
 }
 
 /* ===========================
- PRIZE BUILDER
+ PRIZE BUILDER UI
 =========================== */
 
-const prizeBuilder = $("prizeBuilder");
-
-function renderPrizeBuilder(){
-
+function renderPrizeBuilder() {
   prizeBuilder.innerHTML = "";
 
-  settings.prizes.forEach((p,idx)=>{
-
+  (settings.prizes || []).forEach((p, idx) => {
     const row = document.createElement("div");
     row.className = "prize-row";
 
     const name = document.createElement("input");
-    name.value = p.name;
+    name.type = "text";
+    name.value = String(p?.name || "");
+    name.placeholder = "Prize name";
 
     const step = document.createElement("div");
     step.className = "stepper";
 
     const minus = document.createElement("button");
-    minus.textContent = "-";
+    minus.type = "button";
+    minus.textContent = "−";
 
     const input = document.createElement("input");
     input.type = "number";
-    input.value = p.times;
+    input.value = clamp(p?.times, 1, 9999);
+    input.min = "1";
+    input.max = "9999";
 
     const plus = document.createElement("button");
+    plus.type = "button";
     plus.textContent = "+";
 
     const remove = document.createElement("button");
+    remove.type = "button";
     remove.textContent = "✖";
 
-/* ===== MINUS ===== */
-
-    minus.onclick = ()=>{
-
-      p.times = Math.max(1,p.times-1);
-
+    minus.onclick = () => {
+      p.times = Math.max(1, clamp(p.times, 1, 9999) - 1);
       saveSettings(settings);
+      renderPrizeBuilder();
+    };
 
+    plus.onclick = () => {
+      p.times = clamp(p.times, 1, 9999) + 1;
+      saveSettings(settings);
+      renderPrizeBuilder();
+    };
+
+    input.onchange = () => {
+      p.times = clamp(input.value, 1, 9999);
+      saveSettings(settings);
       renderPrizeBuilder();
       buildWheelPrizes();
       drawWheel();
     };
 
-/* ===== PLUS ===== */
-
-    plus.onclick = ()=>{
-
-      p.times = p.times + 1;
-
+    name.onchange = () => {
+      p.name = String(name.value || "");
       saveSettings(settings);
-
-      renderPrizeBuilder();
       buildWheelPrizes();
       drawWheel();
     };
 
-/* ===== INPUT CHANGE ===== */
-
-    input.onchange = ()=>{
-
-      p.times = clamp(input.value,1,9999);
-
-      saveSettings(settings);
-
-      renderPrizeBuilder();
-      buildWheelPrizes();
-      drawWheel();
-    };
-
-/* ===== NAME CHANGE ===== */
-
-    name.onchange = ()=>{
-
-      p.name = name.value;
-
-      saveSettings(settings);
-
-      buildWheelPrizes();
-      drawWheel();
-    };
-
-/* ===== REMOVE ===== */
-
-    remove.onclick = ()=>{
-
-      settings.prizes.splice(idx,1);
-
-      if(settings.prizes.length===0){
-
-        settings.prizes.push({
-          name:"",
-          times:1
-        });
+    remove.onclick = () => {
+      settings.prizes.splice(idx, 1);
+      if (settings.prizes.length === 0) {
+        settings.prizes.push({ name: "", times: 1 });
       }
-
       saveSettings(settings);
-
       renderPrizeBuilder();
       buildWheelPrizes();
       drawWheel();
     };
 
-    step.append(minus,input,plus,remove);
-
-    row.append(name,step);
-
+    step.append(minus, input, plus, remove);
+    row.append(name, step);
     prizeBuilder.append(row);
   });
 
-/* ===== ADD PRIZE ===== */
+  // actions row
+  const actions = document.createElement("div");
+  actions.style.display = "flex";
+  actions.style.gap = "10px";
+  actions.style.marginTop = "10px";
+  actions.style.flexWrap = "wrap";
 
   const addBtn = document.createElement("button");
-
   addBtn.className = "btn";
+  addBtn.type = "button";
   addBtn.textContent = "+ Add Prize";
+  addBtn.onclick = () => {
+    settings.prizes.push({ name: "", times: 1 });
+    saveSettings(settings);
+    renderPrizeBuilder();
+  };
 
-  addBtn.onclick = ()=>{
-
-    settings.prizes.push({
-      name:"",
-      times:1
-    });
-
+  const syncBtn = document.createElement("button");
+  syncBtn.className = "btn primary";
+  syncBtn.type = "button";
+  syncBtn.textContent = "Save & Sync to Render";
+  syncBtn.onclick = async () => {
+    // Save UI settings first
     saveSettings(settings);
 
-    renderPrizeBuilder();
+    // Build render text + call /config/prizes
+    const prizeText = buildPrizeTextForRender();
+    if (!String(prizeText).trim()) {
+      alert("Prize မရှိသေးပါ (Name ထည့်ပါ)");
+      return;
+    }
+
+    setBusy(syncBtn, true, "Syncing...");
+    try {
+      const r = await apiPost("/config/prizes", { prizeText }, 15000);
+      if (!r?.ok) throw new Error(r?.error || "sync_failed");
+      alert(`✅ Render Sync OK (bag: ${r.bag_size || "-"})`);
+    } catch (e) {
+      alert("Sync error: " + (e?.message || e));
+    } finally {
+      setBusy(syncBtn, false);
+    }
+
+    // rebuild wheel
     buildWheelPrizes();
     drawWheel();
   };
 
-  prizeBuilder.append(addBtn);
+  actions.append(addBtn, syncBtn);
+  prizeBuilder.append(actions);
 }
 
-/* ===== SYNC PRIZES TO RENDER ===== */
-
-async function syncPrizesToServer(){
-
-  const lines = settings.prizes
-    .filter(p=>p.name && p.times)
-    .map(p=>`${p.name} ${p.times}time`)
-    .join("\n");
-
-  if(!lines) return;
-
-  try{
-
-    const res = await apiPost("/config/prizes",{prizeText:lines},12000);
-
-    if(!res?.ok){
-      console.warn("Prize sync error",res.error);
-    }
-
-  }catch(e){
-    console.warn("Prize sync fail",e);
-  }
-}
-
-/* ===== AUTO SYNC ON SAVE ===== */
-
-saveBtn.addEventListener("click",syncPrizesToServer);
-
-/* ===== INIT ===== */
-
+/* ===== INIT (Part 3) ===== */
 buildWheelPrizes();
 drawWheel();
 renderPrizeBuilder();
+/* ===========================
+ PART 4 — SPIN ENGINE (Render)
+ - call /spin
+ - animate wheel
+ - show winner modal
+ - refresh pool
+=========================== */
+
+let spinning = false;
+
+/* ===== find prize index ===== */
+function findPrizeIndex(prize){
+
+  const p = String(prize || "").trim();
+
+  let idx = wheelPrizes.findIndex(v => String(v).trim() === p);
+
+  if(idx >= 0) return idx;
+
+  const lower = p.toLowerCase();
+
+  idx = wheelPrizes.findIndex(v => String(v).toLowerCase() === lower);
+
+  return idx;
+}
+
+/* ===== calculate angle ===== */
+function calcTargetAngle(idx){
+
+  const TAU = Math.PI * 2;
+
+  const total = wheelPrizes.length;
+
+  const slice = TAU / total;
+
+  const pointer = -Math.PI / 2;
+
+  let target = pointer - (idx + 0.5) * slice;
+
+  target = ((target % TAU) + TAU) % TAU;
+
+  return target;
+}
+
+/* ===== animate spin ===== */
+function animateSpin(target, duration = 3200){
+
+  const TAU = Math.PI * 2;
+
+  const start = wheelAngle;
+
+  const startNorm = ((start % TAU) + TAU) % TAU;
+
+  const delta = ((target - startNorm) + TAU) % TAU;
+
+  const extra = 6 + Math.random() * 4;
+
+  const final = start + extra * TAU + delta;
+
+  const t0 = performance.now();
+
+  function ease(t){
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  return new Promise(resolve => {
+
+    function frame(now){
+
+      const p = Math.min((now - t0) / duration, 1);
+
+      const e = ease(p);
+
+      wheelAngle = start + (final - start) * e;
+
+      drawWheel();
+
+      if(p < 1) requestAnimationFrame(frame);
+      else resolve();
+
+    }
+
+    requestAnimationFrame(frame);
+
+  });
+}
+
+/* ===== SPIN ===== */
+async function doSpin(){
+
+  if(spinning) return;
+
+  if(!wheelPrizes.length){
+    alert("Prize မရှိသေးပါ");
+    return;
+  }
+
+  spinning = true;
+
+  setBusy(spinBtn, true, "SPIN...");
+
+  let res;
+
+  try{
+
+    /* call Render spin */
+    res = await apiPost("/spin", {}, 15000);
+
+    if(!res?.ok){
+      throw new Error(res?.error || "spin_error");
+    }
+
+  }catch(e){
+
+    spinning = false;
+
+    setBusy(spinBtn, false);
+
+    alert("Spin error: " + (e?.message || e));
+
+    return;
+  }
+
+  const prize = String(res.prize || "");
+
+  const winner = res.winner || {};
+
+  /* find slice */
+  let idx = findPrizeIndex(prize);
+
+  if(idx < 0){
+
+    buildWheelPrizes();
+    drawWheel();
+
+    idx = findPrizeIndex(prize);
+
+  }
+
+  if(idx < 0){
+
+    idx = Math.floor(Math.random() * wheelPrizes.length);
+
+  }
+
+  const target = calcTargetAngle(idx);
+
+  /* spin animation */
+  await animateSpin(target, 3200);
+
+  /* winner modal */
+  showWinnerModal(prize, winner, res.turn);
+
+  /* refresh pool */
+  refreshPool();
+
+  spinning = false;
+
+  setBusy(spinBtn, false);
+}
+
+/* ===== bind spin button ===== */
+spinBtn.onclick = doSpin;
+
+/* ===== restart event ===== */
+restartSpinBtn.onclick = async () => {
+
+  setBusy(restartSpinBtn, true, "Restarting...");
+
+  try{
+
+    const r = await apiPost("/event/reset", {}, 15000);
+
+    if(!r?.ok){
+      alert("Reset error: " + (r?.error || "unknown"));
+    }
+
+    refreshPool();
+
+  }catch(e){
+
+    alert("Reset error: " + (e?.message || e));
+
+  }finally{
+
+    setBusy(restartSpinBtn, false);
+
+  }
+
+};
