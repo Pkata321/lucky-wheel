@@ -1,219 +1,363 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lucky77 Premium Wheel</title>
-  <link rel="stylesheet" href="./style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lucky77 Wheel</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#ffffff;
+margin:0;
+}
+
+.container{
+max-width:1100px;
+margin:auto;
+padding:20px;
+}
+
+.topbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:20px;
+}
+
+.logo{
+font-size:30px;
+font-weight:bold;
+color:#d6b25e;
+}
+
+.stats{
+display:flex;
+gap:20px;
+margin-bottom:20px;
+}
+
+.stat{
+background:#f5f5f5;
+padding:15px;
+border-radius:10px;
+flex:1;
+text-align:center;
+}
+
+.wheel-wrap{
+position:relative;
+width:420px;
+margin:auto;
+}
+
+canvas{
+width:100%;
+}
+
+.spin{
+position:absolute;
+left:50%;
+top:50%;
+transform:translate(-50%,-50%);
+width:110px;
+height:110px;
+border-radius:50%;
+background:#d6b25e;
+border:none;
+font-size:22px;
+font-weight:bold;
+cursor:pointer;
+}
+
+.arrow{
+position:absolute;
+top:-15px;
+left:50%;
+transform:translateX(-50%);
+width:0;
+height:0;
+border-left:12px solid transparent;
+border-right:12px solid transparent;
+border-bottom:20px solid #d6b25e;
+}
+
+.panel{
+margin-top:30px;
+}
+
+.card{
+border:1px solid #eee;
+padding:12px;
+margin-bottom:8px;
+border-radius:8px;
+}
+
+button{
+cursor:pointer;
+}
+
+</style>
 </head>
+
 <body>
-  <div id="bgLayer" class="bg-layer"></div>
 
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-logo">LUCKY77</div>
-        <div class="brand-sub">Premium Wheel Panel</div>
-      </div>
+<div class="container">
 
-      <div class="topbar-actions">
-        <button id="musicBtn" class="btn soft" type="button">🎵 Music OFF</button>
-        <button id="settingsBtn" class="btn icon" type="button">⚙️</button>
-      </div>
-    </header>
+<div class="topbar">
+<div class="logo">Lucky77 Wheel</div>
+<button id="refreshBtn">Refresh</button>
+</div>
 
-    <section class="hero-banner banner-box">
-      <img id="topBannerImg" alt="Top Banner" style="display:none" />
-      <div id="topBannerFallback" class="banner-fallback">
-        Top Banner
-      </div>
-    </section>
+<div class="stats">
+<div class="stat">
+Pool
+<div id="poolCount">-</div>
+</div>
 
-    <main class="main-grid">
-      <section class="left-menu glass-card">
-        <div class="menu-title">Lucky77 Control</div>
-        <button class="menu-item active" type="button">Dashboard</button>
-        <button class="menu-item" type="button" id="membersBtn">Members</button>
-        <button class="menu-item" type="button" id="winnersBtn">Winners</button>
-        <button class="menu-item" type="button" id="historyBtn">History</button>
-      </section>
+<div class="stat">
+Members
+<div id="membersCount">-</div>
+</div>
 
-      <section class="center-panel">
-        <div class="stats-row">
-          <div class="stat-card glass-card">
-            <div class="stat-label">Pool Count</div>
-            <div class="stat-value" id="poolText">-</div>
-          </div>
+<div class="stat">
+Winners
+<div id="winnersCount">-</div>
+</div>
+</div>
 
-          <div class="stat-card glass-card">
-            <div class="stat-label">Members</div>
-            <div class="stat-value" id="membersStatText">-</div>
-          </div>
+<div class="wheel-wrap">
 
-          <div class="stat-card glass-card">
-            <div class="stat-label">Winners</div>
-            <div class="stat-value" id="winnersStatText">-</div>
-          </div>
+<div class="arrow"></div>
 
-          <div class="stat-card glass-card">
-            <div class="stat-label">Test Mode</div>
-            <label class="toggle">
-              <input type="checkbox" id="testModeInput" />
-              <span class="toggle-ui"></span>
-            </label>
-          </div>
-        </div>
+<canvas id="wheel" width="420" height="420"></canvas>
 
-        <div class="wheel-layout">
-          <div class="builder-card glass-card">
-            <div class="section-title">Prize Builder</div>
-            <div id="prizeBuilder" class="prize-builder"></div>
-          </div>
+<button class="spin" id="spinBtn">
+SPIN
+</button>
 
-          <div class="wheel-card glass-card">
-            <div class="wheel-wrap" id="wheelWrap">
-              <div class="wheel-arrow" id="wheelArrow"></div>
-              <canvas id="wheel" width="520" height="520"></canvas>
-              <button id="spinBtn" class="spin-btn" type="button">SPIN</button>
-            </div>
+</div>
 
-            <div class="wheel-banner-box">
-              <div class="wheel-banner-slab"></div>
-              <img id="wheelBannerImg" alt="Wheel Banner" style="display:none" />
-              <div id="wheelBannerFallback" class="wheel-banner-fallback">
-                <div>Lucky77</div>
-                <div>Lucky Wheel</div>
-              </div>
-            </div>
+<div class="panel">
 
-            <div class="wheel-actions">
-              <button id="restartSpinBtn" class="btn danger" type="button">Restart Spin</button>
-              <div id="statusText" class="status-text">Ready</div>
-            </div>
-          </div>
-        </div>
+<h3>Members</h3>
+<div id="membersList"></div>
 
-        <section id="membersPanel" class="panel glass-card hidden">
-          <div class="panel-head">
-            <div class="panel-title">Members <span id="membersTotalText"></span></div>
-            <button id="membersCloseBtn" class="btn mini" type="button">Close</button>
-          </div>
-          <div id="membersTable" class="panel-body"></div>
-        </section>
+<h3>Winners</h3>
+<div id="winnersList"></div>
 
-        <section id="winnersPanel" class="panel glass-card hidden">
-          <div class="panel-head">
-            <div class="panel-title">Winners <span id="winnersTotalText"></span></div>
-            <button id="winnersCloseBtn" class="btn mini" type="button">Close</button>
-          </div>
-          <div id="winnersList" class="panel-body"></div>
-        </section>
+<h3>History</h3>
+<div id="historyList"></div>
 
-        <section id="historyPanel" class="panel glass-card hidden">
-          <div class="panel-head">
-            <div class="panel-title">History <span id="historyTotalText"></span></div>
-            <button id="historyCloseBtn" class="btn mini" type="button">Close</button>
-          </div>
-          <div id="historyList" class="panel-body"></div>
-        </section>
-      </section>
-    </main>
+</div>
 
-    <section class="footer-banner banner-box">
-      <img id="bottomBannerImg" alt="Bottom Banner" style="display:none" />
-      <div id="bottomBannerFallback" class="banner-fallback">
-        Bottom Banner
-      </div>
-    </section>
-  </div>
+</div>
+<script>
 
-  <div id="winnerModal" class="modal hidden" aria-hidden="true">
-    <div id="winnerBackdrop" class="modal-backdrop"></div>
+const API_BASE="https://lucky77-wheel-bot.onrender.com"
+const API_KEY="Lucky77_luckywheel_77"
 
-    <div class="modal-card">
-      <div class="modal-head">
-        <div id="winnerPrizeTitle" class="modal-badge">WINNER</div>
-        <button id="winnerCloseBtn" class="btn mini" type="button">Close</button>
-      </div>
+function api(path,method="GET",body){
 
-      <div id="winnerTitleText" class="modal-prize">-</div>
-      <div id="winnerNameText" class="modal-name">-</div>
-      <div id="winnerHint" class="modal-hint">-</div>
+return fetch(API_BASE+path+"?key="+API_KEY,{
+method,
+headers:{
+"Content-Type":"application/json",
+"x-api-key":API_KEY
+},
+body:body?JSON.stringify(body):null
+}).then(r=>r.json())
 
-      <div class="modal-actions">
-        <button id="contactBtn" class="btn primary" type="button">Telegram</button>
-        <button id="noticeBtn" class="btn" type="button">Notice DM</button>
-      </div>
-    </div>
-  </div>
+}
 
-  <aside id="drawer" class="drawer">
-    <div class="drawer-head">
-      <div class="drawer-title">Settings</div>
-      <button id="closeSettingsBtn" class="btn icon" type="button">✕</button>
-    </div>
+async function loadPool(){
 
-    <div class="field">
-      <label for="apiBaseInput">Render API Base</label>
-      <input id="apiBaseInput" type="text" />
-    </div>
+const r=await api("/pool")
 
-    <div class="field">
-      <label for="apiKeyInput">API Key</label>
-      <input id="apiKeyInput" type="text" />
-    </div>
+if(r.ok){
+document.getElementById("poolCount").innerText=r.pool
+}
 
-    <div class="field">
-      <label for="uiColorInput">UI Color</label>
-      <input id="uiColorInput" type="color" />
-    </div>
+}
 
-    <div class="field">
-      <label for="wheelAccentInput">Wheel Accent</label>
-      <input id="wheelAccentInput" type="color" />
-    </div>
+async function loadMembers(){
 
-    <div class="field">
-      <label for="wheelColorsInput">Slice Colors (one per line)</label>
-      <textarea id="wheelColorsInput" rows="5"></textarea>
-    </div>
+const r=await api("/members")
 
-    <div class="field">
-      <label for="pageBgFile">Page Background</label>
-      <input id="pageBgFile" type="file" accept="image/*" />
-    </div>
+if(!r.ok)return
 
-    <div class="field">
-      <label for="wheelBgFile">Wheel Border Background</label>
-      <input id="wheelBgFile" type="file" accept="image/*" />
-    </div>
+document.getElementById("membersCount").innerText=r.total
 
-    <div class="field">
-      <label for="topBannerFile">Top Banner</label>
-      <input id="topBannerFile" type="file" accept="image/*" />
-    </div>
+let html=""
 
-    <div class="field">
-      <label for="bottomBannerFile">Bottom Banner</label>
-      <input id="bottomBannerFile" type="file" accept="image/*" />
-    </div>
+r.members.forEach(m=>{
 
-    <div class="field">
-      <label for="wheelBannerFile">Wheel Banner PNG</label>
-      <input id="wheelBannerFile" type="file" accept="image/*" />
-    </div>
+html+=`
+<div class="card">
+${m.display}
+</div>
+`
 
-    <div class="field">
-      <label for="bgSongFile">Background Music</label>
-      <input id="bgSongFile" type="file" accept="audio/*" />
-    </div>
+})
 
-    <div class="drawer-actions">
-      <button id="resetBtn" class="btn" type="button">Reset</button>
-      <button id="saveBtn" class="btn primary" type="button">Save</button>
-    </div>
-  </aside>
+document.getElementById("membersList").innerHTML=html
 
-  <script src="./script.js"></script>
+}
+
+async function loadWinners(){
+
+const r=await api("/winners")
+
+if(!r.ok)return
+
+document.getElementById("winnersCount").innerText=r.total
+
+let html=""
+
+r.winners.forEach(w=>{
+
+html+=`
+<div class="card">
+#${w.turn} - ${w.prize} - ${w.display}
+</div>
+`
+
+})
+
+document.getElementById("winnersList").innerHTML=html
+
+}
+
+async function loadHistory(){
+
+const r=await api("/history")
+
+if(!r.ok)return
+
+let html=""
+
+r.history.forEach(h=>{
+
+html+=`
+<div class="card">
+#${h.turn} - ${h.prize} - ${h.display}
+</div>
+`
+
+})
+
+document.getElementById("historyList").innerHTML=html
+
+}
+
+async function refreshAll(){
+
+await loadPool()
+await loadMembers()
+await loadWinners()
+await loadHistory()
+
+}
+
+document.getElementById("refreshBtn").onclick=refreshAll
+
+</script>
+<script>
+
+const canvas=document.getElementById("wheel")
+const ctx=canvas.getContext("2d")
+
+let prizes=[]
+let angle=0
+
+function drawWheel(){
+
+const total=prizes.length
+const slice=2*Math.PI/total
+
+ctx.clearRect(0,0,420,420)
+
+for(let i=0;i<total;i++){
+
+const start=angle+i*slice
+const end=start+slice
+
+ctx.beginPath()
+ctx.moveTo(210,210)
+ctx.arc(210,210,200,start,end)
+ctx.fillStyle=i%2?"#f2f2f2":"#ffffff"
+ctx.fill()
+
+ctx.save()
+ctx.translate(210,210)
+ctx.rotate(start+slice/2)
+ctx.fillStyle="#000"
+ctx.textAlign="right"
+ctx.fillText(prizes[i],180,0)
+ctx.restore()
+
+}
+
+}
+
+async function spin(){
+
+const r=await api("/spin","POST")
+
+if(!r.ok){
+alert("Spin error")
+return
+}
+
+const prize=r.prize
+
+const index=prizes.indexOf(prize)
+
+const slice=2*Math.PI/prizes.length
+
+const target=-(index*slice)-(slice/2)+Math.PI/2
+
+angle=target
+
+drawWheel()
+
+alert("Winner: "+r.winner.display+" | "+prize)
+
+refreshAll()
+
+}
+
+document.getElementById("spinBtn").onclick=spin
+
+async function init(){
+
+const r=await api("/config")
+
+if(r.prizes_source){
+
+const lines=r.prizes_source.split("\n")
+
+lines.forEach(l=>{
+
+const p=l.split(" ")
+
+if(p[0])prizes.push(p[0])
+
+})
+
+}
+
+drawWheel()
+
+refreshAll()
+
+}
+
+init()
+
+</script>
+
 </body>
 </html>
+
