@@ -1,7 +1,7 @@
 const CONFIG = {
-  BASE_URL: "https://YOUR-RENDER-URL",
-  API_KEY: "YOUR_API_KEY",
-  REQUEST_TIMEOUT: 20000,
+  BASE_URL: "https://lucky77-wheel-bot.onrender.com",
+API_KEY: "Lucky77_luckywheel_77",
+  TIMEOUT_MS: 20000,
 };
 
 const state = {
@@ -13,13 +13,11 @@ const state = {
   scan: { status: "idle", summary: null, last_scan_at: "" },
   spinning: false,
   wheelDeg: 0,
-  activeTab: "members",
 };
 
 const el = {
   serverTimeText: document.getElementById("serverTimeText"),
   healthBadge: document.getElementById("healthBadge"),
-
   statMembers: document.getElementById("statMembers"),
   statPool: document.getElementById("statPool"),
   statWinners: document.getElementById("statWinners"),
@@ -32,7 +30,8 @@ const el = {
   wheel: document.getElementById("wheel"),
   spinBtn: document.getElementById("spinBtn"),
   restartBtn: document.getElementById("restartBtn"),
-  refreshAllBtn: document.getElementById("refreshAllBtn"),
+  refreshBtn: document.getElementById("refreshBtn"),
+
   winnerFlash: document.getElementById("winnerFlash"),
   winnerFlashName: document.getElementById("winnerFlashName"),
   winnerFlashPrize: document.getElementById("winnerFlashPrize"),
@@ -55,65 +54,8 @@ const el = {
   toast: document.getElementById("toast"),
 };
 
-function headers() {
-  return {
-    "Content-Type": "application/json",
-    "x-api-key": CONFIG.API_KEY,
-  };
-}
-
-async function api(path, options = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
-
-  try {
-    const response = await fetch(`${CONFIG.BASE_URL}${path}`, {
-      ...options,
-      headers: {
-        ...(options.headers || {}),
-        ...(options.method && options.method !== "GET" ? { "Content-Type": "application/json" } : {}),
-        "x-api-key": CONFIG.API_KEY,
-      },
-      signal: controller.signal,
-    });
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok || data.ok === false) {
-      const err = new Error(data.error || `HTTP ${response.status}`);
-      err.data = data;
-      throw err;
-    }
-
-    return data;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-function showToast(message, type = "normal") {
-  el.toast.textContent = message;
-  el.toast.classList.remove("hidden");
-  el.toast.style.borderColor =
-    type === "error"
-      ? "rgba(255,95,122,0.4)"
-      : type === "success"
-      ? "rgba(24,195,126,0.4)"
-      : "rgba(255,255,255,0.12)";
-
-  clearTimeout(showToast._timer);
-  showToast._timer = setTimeout(() => {
-    el.toast.classList.add("hidden");
-  }, 2600);
-}
-
-function setBadge(node, text, tone) {
-  node.textContent = text;
-  node.className = `status-pill ${tone}`;
-}
-
-function escapeHtml(v) {
-  return String(v ?? "")
+function escapeHtml(value) {
+  return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -123,20 +65,127 @@ function escapeHtml(v) {
 function formatTime(value) {
   if (!value) return "-";
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
+  if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleString();
 }
 
-function memberStatusClass(member) {
-  if (member.removed) return "removed";
-  if (member.active) return "active";
-  return "left";
+function setPill(node, text, type) {
+  node.textContent = text;
+  node.className = `pill ${type}`;
 }
 
-function memberStatusText(member) {
-  if (member.removed) return "removed";
-  if (member.active) return "active";
-  return "left";
+function showToast(message, type = "normal") {
+  el.toast.textContent = message;
+  el.toast.classList.remove("hidden");
+
+  if (type === "error") {
+    el.toast.style.borderColor = "rgba(255,94,123,0.4)";
+  } else if (type === "success") {
+    el.toast.style.borderColor = "rgba(24,197,127,0.4)";
+  } else {
+    el.toast.style.borderColor = "rgba(255,255,255,0.12)";
+  }
+
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => {
+    el.toast.classList.add("hidden");
+  }, 2600);
+}
+
+async function api(path, options = {}) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`${CONFIG.BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        "x-api-key": CONFIG.API_KEY,
+        ...(options.method && options.method !== "GET"
+          ? { "Content-Type": "application/json" }
+          : {}),
+        ...(options.headers || {}),
+      },
+      signal: controller.signal,
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || data.ok === false) {
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+
+    return data;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function loadHealth() {
+  state.health = await api("/health");
+}
+
+async function loadMembers() {
+  const includeRemoved = el.showRemovedToggle.checked ? "1" : "0";
+  const data = await api(`/members?include_removed=${includeRemoved}&backfill=1`);
+  state.members = data.members || [];
+}
+
+async function loadWinners() {
+  const data = await api("/winners");
+  state.winners = data.winners || [];
+}
+
+async function loadHistory() {
+  const data = await api("/history");
+  state.history = data.history || [];
+}
+
+async function loadPool() {
+  state.pool = await api("/pool");
+}
+
+async function loadScanStatus() {
+  state.scan = await api("/scan/status");
+}
+
+async function firstLoad() {
+  await Promise.all([
+    loadHealth(),
+    loadMembers(),
+    loadWinners(),
+    loadHistory(),
+    loadPool(),
+    loadScanStatus(),
+  ]);
+  renderAll();
+}
+
+async function refreshAllData() {
+  await Promise.all([
+    loadHealth(),
+    loadMembers(),
+    loadWinners(),
+    loadHistory(),
+    loadPool(),
+    loadScanStatus(),
+  ]);
+  renderAll();
+}
+
+async function refreshAfterScan() {
+  await Promise.all([loadScanStatus(), loadMembers(), loadPool(), loadHealth()]);
+  renderAll();
+}
+
+async function refreshAfterSpin() {
+  await Promise.all([loadWinners(), loadHistory(), loadPool(), loadHealth()]);
+  renderAll();
+}
+
+async function refreshAfterWinnerAction() {
+  await loadWinners();
+  renderWinners();
 }
 
 function renderHealth() {
@@ -145,29 +194,29 @@ function renderHealth() {
   el.statPool.textContent = h.pool ?? 0;
   el.statWinners.textContent = h.winners ?? 0;
   el.statPrizes.textContent = h.remaining_prizes ?? 0;
-  el.serverTimeText.textContent = h.time ? `Server: ${formatTime(h.time)}` : "Connected";
 
-  if (h.scan_status === "completed") setBadge(el.healthBadge, "Healthy", "success");
-  else if (h.scan_status === "scanning") setBadge(el.healthBadge, "Scanning", "warning");
-  else setBadge(el.healthBadge, "Live", "neutral");
+  el.serverTimeText.textContent = h.time
+    ? `Server: ${formatTime(h.time)}`
+    : "Connected";
 
-  if ((state.pool?.count || 0) <= 0) {
-    el.poolEmptyText.classList.remove("hidden");
-  } else {
-    el.poolEmptyText.classList.add("hidden");
-  }
+  if (h.scan_status === "completed") setPill(el.healthBadge, "Healthy", "success");
+  else if (h.scan_status === "scanning") setPill(el.healthBadge, "Scanning", "warning");
+  else setPill(el.healthBadge, "Live", "neutral");
+
+  if ((state.pool?.count || 0) <= 0) el.poolEmptyText.classList.remove("hidden");
+  else el.poolEmptyText.classList.add("hidden");
 }
 
 function renderScan() {
   const s = state.scan || {};
-  const summary = s.summary || {};
+  const summary = s.summary || null;
 
-  if (s.status === "completed") setBadge(el.scanStatusBadge, "completed", "success");
-  else if (s.status === "scanning") setBadge(el.scanStatusBadge, "scanning", "warning");
-  else if (s.status === "error") setBadge(el.scanStatusBadge, "error", "danger");
-  else setBadge(el.scanStatusBadge, "idle", "neutral");
+  if (s.status === "completed") setPill(el.scanStatusBadge, "completed", "success");
+  else if (s.status === "scanning") setPill(el.scanStatusBadge, "scanning", "warning");
+  else if (s.status === "error") setPill(el.scanStatusBadge, "error", "danger");
+  else setPill(el.scanStatusBadge, "idle", "neutral");
 
-  if (summary && Object.keys(summary).length) {
+  if (summary) {
     el.scanSummaryText.textContent =
       `Active ${summary.active ?? 0} · Left ${summary.left ?? 0} · Pool ${summary.pool ?? 0}`;
   } else if (s.last_scan_at) {
@@ -181,7 +230,7 @@ function renderMembers() {
   const q = (el.searchInput.value || "").trim().toLowerCase();
   const showRemoved = el.showRemovedToggle.checked;
 
-  const members = state.members.filter((m) => {
+  const filtered = state.members.filter((m) => {
     if (!showRemoved && m.removed) return false;
     if (!q) return true;
 
@@ -198,23 +247,23 @@ function renderMembers() {
     return blob.includes(q);
   });
 
-  el.membersCountText.textContent = `${members.length} users`;
+  el.membersCountText.textContent = `${filtered.length} users`;
 
-  if (!members.length) {
-    el.memberList.innerHTML = `<div class="empty-state">No members found</div>`;
+  if (!filtered.length) {
+    el.memberList.innerHTML = `<div class="empty">No members found</div>`;
     return;
   }
 
-  el.memberList.innerHTML = members
+  el.memberList.innerHTML = filtered
     .map((m) => {
-      const statusText = memberStatusText(m);
-      const statusClass = memberStatusClass(m);
+      const statusText = m.removed ? "removed" : m.active ? "active" : "left";
+      const statusClass = m.removed ? "removed" : m.active ? "active" : "left";
 
       return `
-        <div class="item-card">
+        <div class="item">
           <div class="item-top">
             <div>
-              <div class="item-name">${escapeHtml(m.display || m.id)}</div>
+              <div class="item-title">${escapeHtml(m.display || m.id)}</div>
               <div class="item-sub">
                 ID: ${escapeHtml(m.id)} · ${m.username ? "@" + escapeHtml(m.username) : "no username"}
               </div>
@@ -222,7 +271,7 @@ function renderMembers() {
             <div class="badge ${statusClass}">${escapeHtml(statusText)}</div>
           </div>
 
-          <div class="badge-row">
+          <div class="badges">
             ${m.isWinner ? `<span class="badge winner">winner</span>` : ""}
             ${m.dm_ready ? `<span class="badge active">dm ready</span>` : `<span class="badge left">dm off</span>`}
             ${m.registered_at ? `<span class="badge">reg ${escapeHtml(formatTime(m.registered_at))}</span>` : ""}
@@ -239,17 +288,17 @@ function renderWinners() {
   el.winnersCountText.textContent = `${winners.length} winners`;
 
   if (!winners.length) {
-    el.winnerList.innerHTML = `<div class="empty-state">No winners yet</div>`;
+    el.winnerList.innerHTML = `<div class="empty">No winners yet</div>`;
     return;
   }
 
   el.winnerList.innerHTML = winners
     .map((w) => {
       return `
-        <div class="item-card">
+        <div class="item">
           <div class="item-top">
             <div>
-              <div class="item-name">#${escapeHtml(w.turn)} · ${escapeHtml(w.display || w.user_id)}</div>
+              <div class="item-title">#${escapeHtml(w.turn)} · ${escapeHtml(w.display || w.user_id)}</div>
               <div class="item-sub">
                 Prize: ${escapeHtml(w.prize || "-")} · ${escapeHtml(formatTime(w.at))}
               </div>
@@ -257,17 +306,17 @@ function renderWinners() {
             <div class="badge ${w.done ? "active" : "left"}">${w.done ? "done" : "pending"}</div>
           </div>
 
-          <div class="badge-row">
+          <div class="badges">
             ${w.notice_sent ? `<span class="badge active">notice sent</span>` : `<span class="badge left">notice pending</span>`}
             ${w.username ? `<span class="badge">@${escapeHtml(w.username)}</span>` : ""}
             ${w.done_at ? `<span class="badge">done ${escapeHtml(formatTime(w.done_at))}</span>` : ""}
           </div>
 
-          <div class="action-row">
-            <button class="small-btn notice" onclick="sendNotice('${escapeHtml(w.user_id)}', '${escapeHtml(String(w.prize || "").replace(/'/g, "\\'"))}')">
+          <div class="item-actions">
+            <button class="small-btn notice" data-notice-user="${escapeHtml(w.user_id)}" data-notice-prize="${escapeHtml(w.prize || "")}">
               Notice
             </button>
-            <button class="small-btn done" onclick="toggleDone('${escapeHtml(w.user_id)}')">
+            <button class="small-btn done" data-done-user="${escapeHtml(w.user_id)}">
               ${w.done ? "Undo Done" : "Done"}
             </button>
           </div>
@@ -275,6 +324,8 @@ function renderWinners() {
       `;
     })
     .join("");
+
+  bindWinnerActionButtons();
 }
 
 function renderHistory() {
@@ -282,7 +333,7 @@ function renderHistory() {
   el.historyCountText.textContent = `${history.length} logs`;
 
   if (!history.length) {
-    el.historyList.innerHTML = `<div class="empty-state">No history yet</div>`;
+    el.historyList.innerHTML = `<div class="empty">No history yet</div>`;
     return;
   }
 
@@ -298,10 +349,10 @@ function renderHistory() {
         "-";
 
       return `
-        <div class="item-card">
+        <div class="item">
           <div class="item-top">
             <div>
-              <div class="item-name">#${escapeHtml(h.turn || "-")} · ${escapeHtml(winnerDisplay)}</div>
+              <div class="item-title">#${escapeHtml(h.turn || "-")} · ${escapeHtml(winnerDisplay)}</div>
               <div class="item-sub">
                 Prize: ${escapeHtml(h.prize || "-")} · ${escapeHtml(formatTime(h.at))}
               </div>
@@ -322,86 +373,14 @@ function renderAll() {
   renderHistory();
 }
 
-async function loadHealth() {
-  state.health = await api("/health", { method: "GET" });
-}
-
-async function loadMembers() {
-  const includeRemoved = el.showRemovedToggle.checked ? "1" : "0";
-  const data = await api(`/members?include_removed=${includeRemoved}&backfill=1`, { method: "GET" });
-  state.members = data.members || [];
-}
-
-async function loadWinners() {
-  const data = await api("/winners", { method: "GET" });
-  state.winners = data.winners || [];
-}
-
-async function loadHistory() {
-  const data = await api("/history", { method: "GET" });
-  state.history = data.history || [];
-}
-
-async function loadPool() {
-  state.pool = await api("/pool", { method: "GET" });
-}
-
-async function loadScanStatus() {
-  state.scan = await api("/scan/status", { method: "GET" });
-}
-
-async function initialLoad() {
-  try {
-    await Promise.all([
-      loadHealth(),
-      loadMembers(),
-      loadWinners(),
-      loadHistory(),
-      loadPool(),
-      loadScanStatus(),
-    ]);
-    renderAll();
-  } catch (err) {
-    console.error(err);
-    showToast(err.message || "Load failed", "error");
-  }
-}
-
-async function refreshAfterScan() {
-  await Promise.all([loadScanStatus(), loadMembers(), loadPool(), loadHealth()]);
-  renderAll();
-}
-
-async function refreshAfterSpin() {
-  await Promise.all([loadWinners(), loadHistory(), loadPool(), loadHealth()]);
-  renderAll();
-}
-
-async function refreshAfterNoticeOrDone() {
-  await loadWinners();
-  renderAll();
-}
-
-async function refreshEverything() {
-  await Promise.all([
-    loadHealth(),
-    loadMembers(),
-    loadWinners(),
-    loadHistory(),
-    loadPool(),
-    loadScanStatus(),
-  ]);
-  renderAll();
-}
-
 function startWheelAnimation() {
-  const extra = 360 * (5 + Math.floor(Math.random() * 3));
+  const extraRounds = 360 * (5 + Math.floor(Math.random() * 3));
   const offset = Math.floor(Math.random() * 360);
-  state.wheelDeg += extra + offset;
+  state.wheelDeg += extraRounds + offset;
   el.wheel.style.transform = `rotate(${state.wheelDeg}deg)`;
 }
 
-async function runScan() {
+async function handleScan() {
   if (state.spinning) {
     showToast("Spin နေချိန် scan မလုပ်ရပါ", "error");
     return;
@@ -409,7 +388,7 @@ async function runScan() {
 
   try {
     el.scanBtn.disabled = true;
-    setBadge(el.scanStatusBadge, "scanning", "warning");
+    setPill(el.scanStatusBadge, "scanning", "warning");
     el.scanSummaryText.textContent = "Checking registered member IDs...";
 
     await api("/scan/members", {
@@ -420,7 +399,6 @@ async function runScan() {
     await refreshAfterScan();
     showToast("Scan completed", "success");
   } catch (err) {
-    console.error(err);
     showToast(err.message || "Scan failed", "error");
     await loadScanStatus().catch(() => {});
     renderScan();
@@ -429,7 +407,7 @@ async function runScan() {
   }
 }
 
-async function runSpin() {
+async function handleSpin() {
   if (state.spinning) return;
 
   try {
@@ -453,7 +431,6 @@ async function runSpin() {
       showToast(`Winner: ${result?.winner?.display || result?.winner?.id}`, "success");
     }, 4800);
   } catch (err) {
-    console.error(err);
     showToast(err.message || "Spin failed", "error");
   } finally {
     setTimeout(() => {
@@ -464,7 +441,7 @@ async function runSpin() {
   }
 }
 
-async function savePrizes() {
+async function handleSavePrize() {
   const prizeText = el.prizeText.value.trim();
   if (!prizeText) {
     showToast("Prize text required", "error");
@@ -482,36 +459,35 @@ async function savePrizes() {
     renderHealth();
     showToast("Prize bag saved", "success");
   } catch (err) {
-    console.error(err);
     showToast(err.message || "Save prize failed", "error");
   } finally {
     el.savePrizeBtn.disabled = false;
   }
 }
 
-async function restartEvent() {
+async function handleRestart() {
   const ok = window.confirm("Restart event now?");
   if (!ok) return;
 
   try {
     el.restartBtn.disabled = true;
+
     await api("/restart-spin", {
       method: "POST",
       body: JSON.stringify({}),
     });
 
     el.winnerFlash.classList.add("hidden");
-    await refreshEverything();
+    await refreshAllData();
     showToast("Event restarted", "success");
   } catch (err) {
-    console.error(err);
     showToast(err.message || "Restart failed", "error");
   } finally {
     el.restartBtn.disabled = false;
   }
 }
 
-window.sendNotice = async function sendNotice(userId, prize) {
+async function sendNotice(userId, prize) {
   try {
     await api("/notice", {
       method: "POST",
@@ -521,15 +497,14 @@ window.sendNotice = async function sendNotice(userId, prize) {
       }),
     });
 
-    await refreshAfterNoticeOrDone();
+    await refreshAfterWinnerAction();
     showToast("Notice sent", "success");
   } catch (err) {
-    console.error(err);
     showToast(err.message || "Notice failed", "error");
   }
-};
+}
 
-window.toggleDone = async function toggleDone(userId) {
+async function toggleDone(userId) {
   try {
     await api("/winner/done", {
       method: "POST",
@@ -539,46 +514,61 @@ window.toggleDone = async function toggleDone(userId) {
       }),
     });
 
-    await refreshAfterNoticeOrDone();
+    await refreshAfterWinnerAction();
     showToast("Winner updated", "success");
   } catch (err) {
-    console.error(err);
     showToast(err.message || "Done update failed", "error");
   }
-};
+}
+
+function bindWinnerActionButtons() {
+  document.querySelectorAll("[data-notice-user]").forEach((btn) => {
+    btn.onclick = () => {
+      const userId = btn.getAttribute("data-notice-user");
+      const prize = btn.getAttribute("data-notice-prize") || "";
+      sendNotice(userId, prize);
+    };
+  });
+
+  document.querySelectorAll("[data-done-user]").forEach((btn) => {
+    btn.onclick = () => {
+      const userId = btn.getAttribute("data-done-user");
+      toggleDone(userId);
+    };
+  });
+}
 
 function bindTabs() {
-  const buttons = Array.from(document.querySelectorAll(".tab-btn"));
+  const tabs = Array.from(document.querySelectorAll(".tab-btn"));
   const panels = Array.from(document.querySelectorAll(".tab-panel"));
 
-  buttons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tab = btn.dataset.tab;
-      state.activeTab = tab;
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.tab;
 
-      buttons.forEach((b) => b.classList.toggle("active", b === btn));
-      panels.forEach((p) => p.classList.toggle("active", p.id === `tab-${tab}`));
+      tabs.forEach((t) => t.classList.toggle("active", t === tab));
+      panels.forEach((p) => p.classList.toggle("active", p.id === `tab-${target}`));
     });
   });
 }
 
 function bindEvents() {
-  el.refreshAllBtn.addEventListener("click", async () => {
+  el.refreshBtn.addEventListener("click", async () => {
     try {
-      el.refreshAllBtn.disabled = true;
-      await refreshEverything();
+      el.refreshBtn.disabled = true;
+      await refreshAllData();
       showToast("Refreshed", "success");
     } catch (err) {
       showToast(err.message || "Refresh failed", "error");
     } finally {
-      el.refreshAllBtn.disabled = false;
+      el.refreshBtn.disabled = false;
     }
   });
 
-  el.scanBtn.addEventListener("click", runScan);
-  el.spinBtn.addEventListener("click", runSpin);
-  el.savePrizeBtn.addEventListener("click", savePrizes);
-  el.restartBtn.addEventListener("click", restartEvent);
+  el.scanBtn.addEventListener("click", handleScan);
+  el.spinBtn.addEventListener("click", handleSpin);
+  el.savePrizeBtn.addEventListener("click", handleSavePrize);
+  el.restartBtn.addEventListener("click", handleRestart);
 
   el.searchInput.addEventListener("input", renderMembers);
   el.showRemovedToggle.addEventListener("change", async () => {
@@ -590,5 +580,10 @@ function bindEvents() {
 (async function init() {
   bindTabs();
   bindEvents();
-  await initialLoad();
+
+  try {
+    await firstLoad();
+  } catch (err) {
+    showToast(err.message || "Initial load failed", "error");
+  }
 })();
