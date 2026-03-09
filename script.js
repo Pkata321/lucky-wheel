@@ -4,6 +4,18 @@ const CONFIG = {
   TIMEOUT_MS: 60000,
 };
 
+const SETTINGS_KEY = "lucky77_premium_settings_v2";
+
+const defaultSettings = {
+  theme: "white",
+  bannerTitle: "Lucky77 Event",
+  bannerSub: "Spin & Win premium prizes",
+  topLogo: "",
+  wheelLogo: "",
+  musicDataUrl: "",
+  musicOn: false,
+};
+
 const state = {
   health: null,
   members: [],
@@ -52,7 +64,56 @@ const el = {
   historyCountText: document.getElementById("historyCountText"),
 
   toast: document.getElementById("toast"),
+
+  settingsBtn: document.getElementById("settingsBtn"),
+  settingsDrawer: document.getElementById("settingsDrawer"),
+  settingsBackdrop: document.getElementById("settingsBackdrop"),
+  settingsCloseBtn: document.getElementById("settingsCloseBtn"),
+  saveSettingsBtn: document.getElementById("saveSettingsBtn"),
+
+  themeSelect: document.getElementById("themeSelect"),
+  bannerTitleInput: document.getElementById("bannerTitleInput"),
+  bannerSubInput: document.getElementById("bannerSubInput"),
+  bannerTitleText: document.getElementById("bannerTitleText"),
+  bannerSubText: document.getElementById("bannerSubText"),
+
+  topLogoInput: document.getElementById("topLogoInput"),
+  wheelLogoInput: document.getElementById("wheelLogoInput"),
+  brandLogoImg: document.getElementById("brandLogoImg"),
+  brandLogoFallback: document.getElementById("brandLogoFallback"),
+  wheelCenterLogoImg: document.getElementById("wheelCenterLogoImg"),
+  wheelCenterFallback: document.getElementById("wheelCenterFallback"),
+
+  musicFileInput: document.getElementById("musicFileInput"),
+  musicOnBtn: document.getElementById("musicOnBtn"),
+  musicOffBtn: document.getElementById("musicOffBtn"),
+  bgMusicPlayer: document.getElementById("bgMusicPlayer"),
+
+  exportHistoryBtn: document.getElementById("exportHistoryBtn"),
+
+  winnerPopup: document.getElementById("winnerPopup"),
+  winnerPopupBackdrop: document.getElementById("winnerPopupBackdrop"),
+  winnerPopupName: document.getElementById("winnerPopupName"),
+  winnerPopupPrize: document.getElementById("winnerPopupPrize"),
+  winnerPopupCloseBtn: document.getElementById("winnerPopupCloseBtn"),
+  confettiLayer: document.getElementById("confettiLayer"),
 };
+
+let settings = loadSettings();
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return { ...defaultSettings };
+    return { ...defaultSettings, ...JSON.parse(raw) };
+  } catch {
+    return { ...defaultSettings };
+  }
+}
+
+function saveSettings() {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -77,16 +138,15 @@ function setPill(node, text, type) {
 
 function showToast(message, type = "normal") {
   if (!el.toast) return;
-
   el.toast.textContent = message;
   el.toast.classList.remove("hidden");
 
   if (type === "error") {
-    el.toast.style.borderColor = "rgba(255,93,122,0.4)";
+    el.toast.style.borderColor = "rgba(224,79,106,0.35)";
   } else if (type === "success") {
-    el.toast.style.borderColor = "rgba(24,198,127,0.4)";
+    el.toast.style.borderColor = "rgba(27,179,107,0.35)";
   } else {
-    el.toast.style.borderColor = "rgba(255,255,255,0.12)";
+    el.toast.style.borderColor = "rgba(0,0,0,0.08)";
   }
 
   clearTimeout(showToast.timer);
@@ -104,9 +164,7 @@ async function api(path, options = {}) {
       ...options,
       headers: {
         "x-api-key": CONFIG.API_KEY,
-        ...(options.method && options.method !== "GET"
-          ? { "Content-Type": "application/json" }
-          : {}),
+        ...(options.method && options.method !== "GET" ? { "Content-Type": "application/json" } : {}),
         ...(options.headers || {}),
       },
       signal: controller.signal,
@@ -170,23 +228,18 @@ async function firstLoad() {
   await loadHealth().catch(() => {
     state.health = null;
   });
-
   await loadMembers().catch(() => {
     state.members = [];
   });
-
   await loadWinners().catch(() => {
     state.winners = [];
   });
-
   await loadHistory().catch(() => {
     state.history = [];
   });
-
   await loadPool().catch(() => {
     state.pool = { count: 0, ids: [] };
   });
-
   await loadScanStatus().catch(() => {
     state.scan = { status: "idle", summary: null, last_scan_at: "" };
   });
@@ -232,9 +285,7 @@ function renderHealth() {
   el.statWinners.textContent = h.winners ?? 0;
   el.statPrizes.textContent = h.remaining_prizes ?? 0;
 
-  el.serverTimeText.textContent = h.time
-    ? `Server: ${formatTime(h.time)}`
-    : "Connected";
+  el.serverTimeText.textContent = h.time ? `Server: ${formatTime(h.time)}` : "Connected";
 
   if (h.scan_status === "completed") setPill(el.healthBadge, "Healthy", "success");
   else if (h.scan_status === "scanning") setPill(el.healthBadge, "Scanning", "warning");
@@ -258,8 +309,7 @@ function renderScan() {
   else setPill(el.scanStatusBadge, "idle", "neutral");
 
   if (summary) {
-    el.scanSummaryText.textContent =
-      `Active ${summary.active ?? 0} · Left ${summary.left ?? 0} · Pool ${summary.pool ?? 0}`;
+    el.scanSummaryText.textContent = `Active ${summary.active ?? 0} · Left ${summary.left ?? 0} · Pool ${summary.pool ?? 0}`;
   } else if (s.last_scan_at) {
     el.scanSummaryText.textContent = `Last scan ${formatTime(s.last_scan_at)}`;
   } else {
@@ -281,9 +331,7 @@ function renderMembers() {
       m.username,
       m.id,
       m.left_reason,
-    ]
-      .join(" ")
-      .toLowerCase();
+    ].join(" ").toLowerCase();
 
     return blob.includes(q);
   });
@@ -295,33 +343,31 @@ function renderMembers() {
     return;
   }
 
-  el.memberList.innerHTML = filtered
-    .map((m) => {
-      const statusText = m.removed ? "removed" : m.active ? "active" : "left";
-      const statusClass = m.removed ? "removed" : m.active ? "active" : "left";
+  el.memberList.innerHTML = filtered.map((m) => {
+    const statusText = m.removed ? "removed" : m.active ? "active" : "left";
+    const statusClass = m.removed ? "removed" : m.active ? "active" : "left";
 
-      return `
-        <div class="item-card">
-          <div class="item-top">
-            <div>
-              <div class="item-title">${escapeHtml(m.display || m.id)}</div>
-              <div class="item-sub">
-                ID: ${escapeHtml(m.id)} · ${m.username ? "@" + escapeHtml(m.username) : "no username"}
-              </div>
+    return `
+      <div class="item-card">
+        <div class="item-top">
+          <div>
+            <div class="item-title">${escapeHtml(m.display || m.id)}</div>
+            <div class="item-sub">
+              ID: ${escapeHtml(m.id)} · ${m.username ? "@" + escapeHtml(m.username) : "no username"}
             </div>
-            <div class="badge ${statusClass}">${escapeHtml(statusText)}</div>
           </div>
-
-          <div class="badges">
-            ${m.isWinner ? `<span class="badge winner">winner</span>` : ""}
-            ${m.dm_ready ? `<span class="badge active">dm ready</span>` : `<span class="badge left">dm off</span>`}
-            ${m.registered_at ? `<span class="badge">reg ${escapeHtml(formatTime(m.registered_at))}</span>` : ""}
-            ${m.left_at ? `<span class="badge">left ${escapeHtml(formatTime(m.left_at))}</span>` : ""}
-          </div>
+          <div class="badge ${statusClass}">${escapeHtml(statusText)}</div>
         </div>
-      `;
-    })
-    .join("");
+
+        <div class="badges">
+          ${m.isWinner ? `<span class="badge winner">winner</span>` : ""}
+          ${m.dm_ready ? `<span class="badge active">dm ready</span>` : `<span class="badge left">dm off</span>`}
+          ${m.registered_at ? `<span class="badge">reg ${escapeHtml(formatTime(m.registered_at))}</span>` : ""}
+          ${m.left_at ? `<span class="badge">left ${escapeHtml(formatTime(m.left_at))}</span>` : ""}
+        </div>
+      </div>
+    `;
+  }).join("");
 }
 
 function renderWinners() {
@@ -333,38 +379,39 @@ function renderWinners() {
     return;
   }
 
-  el.winnerList.innerHTML = winners
-    .map((w) => {
-      return `
-        <div class="item-card">
-          <div class="item-top">
-            <div>
-              <div class="item-title">#${escapeHtml(w.turn)} · ${escapeHtml(w.display || w.user_id)}</div>
-              <div class="item-sub">
-                Prize: ${escapeHtml(w.prize || "-")} · ${escapeHtml(formatTime(w.at))}
-              </div>
+  el.winnerList.innerHTML = winners.map((w) => {
+    const username = String(w.username || "").replace(/^@+/, "");
+
+    return `
+      <div class="item-card">
+        <div class="item-top">
+          <div>
+            <div class="item-title">#${escapeHtml(w.turn)} · ${escapeHtml(w.display || w.user_id)}</div>
+            <div class="item-sub">
+              Prize: ${escapeHtml(w.prize || "-")} · ${escapeHtml(formatTime(w.at))}
             </div>
-            <div class="badge ${w.done ? "active" : "left"}">${w.done ? "done" : "pending"}</div>
           </div>
-
-          <div class="badges">
-            ${w.notice_sent ? `<span class="badge active">notice sent</span>` : `<span class="badge left">notice pending</span>`}
-            ${w.username ? `<span class="badge">@${escapeHtml(w.username)}</span>` : ""}
-            ${w.done_at ? `<span class="badge">done ${escapeHtml(formatTime(w.done_at))}</span>` : ""}
-          </div>
-
-          <div class="item-actions">
-            <button class="small-btn notice" data-notice-user="${escapeHtml(w.user_id)}" data-notice-prize="${escapeHtml(w.prize || "")}">
-              Notice
-            </button>
-            <button class="small-btn done" data-done-user="${escapeHtml(w.user_id)}">
-              ${w.done ? "Undo Done" : "Done"}
-            </button>
-          </div>
+          <div class="badge ${w.done ? "active" : "left"}">${w.done ? "done" : "pending"}</div>
         </div>
-      `;
-    })
-    .join("");
+
+        <div class="badges">
+          ${w.notice_sent ? `<span class="badge active">notice sent</span>` : `<span class="badge left">notice pending</span>`}
+          ${username ? `<span class="badge">@${escapeHtml(username)}</span>` : ""}
+          ${w.done_at ? `<span class="badge">done ${escapeHtml(formatTime(w.done_at))}</span>` : ""}
+        </div>
+
+        <div class="item-actions">
+          ${username ? `<button class="small-btn telegram" data-tg-user="${escapeHtml(username)}">Telegram</button>` : ""}
+          <button class="small-btn notice" data-notice-user="${escapeHtml(w.user_id)}" data-notice-prize="${escapeHtml(w.prize || "")}">
+            Notice
+          </button>
+          <button class="small-btn done" data-done-user="${escapeHtml(w.user_id)}">
+            ${w.done ? "Undo Done" : "Done"}
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
 
   bindWinnerActionButtons();
 }
@@ -378,32 +425,30 @@ function renderHistory() {
     return;
   }
 
-  el.historyList.innerHTML = history
-    .map((h) => {
-      const winnerDisplay =
-        h?.winner?.display ||
-        h?.winner?.name ||
-        h?.winner?.username ||
-        h?.winner?.id ||
-        h?.display ||
-        h?.user_id ||
-        "-";
+  el.historyList.innerHTML = history.map((h) => {
+    const winnerDisplay =
+      h?.winner?.display ||
+      h?.winner?.name ||
+      h?.winner?.username ||
+      h?.winner?.id ||
+      h?.display ||
+      h?.user_id ||
+      "-";
 
-      return `
-        <div class="item-card">
-          <div class="item-top">
-            <div>
-              <div class="item-title">#${escapeHtml(h.turn || "-")} · ${escapeHtml(winnerDisplay)}</div>
-              <div class="item-sub">
-                Prize: ${escapeHtml(h.prize || "-")} · ${escapeHtml(formatTime(h.at))}
-              </div>
+    return `
+      <div class="item-card">
+        <div class="item-top">
+          <div>
+            <div class="item-title">#${escapeHtml(h.turn || "-")} · ${escapeHtml(winnerDisplay)}</div>
+            <div class="item-sub">
+              Prize: ${escapeHtml(h.prize || "-")} · ${escapeHtml(formatTime(h.at))}
             </div>
-            <div class="badge">history</div>
           </div>
+          <div class="badge">history</div>
         </div>
-      `;
-    })
-    .join("");
+      </div>
+    `;
+  }).join("");
 }
 
 function renderAll() {
@@ -419,6 +464,113 @@ function startWheelAnimation() {
   const randomOffset = Math.floor(Math.random() * 360);
   state.wheelDeg += extraRounds + randomOffset;
   el.wheel.style.transform = `rotate(${state.wheelDeg}deg)`;
+}
+
+function openSettings() {
+  el.settingsDrawer.classList.add("open");
+}
+
+function closeSettings() {
+  el.settingsDrawer.classList.remove("open");
+}
+
+async function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || ""));
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+function applySettingsToUI() {
+  document.documentElement.setAttribute("data-theme", settings.theme || "white");
+
+  el.bannerTitleText.textContent = settings.bannerTitle || defaultSettings.bannerTitle;
+  el.bannerSubText.textContent = settings.bannerSub || defaultSettings.bannerSub;
+
+  el.bannerTitleInput.value = settings.bannerTitle || "";
+  el.bannerSubInput.value = settings.bannerSub || "";
+  el.themeSelect.value = settings.theme || "white";
+
+  if (settings.topLogo) {
+    el.brandLogoImg.src = settings.topLogo;
+    el.brandLogoImg.classList.remove("hidden");
+    el.brandLogoFallback.classList.add("hidden");
+  } else {
+    el.brandLogoImg.classList.add("hidden");
+    el.brandLogoFallback.classList.remove("hidden");
+  }
+
+  if (settings.wheelLogo) {
+    el.wheelCenterLogoImg.src = settings.wheelLogo;
+    el.wheelCenterLogoImg.classList.remove("hidden");
+    el.wheelCenterFallback.classList.add("hidden");
+  } else {
+    el.wheelCenterLogoImg.classList.add("hidden");
+    el.wheelCenterFallback.classList.remove("hidden");
+  }
+
+  if (settings.musicDataUrl) {
+    el.bgMusicPlayer.src = settings.musicDataUrl;
+  }
+
+  if (settings.musicOn && settings.musicDataUrl) {
+    el.bgMusicPlayer.loop = true;
+  }
+}
+
+function playWinnerTone() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [880, 1320, 1760];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      gain.gain.value = 0.06;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const start = ctx.currentTime + i * 0.12;
+      osc.start(start);
+      osc.stop(start + 0.12);
+    });
+  } catch {}
+}
+
+function launchConfetti() {
+  el.confettiLayer.innerHTML = "";
+  const colors = ["#ff5a7d", "#ffd166", "#7b5cff", "#18d2ff", "#1bb36b", "#ff8fab"];
+  const count = 70;
+
+  for (let i = 0; i < count; i++) {
+    const node = document.createElement("div");
+    node.className = "confetti";
+    node.style.left = `${Math.random() * 100}%`;
+    node.style.background = colors[Math.floor(Math.random() * colors.length)];
+    node.style.animationDuration = `${2.4 + Math.random() * 2.2}s`;
+    node.style.animationDelay = `${Math.random() * 0.4}s`;
+    node.style.transform = `rotate(${Math.random() * 180}deg)`;
+    el.confettiLayer.appendChild(node);
+  }
+
+  setTimeout(() => {
+    el.confettiLayer.innerHTML = "";
+  }, 4800);
+}
+
+function showWinnerPopup(name, prize) {
+  el.winnerPopupName.textContent = name || "-";
+  el.winnerPopupPrize.textContent = prize || "-";
+  el.winnerPopup.classList.remove("hidden");
+  launchConfetti();
+  playWinnerTone();
+}
+
+function hideWinnerPopup() {
+  el.winnerPopup.classList.add("hidden");
+  el.confettiLayer.innerHTML = "";
 }
 
 async function handleScan() {
@@ -465,12 +617,17 @@ async function handleSpin() {
     });
 
     setTimeout(async () => {
+      const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
+      const prize = result?.prize || "—";
+
       el.winnerFlash.classList.remove("hidden");
-      el.winnerFlashName.textContent = result?.winner?.display || result?.winner?.id || "Unknown";
-      el.winnerFlashPrize.textContent = result?.prize || "—";
+      el.winnerFlashName.textContent = winnerName;
+      el.winnerFlashPrize.textContent = prize;
+
+      showWinnerPopup(winnerName, prize);
 
       await refreshAfterSpin();
-      showToast(`Winner: ${result?.winner?.display || result?.winner?.id}`, "success");
+      showToast(`Winner: ${winnerName}`, "success");
     }, 4800);
   } catch (err) {
     showToast(err.message || "Spin failed", "error");
@@ -519,6 +676,7 @@ async function handleRestart() {
     });
 
     el.winnerFlash.classList.add("hidden");
+    hideWinnerPopup();
     await refreshAllData();
     showToast("Event restarted", "success");
   } catch (err) {
@@ -583,6 +741,14 @@ function bindWinnerActionButtons() {
       toggleDone(userId);
     };
   });
+
+  document.querySelectorAll("[data-tg-user]").forEach((btn) => {
+    btn.onclick = () => {
+      const username = btn.getAttribute("data-tg-user");
+      if (!username) return;
+      window.open(`https://t.me/${username}`, "_blank");
+    };
+  });
 }
 
 function bindTabs() {
@@ -592,11 +758,49 @@ function bindTabs() {
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       const target = tab.dataset.tab;
-
       tabs.forEach((t) => t.classList.toggle("active", t === tab));
       panels.forEach((p) => p.classList.toggle("active", p.id === `tab-${target}`));
     });
   });
+}
+
+function exportHistoryCsv() {
+  const rows = [["Turn", "Winner", "Prize", "Time"]];
+
+  (state.history || []).forEach((h) => {
+    const winnerDisplay =
+      h?.winner?.display ||
+      h?.winner?.name ||
+      h?.winner?.username ||
+      h?.winner?.id ||
+      h?.display ||
+      h?.user_id ||
+      "-";
+
+    rows.push([
+      String(h.turn || ""),
+      String(winnerDisplay || ""),
+      String(h.prize || ""),
+      String(h.at || ""),
+    ]);
+  });
+
+  const csv = rows
+    .map((row) =>
+      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+    )
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "lucky77-history.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 function bindEvents() {
@@ -625,9 +829,83 @@ function bindEvents() {
     });
     renderMembers();
   });
+
+  el.settingsBtn.addEventListener("click", openSettings);
+  el.settingsBackdrop.addEventListener("click", closeSettings);
+  el.settingsCloseBtn.addEventListener("click", closeSettings);
+
+  el.saveSettingsBtn.addEventListener("click", () => {
+    settings.theme = el.themeSelect.value;
+    settings.bannerTitle = el.bannerTitleInput.value.trim() || defaultSettings.bannerTitle;
+    settings.bannerSub = el.bannerSubInput.value.trim() || defaultSettings.bannerSub;
+    saveSettings();
+    applySettingsToUI();
+    closeSettings();
+    showToast("Settings saved", "success");
+  });
+
+  el.topLogoInput.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    settings.topLogo = await fileToDataUrl(file);
+    saveSettings();
+    applySettingsToUI();
+    showToast("Top logo updated", "success");
+  });
+
+  el.wheelLogoInput.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    settings.wheelLogo = await fileToDataUrl(file);
+    saveSettings();
+    applySettingsToUI();
+    showToast("Wheel logo updated", "success");
+  });
+
+  el.musicFileInput.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    settings.musicDataUrl = await fileToDataUrl(file);
+    saveSettings();
+    applySettingsToUI();
+    showToast("Music uploaded", "success");
+  });
+
+  el.musicOnBtn.addEventListener("click", async () => {
+    if (!settings.musicDataUrl) {
+      showToast("Upload MP3 first", "error");
+      return;
+    }
+    try {
+      settings.musicOn = true;
+      saveSettings();
+      el.bgMusicPlayer.src = settings.musicDataUrl;
+      el.bgMusicPlayer.loop = true;
+      await el.bgMusicPlayer.play();
+      showToast("Music ON", "success");
+    } catch {
+      showToast("Music play blocked", "error");
+    }
+  });
+
+  el.musicOffBtn.addEventListener("click", () => {
+    settings.musicOn = false;
+    saveSettings();
+    el.bgMusicPlayer.pause();
+    showToast("Music OFF", "success");
+  });
+
+  el.exportHistoryBtn.addEventListener("click", () => {
+    exportHistoryCsv();
+    showToast("History exported", "success");
+  });
+
+  el.winnerPopupBackdrop.addEventListener("click", hideWinnerPopup);
+  el.winnerPopupCloseBtn.addEventListener("click", hideWinnerPopup);
 }
 
 (async function init() {
+  applySettingsToUI();
   bindTabs();
   bindEvents();
 
