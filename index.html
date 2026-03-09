@@ -1,118 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="stylesheet" href="style.css">
-<script src="script.js"></script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lucky77 Wheel</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
+  <title>Lucky77 Premium Wheel</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-    <audio id="bgMusic" loop></audio>
+  <div class="app-shell">
+    <div class="bg-orb orb-a"></div>
+    <div class="bg-orb orb-b"></div>
+    <div class="bg-orb orb-c"></div>
 
-    <nav class="sidebar">
-        <div class="logo">Lucky77</div>
-        <button onclick="showPanel('dashboard')">Dashboard</button>
-        <button onclick="openMembersPanel()">Members</button>
-        <button onclick="openWinnersPanel()">Winners</button>
-        <button onclick="openHistoryPanel()">History</button>
-        <button class="danger" onclick="doReset()">Restart Spin</button>
-    </nav>
+    <header class="topbar glass">
+      <div class="brand-block">
+        <div class="brand-icon">77</div>
+        <div>
+          <h1>Lucky77 Premium</h1>
+          <p id="serverTimeText">Connecting to Render...</p>
+        </div>
+      </div>
 
-    <main class="main-content">
-        <header>
-            <div class="header-titles">
-                <h1>Lucky Wheel Event</h1>
-                <p>Premium Event Dashboard</p>
+      <button id="refreshAllBtn" class="icon-btn" title="Refresh">↻</button>
+    </header>
+
+    <main class="content">
+      <section class="hero-card glass">
+        <div class="hero-top">
+          <div>
+            <span class="mini-label">Live Event</span>
+            <h2>Lucky Wheel Dashboard</h2>
+          </div>
+          <div id="healthBadge" class="status-pill neutral">Loading</div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Members</span>
+            <strong id="statMembers">0</strong>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Pool</span>
+            <strong id="statPool">0</strong>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Winners</span>
+            <strong id="statWinners">0</strong>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Prizes</span>
+            <strong id="statPrizes">0</strong>
+          </div>
+        </div>
+
+        <div class="scan-strip">
+          <div>
+            <div class="mini-label">Scan Status</div>
+            <div class="scan-main">
+              <span id="scanStatusBadge" class="status-pill neutral">idle</span>
+              <span id="scanSummaryText" class="muted">No scan yet</span>
             </div>
-            <div class="header-actions">
-                <button id="musicBtn" onclick="toggleMusic()">🔊 Music OFF</button>
-                <button onclick="openDrawer()">⚙️ Settings</button>
-            </div>
-        </header>
+          </div>
 
-        <div id="topBanner" class="banner">Welcome to Lucky77</div>
+          <button id="scanBtn" class="primary-btn">
+            <span>Scan Channel Member</span>
+          </button>
+        </div>
+      </section>
 
-        <section id="dashboardPanel" class="panel active">
-            <div class="stats-row">
-                <div class="stat-card">Pool Count: <span id="poolCount">0</span></div>
-                <div class="stat-card">Members: <span id="membersCount">0</span></div>
-                <div class="stat-card">Winners: <span id="winnersCount">0</span></div>
-                <div class="stat-card">
-                    Test Mode: 
-                    <input type="checkbox" id="testModeInput" onchange="toggleTestMode()">
-                </div>
-            </div>
+      <section class="wheel-card glass">
+        <div class="wheel-banner">
+          <div>
+            <span class="mini-label">Spin Engine</span>
+            <h3>Lucky77 Wheel</h3>
+          </div>
+          <div id="poolEmptyText" class="pool-warning hidden">
+            All spins completed · No members left in pool
+          </div>
+        </div>
 
-            <div class="wheel-section">
-                <div class="wheel-container">
-                    <div class="arrow">⬇</div>
-                    <canvas id="wheelCanvas" width="400" height="400"></canvas>
-                    <button id="spinBtn" onclick="doSpin()">SPIN</button>
-                </div>
-                <div id="spinStatus" class="status-text">Ready</div>
+        <div class="wheel-wrap">
+          <div class="wheel-pointer"></div>
+          <div class="wheel-board">
+            <div id="wheel" class="wheel">
+              <div class="wheel-center">
+                <span>LUCKY</span>
+                <strong>77</strong>
+              </div>
             </div>
+          </div>
+        </div>
 
-            <div class="prize-builder">
-                <h3>Prize Builder</h3>
-                <div id="prizeList"></div>
-                <button onclick="addPrizeRow()">+ Add Prize</button>
-                <button class="primary" onclick="syncPrizesToRender()">Save & Sync Wheel</button>
-            </div>
-        </section>
+        <div class="spin-actions">
+          <button id="spinBtn" class="spin-btn">Spin</button>
+          <button id="restartBtn" class="ghost-btn danger">Restart Event</button>
+        </div>
 
-        <section id="membersPanel" class="panel">
-            <div class="panel-header">
-                <h2>Members <span id="membersTotal"></span></h2>
-                <button onclick="showPanel('dashboard')">Close</button>
-            </div>
-            <div id="membersContent" class="list-container">Loading members...</div>
-        </section>
+        <div id="winnerFlash" class="winner-flash hidden">
+          <div class="winner-flash-inner">
+            <span class="mini-label">Winner</span>
+            <h3 id="winnerFlashName">—</h3>
+            <p id="winnerFlashPrize">—</p>
+          </div>
+        </div>
+      </section>
 
-        <section id="winnersPanel" class="panel">
-            <div class="panel-header">
-                <h2>Winners <span id="winnersTotal"></span></h2>
-                <button onclick="showPanel('dashboard')">Close</button>
-            </div>
-            <div id="winnersContent" class="list-container">Loading winners...</div>
-        </section>
+      <section class="config-card glass">
+        <div class="section-head">
+          <div>
+            <span class="mini-label">Prize Config</span>
+            <h3>Prize Bag Builder</h3>
+          </div>
+          <button id="savePrizeBtn" class="secondary-btn">Save Prize</button>
+        </div>
 
-        <section id="historyPanel" class="panel">
-            <div class="panel-header">
-                <h2>History <span id="historyTotal"></span></h2>
-                <button onclick="exportHistoryPdfLike()">Export</button>
-                <button onclick="showPanel('dashboard')">Close</button>
-            </div>
-            <div id="historyContent" class="list-container">Loading history...</div>
-        </section>
+        <textarea
+          id="prizeText"
+          class="prize-input"
+          placeholder="10000Ks 1 time&#10;5000Ks 2 time&#10;3000Ks 5 time"
+        ></textarea>
+      </section>
+
+      <section class="tab-card glass">
+        <div class="tab-bar">
+          <button class="tab-btn active" data-tab="members">Members</button>
+          <button class="tab-btn" data-tab="winners">Winners</button>
+          <button class="tab-btn" data-tab="history">History</button>
+        </div>
+
+        <div class="toolbar-row">
+          <input
+            id="searchInput"
+            class="search-input"
+            type="text"
+            placeholder="Search name / username / id"
+          />
+          <label class="toggle-wrap">
+            <input id="showRemovedToggle" type="checkbox" />
+            <span>Show Removed</span>
+          </label>
+        </div>
+
+        <div id="tab-members" class="tab-panel active">
+          <div class="panel-head">
+            <h4>Member List</h4>
+            <span id="membersCountText" class="muted">0 users</span>
+          </div>
+          <div id="memberList" class="list-wrap"></div>
+        </div>
+
+        <div id="tab-winners" class="tab-panel">
+          <div class="panel-head">
+            <h4>Winner List</h4>
+            <span id="winnersCountText" class="muted">0 winners</span>
+          </div>
+          <div id="winnerList" class="list-wrap"></div>
+        </div>
+
+        <div id="tab-history" class="tab-panel">
+          <div class="panel-head">
+            <h4>Event History</h4>
+            <span id="historyCountText" class="muted">0 logs</span>
+          </div>
+          <div id="historyList" class="list-wrap"></div>
+        </div>
+      </section>
     </main>
 
-    <div id="settingsDrawer" class="drawer">
-        <div class="drawer-content">
-            <h2>Settings</h2>
-            <label>API Key</label>
-            <input type="text" id="settingApiKey" value="Lucky77_luckywheel_77">
-            <label>Wheel Colors (comma separated)</label>
-            <input type="text" id="settingColors" value="#FFD700,#FFFFFF,#F8F9FA,#E0E0E0">
-            <div class="drawer-actions">
-                <button onclick="closeDrawer()">Cancel</button>
-                <button class="primary" onclick="saveSettings()">Save Apply</button>
-            </div>
-        </div>
-    </div>
+    <div id="toast" class="toast hidden"></div>
+  </div>
 
-    <div id="winnerModal" class="modal">
-        <div class="modal-content">
-            <div class="badge">WINNER</div>
-            <h2 id="modalPrize">Prize Name</h2>
-            <h3 id="modalWinner">Winner Name</h3>
-            <p id="modalHint">Congratulations!</p>
-            <div id="modalActions"></div>
-            <button onclick="hideWinnerModal()" class="close-btn">Close</button>
-        </div>
-    </div>
-
-    <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
