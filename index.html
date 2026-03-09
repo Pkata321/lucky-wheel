@@ -7,68 +7,71 @@
     content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
   />
   <title>Lucky77 Premium Wheel</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <div class="app">
-    <div class="bg-glow glow-1"></div>
-    <div class="bg-glow glow-2"></div>
-    <div class="bg-glow glow-3"></div>
+    <div class="bg-blur blur-1"></div>
+    <div class="bg-blur blur-2"></div>
+    <div class="bg-blur blur-3"></div>
 
     <header class="topbar glass">
       <div class="brand">
         <div class="brand-logo">77</div>
-        <div class="brand-text">
+        <div class="brand-meta">
           <h1>Lucky77</h1>
           <p id="serverTimeText">Connecting...</p>
         </div>
       </div>
-      <button id="refreshBtn" class="icon-btn" aria-label="Refresh">↻</button>
+
+      <button id="refreshBtn" class="icon-btn" type="button">↻</button>
     </header>
 
     <main class="main">
-      <section class="hero glass">
-        <div class="hero-head">
+      <section class="dashboard glass">
+        <div class="section-top">
           <div>
-            <span class="mini">Live Dashboard</span>
+            <span class="eyebrow">Live Dashboard</span>
             <h2>Lucky Wheel Event</h2>
           </div>
           <div id="healthBadge" class="pill neutral">Loading</div>
         </div>
 
-        <div class="stats">
-          <div class="stat-card">
+        <div class="stats-grid">
+          <div class="stat-box">
             <span>Members</span>
             <strong id="statMembers">0</strong>
           </div>
-          <div class="stat-card">
+          <div class="stat-box">
             <span>Pool</span>
             <strong id="statPool">0</strong>
           </div>
-          <div class="stat-card">
+          <div class="stat-box">
             <span>Winners</span>
             <strong id="statWinners">0</strong>
           </div>
-          <div class="stat-card">
+          <div class="stat-box">
             <span>Prizes</span>
             <strong id="statPrizes">0</strong>
           </div>
         </div>
 
-        <div class="scan-box">
-          <div class="scan-left">
-            <span class="mini">Scan Status</span>
+        <div class="scan-card">
+          <div class="scan-info">
+            <span class="eyebrow">Scan Status</span>
             <div id="scanStatusBadge" class="pill neutral">idle</div>
-            <div id="scanSummaryText" class="muted">No scan yet</div>
+            <p id="scanSummaryText">No scan yet</p>
           </div>
-          <button id="scanBtn" class="primary-btn">Scan Channel Member</button>
+          <button id="scanBtn" class="primary-btn" type="button">
+            Scan Channel Member
+          </button>
         </div>
       </section>
 
       <section class="wheel-card glass">
-        <div class="wheel-head">
+        <div class="section-top">
           <div>
-            <span class="mini">Spin Engine</span>
+            <span class="eyebrow">Spin Engine</span>
             <h3>Lucky77 Wheel</h3>
           </div>
           <div id="poolEmptyText" class="warning-text hidden">
@@ -77,8 +80,8 @@
         </div>
 
         <div class="wheel-wrap">
-          <div class="wheel-pointer"></div>
-          <div class="wheel-shell">
+          <div class="pointer"></div>
+          <div class="wheel-ring">
             <div id="wheel" class="wheel">
               <div class="wheel-center">
                 <span>LUCKY</span>
@@ -88,25 +91,29 @@
           </div>
         </div>
 
-        <div class="action-grid">
-          <button id="spinBtn" class="spin-btn">Spin</button>
-          <button id="restartBtn" class="ghost-btn danger">Restart Event</button>
+        <div class="wheel-actions">
+          <button id="spinBtn" class="spin-btn" type="button">Spin</button>
+          <button id="restartBtn" class="ghost-btn danger" type="button">
+            Restart Event
+          </button>
         </div>
 
-        <div id="winnerFlash" class="winner-box hidden">
-          <span class="mini">Winner</span>
+        <div id="winnerFlash" class="winner-flash hidden">
+          <span class="eyebrow">Winner</span>
           <h3 id="winnerFlashName">—</h3>
           <p id="winnerFlashPrize">—</p>
         </div>
       </section>
 
       <section class="prize-card glass">
-        <div class="section-head">
+        <div class="section-top">
           <div>
-            <span class="mini">Prize Config</span>
+            <span class="eyebrow">Prize Config</span>
             <h3>Prize Builder</h3>
           </div>
-          <button id="savePrizeBtn" class="secondary-btn">Save Prize</button>
+          <button id="savePrizeBtn" class="secondary-btn" type="button">
+            Save Prize
+          </button>
         </div>
 
         <textarea
@@ -118,12 +125,12 @@
 
       <section class="tabs-card glass">
         <div class="tabs">
-          <button class="tab-btn active" data-tab="members">Members</button>
-          <button class="tab-btn" data-tab="winners">Winners</button>
-          <button class="tab-btn" data-tab="history">History</button>
+          <button class="tab-btn active" data-tab="members" type="button">Members</button>
+          <button class="tab-btn" data-tab="winners" type="button">Winners</button>
+          <button class="tab-btn" data-tab="history" type="button">History</button>
         </div>
 
-        <div class="tools">
+        <div class="toolbar">
           <input
             id="searchInput"
             class="search-input"
@@ -141,7 +148,7 @@
             <h4>Member List</h4>
             <span id="membersCountText" class="muted">0 users</span>
           </div>
-          <div id="memberList" class="list"></div>
+          <div id="memberList" class="list-wrap"></div>
         </div>
 
         <div id="tab-winners" class="tab-panel">
@@ -149,7 +156,7 @@
             <h4>Winner List</h4>
             <span id="winnersCountText" class="muted">0 winners</span>
           </div>
-          <div id="winnerList" class="list"></div>
+          <div id="winnerList" class="list-wrap"></div>
         </div>
 
         <div id="tab-history" class="tab-panel">
@@ -157,7 +164,7 @@
             <h4>Event History</h4>
             <span id="historyCountText" class="muted">0 logs</span>
           </div>
-          <div id="historyList" class="list"></div>
+          <div id="historyList" class="list-wrap"></div>
         </div>
       </section>
     </main>
@@ -165,6 +172,6 @@
     <div id="toast" class="toast hidden"></div>
   </div>
 
-  <script src="script.js"></script>
+  <script src="./script.js"></script>
 </body>
 </html>
