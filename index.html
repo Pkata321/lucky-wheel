@@ -7,9 +7,9 @@
     content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
   />
   <title>Lucky77 Premium Dashboard</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body data-theme="light">
   <div class="bg-orb orb-1"></div>
   <div class="bg-orb orb-2"></div>
   <div class="bg-orb orb-3"></div>
@@ -17,7 +17,10 @@
   <div class="app-shell">
     <header class="topbar glass">
       <div class="brand">
-        <div class="brand-logo">77</div>
+        <div class="brand-logo" id="brandLogoWrap">
+          <img id="brandLogoImg" class="brand-logo-img hidden" alt="Logo" />
+          <span id="brandLogoFallback">77</span>
+        </div>
         <div>
           <div class="brand-title">Lucky77</div>
           <div class="brand-sub" id="serverTimeText">Connecting...</div>
@@ -26,6 +29,7 @@
 
       <div class="topbar-actions">
         <div id="healthBadge" class="pill neutral">Live</div>
+        <button id="settingsBtn" class="icon-btn" aria-label="Settings">⚙</button>
         <button id="refreshBtn" class="icon-btn" aria-label="Refresh">↻</button>
       </div>
     </header>
@@ -37,6 +41,12 @@
             <div class="eyebrow">Live Dashboard</div>
             <h1>Lucky Wheel Event</h1>
           </div>
+        </div>
+
+        <div id="bannerCard" class="banner-card">
+          <div class="banner-eyebrow">Lucky77 Event</div>
+          <div id="bannerTitle" class="banner-title">Win Big Today</div>
+          <div id="bannerText" class="banner-text">Spin & Win with Lucky77</div>
         </div>
 
         <div class="stats-grid">
@@ -88,8 +98,11 @@
           <div class="wheel-ring">
             <div id="wheel" class="wheel">
               <div class="wheel-center">
-                <span class="wheel-center-top">LUCKY</span>
-                <span class="wheel-center-main">77</span>
+                <img id="wheelLogoImg" class="wheel-logo-img hidden" alt="Wheel Logo" />
+                <div id="wheelLogoFallback" class="wheel-center-default">
+                  <span class="wheel-center-top">LUCKY</span>
+                  <span class="wheel-center-main">77</span>
+                </div>
               </div>
             </div>
           </div>
@@ -171,7 +184,93 @@
     </main>
   </div>
 
+  <aside id="settingsDrawer" class="settings-drawer">
+    <div class="settings-backdrop" id="settingsBackdrop"></div>
+    <div class="settings-panel glass">
+      <div class="settings-head">
+        <h3>Settings</h3>
+        <button id="closeSettingsBtn" class="icon-btn">✕</button>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">Theme</label>
+        <select id="themeSelect" class="settings-input">
+          <option value="light">Default White</option>
+          <option value="dark">Dark</option>
+          <option value="gold">Lucky77 Gold</option>
+          <option value="neon">Purple Neon</option>
+        </select>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">Banner Title</label>
+        <input id="bannerTitleInput" class="settings-input" type="text" placeholder="Lucky77 Event" />
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">Banner Text</label>
+        <input id="bannerTextInput" class="settings-input" type="text" placeholder="Spin & Win with Lucky77" />
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">Top Logo Upload</label>
+        <input id="brandLogoInput" class="settings-input file-input" type="file" accept="image/*" />
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">Wheel Center Logo Upload</label>
+        <input id="wheelLogoInput" class="settings-input file-input" type="file" accept="image/*" />
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">Music Upload MP3</label>
+        <input id="musicFileInput" class="settings-input file-input" type="file" accept=".mp3,audio/mpeg,audio/*" />
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">Music Control</label>
+        <div class="settings-actions">
+          <button id="musicOnBtn" class="secondary-btn">Music ON</button>
+          <button id="musicOffBtn" class="secondary-btn">Music OFF</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">Winner Tone</label>
+        <div class="settings-actions">
+          <button id="toneOnBtn" class="secondary-btn">Tone ON</button>
+          <button id="toneOffBtn" class="secondary-btn">Tone OFF</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">History Export</label>
+        <div class="settings-actions">
+          <button id="exportHistoryBtn" class="primary-btn">Download CSV</button>
+        </div>
+      </div>
+
+      <div class="settings-actions footer-actions">
+        <button id="saveSettingsBtn" class="primary-btn">Save Settings</button>
+      </div>
+    </div>
+  </aside>
+
+  <div id="winnerModal" class="winner-modal hidden">
+    <div class="winner-modal-backdrop" id="winnerModalBackdrop"></div>
+    <div class="winner-modal-card glass">
+      <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+      <div class="winner-popup-eyebrow">🎉 CONGRATULATIONS 🎉</div>
+      <div id="winnerPopupName" class="winner-popup-name">Mg Mg</div>
+      <div class="winner-popup-won">Won</div>
+      <div id="winnerPopupPrize" class="winner-popup-prize">10000Ks</div>
+      <button id="winnerCloseBtn" class="primary-btn winner-close-btn">Close</button>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden">Ready</div>
+
+  <audio id="bgMusic" preload="auto"></audio>
 
   <script src="script.js"></script>
 </body>
