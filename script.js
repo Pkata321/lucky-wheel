@@ -1,7 +1,7 @@
 const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot.onrender.com",
-API_KEY: "Lucky77_luckywheel_77",
-  TIMEOUT_MS: 20000,
+  API_KEY: "Lucky77_luckywheel_77",
+  TIMEOUT_MS: 60000,
 };
 
 const state = {
@@ -70,11 +70,14 @@ function formatTime(value) {
 }
 
 function setPill(node, text, type) {
+  if (!node) return;
   node.textContent = text;
   node.className = `pill ${type}`;
 }
 
 function showToast(message, type = "normal") {
+  if (!el.toast) return;
+
   el.toast.textContent = message;
   el.toast.classList.remove("hidden");
 
@@ -116,6 +119,11 @@ async function api(path, options = {}) {
     }
 
     return data;
+  } catch (err) {
+    if (err?.name === "AbortError") {
+      throw new Error("Request timeout");
+    }
+    throw err;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -126,65 +134,94 @@ async function loadHealth() {
 }
 
 async function loadMembers() {
-  const includeRemoved = el.showRemovedToggle.checked ? "1" : "0";
-  const data = await api(`/members?include_removed=${includeRemoved}&backfill=1`);
-  state.members = data.members || [];
+  const includeRemoved = el.showRemovedToggle?.checked ? "1" : "0";
+  const data = await api(`/members?include_removed=${includeRemoved}&backfill=0`);
+  state.members = Array.isArray(data.members) ? data.members : [];
 }
 
 async function loadWinners() {
   const data = await api("/winners");
-  state.winners = data.winners || [];
+  state.winners = Array.isArray(data.winners) ? data.winners : [];
 }
 
 async function loadHistory() {
   const data = await api("/history");
-  state.history = data.history || [];
+  state.history = Array.isArray(data.history) ? data.history : [];
 }
 
 async function loadPool() {
-  state.pool = await api("/pool");
+  const data = await api("/pool");
+  state.pool = {
+    count: Number(data.count || 0),
+    ids: Array.isArray(data.ids) ? data.ids : [],
+  };
 }
 
 async function loadScanStatus() {
-  state.scan = await api("/scan/status");
+  const data = await api("/scan/status");
+  state.scan = {
+    status: data.status || "idle",
+    summary: data.summary || null,
+    last_scan_at: data.last_scan_at || "",
+  };
 }
 
 async function firstLoad() {
-  await Promise.all([
-    loadHealth(),
-    loadMembers(),
-    loadWinners(),
-    loadHistory(),
-    loadPool(),
-    loadScanStatus(),
-  ]);
+  await loadHealth().catch(() => {
+    state.health = null;
+  });
+
+  await loadMembers().catch(() => {
+    state.members = [];
+  });
+
+  await loadWinners().catch(() => {
+    state.winners = [];
+  });
+
+  await loadHistory().catch(() => {
+    state.history = [];
+  });
+
+  await loadPool().catch(() => {
+    state.pool = { count: 0, ids: [] };
+  });
+
+  await loadScanStatus().catch(() => {
+    state.scan = { status: "idle", summary: null, last_scan_at: "" };
+  });
+
   renderAll();
 }
 
 async function refreshAllData() {
-  await Promise.all([
-    loadHealth(),
-    loadMembers(),
-    loadWinners(),
-    loadHistory(),
-    loadPool(),
-    loadScanStatus(),
-  ]);
+  await loadHealth().catch(() => {});
+  await loadMembers().catch(() => {});
+  await loadWinners().catch(() => {});
+  await loadHistory().catch(() => {});
+  await loadPool().catch(() => {});
+  await loadScanStatus().catch(() => {});
   renderAll();
 }
 
 async function refreshAfterScan() {
-  await Promise.all([loadScanStatus(), loadMembers(), loadPool(), loadHealth()]);
+  await loadScanStatus().catch(() => {});
+  await loadMembers().catch(() => {});
+  await loadPool().catch(() => {});
+  await loadHealth().catch(() => {});
   renderAll();
 }
 
 async function refreshAfterSpin() {
-  await Promise.all([loadWinners(), loadHistory(), loadPool(), loadHealth()]);
+  await loadWinners().catch(() => {});
+  await loadHistory().catch(() => {});
+  await loadPool().catch(() => {});
+  await loadHealth().catch(() => {});
   renderAll();
 }
 
 async function refreshAfterWinnerAction() {
-  await loadWinners();
+  await loadWinners().catch(() => {});
   renderWinners();
 }
 
@@ -201,6 +238,7 @@ function renderHealth() {
 
   if (h.scan_status === "completed") setPill(el.healthBadge, "Healthy", "success");
   else if (h.scan_status === "scanning") setPill(el.healthBadge, "Scanning", "warning");
+  else if (h.scan_status === "error") setPill(el.healthBadge, "Error", "danger");
   else setPill(el.healthBadge, "Live", "neutral");
 
   if ((state.pool?.count || 0) <= 0) {
@@ -231,9 +269,9 @@ function renderScan() {
 
 function renderMembers() {
   const q = (el.searchInput.value || "").trim().toLowerCase();
-  const showRemoved = el.showRemovedToggle.checked;
+  const showRemoved = !!el.showRemovedToggle.checked;
 
-  const filtered = state.members.filter((m) => {
+  const filtered = (state.members || []).filter((m) => {
     if (!showRemoved && m.removed) return false;
     if (!q) return true;
 
@@ -417,6 +455,7 @@ async function handleSpin() {
     state.spinning = true;
     el.spinBtn.disabled = true;
     el.scanBtn.disabled = true;
+    el.winnerFlash.classList.add("hidden");
 
     startWheelAnimation();
 
@@ -458,7 +497,7 @@ async function handleSavePrize() {
       body: JSON.stringify({ prizeText }),
     });
 
-    await loadHealth();
+    await loadHealth().catch(() => {});
     renderHealth();
     showToast("Prize bag saved", "success");
   } catch (err) {
@@ -491,7 +530,7 @@ async function handleRestart() {
 
 async function sendNotice(userId, prize) {
   try {
-    await api("/notice", {
+    const data = await api("/notice", {
       method: "POST",
       body: JSON.stringify({
         user_id: userId,
@@ -500,6 +539,12 @@ async function sendNotice(userId, prize) {
     });
 
     await refreshAfterWinnerAction();
+
+    if (data.dm_ok === false) {
+      showToast("DM failed", "error");
+      return;
+    }
+
     showToast("Notice sent", "success");
   } catch (err) {
     showToast(err.message || "Notice failed", "error");
@@ -573,8 +618,11 @@ function bindEvents() {
   el.savePrizeBtn.addEventListener("click", handleSavePrize);
 
   el.searchInput.addEventListener("input", renderMembers);
+
   el.showRemovedToggle.addEventListener("change", async () => {
-    await loadMembers();
+    await loadMembers().catch(() => {
+      state.members = [];
+    });
     renderMembers();
   });
 }
