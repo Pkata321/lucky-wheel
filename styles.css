@@ -421,45 +421,8 @@ h2 {
   display: grid;
   place-items: center;
   padding: 18px;
-}
-
-.wheel {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
   position: relative;
-  background:
-    radial-gradient(circle at center, rgba(255, 240, 178, 0.35), transparent 22%),
-    conic-gradient(
-      from 0deg,
-      #f2c44e 0deg 30deg,
-      #a95f21 30deg 60deg,
-      #f6dd85 60deg 90deg,
-      #ca7e27 90deg 120deg,
-      #f4cf65 120deg 150deg,
-      #9a541c 150deg 180deg,
-      #f6df95 180deg 210deg,
-      #b86723 210deg 240deg,
-      #f3cf5b 240deg 270deg,
-      #9d5b20 270deg 300deg,
-      #f7e4a7 300deg 330deg,
-      #bf7228 330deg 360deg
-    );
-  border: 10px solid var(--wheel-border);
-  box-shadow:
-    0 0 0 10px rgba(255, 198, 72, 0.12),
-    0 22px 55px rgba(0, 0, 0, 0.18),
-    0 0 40px rgba(255, 190, 58, 0.22);
-  transition: transform 4.8s cubic-bezier(0.12, 0.8, 0.18, 1);
-  overflow: hidden;
-}
-
-.wheel::before {
-  content: "";
-  position: absolute;
-  inset: 12px;
-  border-radius: 50%;
-  border: 2px dashed rgba(255, 250, 225, 0.28);
+  overflow: visible;
 }
 
 .wheel-center {
@@ -507,6 +470,20 @@ h2 {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-top: 8px;
+}
+
+.wheel-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 50%;
+  border: 10px solid var(--wheel-border);
+  box-shadow:
+    0 0 0 10px rgba(255, 198, 72, 0.12),
+    0 22px 55px rgba(0, 0, 0, 0.18),
+    0 0 40px rgba(255, 190, 58, 0.22);
+  background: transparent;
+  transition: transform 4.8s cubic-bezier(0.12, 0.8, 0.18, 1);
 }
 
 .spin-btn {
