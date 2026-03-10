@@ -4,7 +4,7 @@ const CONFIG = {
   TIMEOUT_MS: 60000,
 };
 
-const SETTINGS_KEY = "lucky77_premium_settings_v2";
+const SETTINGS_KEY = "lucky77_premium_settings_v3";
 
 const defaultSettings = {
   theme: "white",
@@ -25,6 +25,7 @@ const state = {
   scan: { status: "idle", summary: null, last_scan_at: "" },
   spinning: false,
   wheelDeg: 0,
+  prizes: [],
 };
 
 const el = {
@@ -39,7 +40,7 @@ const el = {
   scanSummaryText: document.getElementById("scanSummaryText"),
   scanBtn: document.getElementById("scanBtn"),
 
-  wheel: document.getElementById("wheel"),
+  wheelCanvas: document.getElementById("wheelCanvas"),
   spinBtn: document.getElementById("spinBtn"),
   restartBtn: document.getElementById("restartBtn"),
   refreshBtn: document.getElementById("refreshBtn"),
@@ -99,6 +100,7 @@ const el = {
   confettiLayer: document.getElementById("confettiLayer"),
 };
 
+const wheelCtx = el.wheelCanvas.getContext("2d");
 let settings = loadSettings();
 
 function loadSettings() {
@@ -164,7 +166,9 @@ async function api(path, options = {}) {
       ...options,
       headers: {
         "x-api-key": CONFIG.API_KEY,
-        ...(options.method && options.method !== "GET" ? { "Content-Type": "application/json" } : {}),
+        ...(options.method && options.method !== "GET"
+          ? { "Content-Type": "application/json" }
+          : {}),
         ...(options.headers || {}),
       },
       signal: controller.signal,
@@ -185,6 +189,122 @@ async function api(path, options = {}) {
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+function parsePrizeLines(text) {
+  return String(text || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const m = line.match(/^(.+?)\s+(\d+)\s*time$/i) || line.match(/^(.+?)\s+(\d+)$/i);
+      if (!m) return null;
+      return {
+        name: m[1].trim(),
+        times: Number(m[2]) || 1,
+      };
+    })
+    .filter(Boolean);
+}
+
+function buildWheelPrizeSegments() {
+  const parsed = parsePrizeLines(el.prizeText.value);
+  const names = parsed.map((p) => p.name).filter(Boolean);
+
+  state.prizes = names.length
+    ? names
+    : ["10000Ks", "20000Ks", "30000Ks", "Lucky", "Prize", "Spin"];
+}
+
+function drawWheel() {
+  const canvas = el.wheelCanvas;
+  const ctx = wheelCtx;
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2;
+  const cy = h / 2;
+  const radius = Math.min(cx, cy) - 8;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const prizes = state.prizes.length ? state.prizes : ["Lucky77"];
+  const count = prizes.length;
+  const anglePer = (Math.PI * 2) / count;
+
+  const colors = [
+    "#ff5f6d",
+    "#ffc371",
+    "#23d5ab",
+    "#23a6d5",
+    "#8b5dff",
+    "#ff4fd8",
+    "#1bb36b",
+    "#ffd166",
+    "#7b5cff",
+    "#18d2ff",
+  ];
+
+  for (let i = 0; i < count; i++) {
+    const start = -Math.PI / 2 + i * anglePer;
+    const end = start + anglePer;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, start, end);
+    ctx.closePath();
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fill();
+
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(255,255,255,0.22)";
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(start + anglePer / 2);
+
+    const text = prizes[i];
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 23px Inter, sans-serif";
+
+    const maxWidth = radius * 0.48;
+    let shown = text;
+    while (ctx.measureText(shown).width > maxWidth && shown.length > 6) {
+      shown = shown.slice(0, -1);
+    }
+    if (shown !== text) shown = shown.slice(0, -1) + "…";
+
+    ctx.fillText(shown, radius - 34, 8);
+    ctx.restore();
+  }
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius - 8, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255,255,255,0.16)";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+}
+
+function getPrizeIndexByName(prizeName) {
+  return state.prizes.findIndex((name) => String(name).trim() === String(prizeName).trim());
+}
+
+function computeTargetRotationDeg(prizeName) {
+  const count = state.prizes.length || 1;
+  const idx = getPrizeIndexByName(prizeName);
+  const safeIdx = idx >= 0 ? idx : 0;
+
+  const slice = 360 / count;
+  const sliceCenter = safeIdx * slice + slice / 2;
+
+  const pointerDeg = 0;
+  let target = 360 - sliceCenter + pointerDeg;
+
+  while (target < 0) target += 360;
+  while (target >= 360) target -= 360;
+
+  return target;
 }
 
 async function loadHealth() {
@@ -244,6 +364,8 @@ async function firstLoad() {
     state.scan = { status: "idle", summary: null, last_scan_at: "" };
   });
 
+  buildWheelPrizeSegments();
+  drawWheel();
   renderAll();
 }
 
@@ -254,6 +376,8 @@ async function refreshAllData() {
   await loadHistory().catch(() => {});
   await loadPool().catch(() => {});
   await loadScanStatus().catch(() => {});
+  buildWheelPrizeSegments();
+  drawWheel();
   renderAll();
 }
 
@@ -325,14 +449,7 @@ function renderMembers() {
     if (!showRemoved && m.removed) return false;
     if (!q) return true;
 
-    const blob = [
-      m.display,
-      m.name,
-      m.username,
-      m.id,
-      m.left_reason,
-    ].join(" ").toLowerCase();
-
+    const blob = [m.display, m.name, m.username, m.id, m.left_reason].join(" ").toLowerCase();
     return blob.includes(q);
   });
 
@@ -459,13 +576,6 @@ function renderAll() {
   renderHistory();
 }
 
-function startWheelAnimation() {
-  const extraRounds = 360 * (5 + Math.floor(Math.random() * 3));
-  const randomOffset = Math.floor(Math.random() * 360);
-  state.wheelDeg += extraRounds + randomOffset;
-  el.wheel.style.transform = `rotate(${state.wheelDeg}deg)`;
-}
-
 function openSettings() {
   el.settingsDrawer.classList.add("open");
 }
@@ -513,10 +623,6 @@ function applySettingsToUI() {
 
   if (settings.musicDataUrl) {
     el.bgMusicPlayer.src = settings.musicDataUrl;
-  }
-
-  if (settings.musicOn && settings.musicDataUrl) {
-    el.bgMusicPlayer.loop = true;
   }
 }
 
@@ -609,23 +715,26 @@ async function handleSpin() {
     el.scanBtn.disabled = true;
     el.winnerFlash.classList.add("hidden");
 
-    startWheelAnimation();
-
     const result = await api("/spin", {
       method: "POST",
       body: JSON.stringify({}),
     });
 
-    setTimeout(async () => {
-      const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
-      const prize = result?.prize || "—";
+    const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
+    const prize = result?.prize || "—";
 
+    const targetDeg = computeTargetRotationDeg(prize);
+    const extraRounds = 360 * (5 + Math.floor(Math.random() * 3));
+    state.wheelDeg += extraRounds + targetDeg;
+
+    el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
+
+    setTimeout(async () => {
       el.winnerFlash.classList.remove("hidden");
       el.winnerFlashName.textContent = winnerName;
       el.winnerFlashPrize.textContent = prize;
 
       showWinnerPopup(winnerName, prize);
-
       await refreshAfterSpin();
       showToast(`Winner: ${winnerName}`, "success");
     }, 4800);
@@ -653,6 +762,9 @@ async function handleSavePrize() {
       method: "POST",
       body: JSON.stringify({ prizeText }),
     });
+
+    buildWheelPrizeSegments();
+    drawWheel();
 
     await loadHealth().catch(() => {});
     renderHealth();
@@ -786,9 +898,7 @@ function exportHistoryCsv() {
   });
 
   const csv = rows
-    .map((row) =>
-      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
-    )
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
     .join("\n");
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -904,10 +1014,18 @@ function bindEvents() {
   el.winnerPopupCloseBtn.addEventListener("click", hideWinnerPopup);
 }
 
+(function resizeWheelCanvas() {
+  const size = 520;
+  el.wheelCanvas.width = size;
+  el.wheelCanvas.height = size;
+})();
+
 (async function init() {
   applySettingsToUI();
   bindTabs();
   bindEvents();
+  buildWheelPrizeSegments();
+  drawWheel();
 
   try {
     await firstLoad();
