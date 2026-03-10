@@ -1,1035 +1,982 @@
-const CONFIG = {
-  BASE_URL: "https://lucky77-wheel-bot.onrender.com",
-  API_KEY: "Lucky77_luckywheel_77",
-  TIMEOUT_MS: 60000,
-};
+:root {
+  --bg: #f6f7fb;
+  --bg-soft: #ffffff;
+  --card: rgba(255, 255, 255, 0.82);
+  --card-solid: #ffffff;
+  --card-border: rgba(15, 23, 42, 0.08);
+  --text: #111827;
+  --muted: #6b7280;
+  --primary-1: #7b5cff;
+  --primary-2: #18d2ff;
+  --success: #1bb36b;
+  --warning: #d38a0d;
+  --danger: #e04f6a;
+  --shadow: 0 20px 50px rgba(17, 24, 39, 0.09);
+  --chip: rgba(17, 24, 39, 0.05);
+  --input: rgba(255, 255, 255, 0.92);
+  --banner-1: #ffffff;
+  --banner-2: #eef3ff;
+  --wheel-border: #f4c95b;
+  --wheel-center-bg: #2f170d;
+  --overlay: rgba(15, 23, 42, 0.3);
+}
 
-const SETTINGS_KEY = "lucky77_premium_settings_v3";
+:root[data-theme="dark"] {
+  --bg: #08111d;
+  --bg-soft: #0e1826;
+  --card: rgba(255, 255, 255, 0.08);
+  --card-solid: #0f1a29;
+  --card-border: rgba(255, 255, 255, 0.11);
+  --text: #f5f7ff;
+  --muted: #aeb8c9;
+  --chip: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.06);
+  --banner-1: rgba(255,255,255,0.08);
+  --banner-2: rgba(123,92,255,0.12);
+  --overlay: rgba(0, 0, 0, 0.48);
+}
 
-const defaultSettings = {
-  theme: "white",
-  bannerTitle: "Lucky77 Event",
-  bannerSub: "Spin & Win premium prizes",
-  topLogo: "",
-  wheelLogo: "",
-  musicDataUrl: "",
-  musicOn: false,
-};
+:root[data-theme="gold"] {
+  --bg: #14100a;
+  --bg-soft: #1c150d;
+  --card: rgba(255, 242, 210, 0.08);
+  --card-solid: #21180f;
+  --card-border: rgba(255, 214, 107, 0.14);
+  --text: #fff4d6;
+  --muted: #dcc89b;
+  --primary-1: #dba92d;
+  --primary-2: #ffde75;
+  --chip: rgba(255, 214, 107, 0.1);
+  --input: rgba(255, 250, 236, 0.08);
+  --banner-1: rgba(255, 225, 132, 0.1);
+  --banner-2: rgba(255, 242, 210, 0.04);
+  --overlay: rgba(0, 0, 0, 0.52);
+}
 
-const state = {
-  health: null,
-  members: [],
-  winners: [],
-  history: [],
-  pool: { count: 0, ids: [] },
-  scan: { status: "idle", summary: null, last_scan_at: "" },
-  spinning: false,
-  wheelDeg: 0,
-  prizes: [],
-};
+:root[data-theme="neon"] {
+  --bg: #0c0a17;
+  --bg-soft: #151025;
+  --card: rgba(255, 255, 255, 0.08);
+  --card-solid: #171226;
+  --card-border: rgba(162, 118, 255, 0.18);
+  --text: #f8f5ff;
+  --muted: #c9bff4;
+  --primary-1: #8b5dff;
+  --primary-2: #ff4fd8;
+  --chip: rgba(162, 118, 255, 0.12);
+  --input: rgba(255, 255, 255, 0.06);
+  --banner-1: rgba(139,93,255,0.16);
+  --banner-2: rgba(255,79,216,0.1);
+  --overlay: rgba(0, 0, 0, 0.52);
+}
 
-const el = {
-  serverTimeText: document.getElementById("serverTimeText"),
-  healthBadge: document.getElementById("healthBadge"),
-  statMembers: document.getElementById("statMembers"),
-  statPool: document.getElementById("statPool"),
-  statWinners: document.getElementById("statWinners"),
-  statPrizes: document.getElementById("statPrizes"),
+* {
+  box-sizing: border-box;
+}
 
-  scanStatusBadge: document.getElementById("scanStatusBadge"),
-  scanSummaryText: document.getElementById("scanSummaryText"),
-  scanBtn: document.getElementById("scanBtn"),
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+}
 
-  wheelCanvas: document.getElementById("wheelCanvas"),
-  spinBtn: document.getElementById("spinBtn"),
-  restartBtn: document.getElementById("restartBtn"),
-  refreshBtn: document.getElementById("refreshBtn"),
+body {
+  overflow-x: hidden;
+}
 
-  winnerFlash: document.getElementById("winnerFlash"),
-  winnerFlashName: document.getElementById("winnerFlashName"),
-  winnerFlashPrize: document.getElementById("winnerFlashPrize"),
-  poolEmptyText: document.getElementById("poolEmptyText"),
+.bg-layer {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at top left, rgba(123,92,255,0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(24,210,255,0.1), transparent 24%),
+    linear-gradient(180deg, var(--bg), var(--bg));
+  z-index: 0;
+  pointer-events: none;
+}
 
-  prizeText: document.getElementById("prizeText"),
-  savePrizeBtn: document.getElementById("savePrizeBtn"),
+.app-shell {
+  position: relative;
+  z-index: 1;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 16px calc(env(safe-area-inset-bottom, 0px) + 28px);
+}
 
-  searchInput: document.getElementById("searchInput"),
-  showRemovedToggle: document.getElementById("showRemovedToggle"),
+.glass {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
 
-  memberList: document.getElementById("memberList"),
-  winnerList: document.getElementById("winnerList"),
-  historyList: document.getElementById("historyList"),
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 28px;
+  margin-bottom: 16px;
+}
 
-  membersCountText: document.getElementById("membersCountText"),
-  winnersCountText: document.getElementById("winnersCountText"),
-  historyCountText: document.getElementById("historyCountText"),
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
 
-  toast: document.getElementById("toast"),
+.brand-logo {
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--primary-1), var(--primary-2));
+  box-shadow: 0 14px 34px rgba(123, 92, 255, 0.22);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 900;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
 
-  settingsBtn: document.getElementById("settingsBtn"),
-  settingsDrawer: document.getElementById("settingsDrawer"),
-  settingsBackdrop: document.getElementById("settingsBackdrop"),
-  settingsCloseBtn: document.getElementById("settingsCloseBtn"),
-  saveSettingsBtn: document.getElementById("saveSettingsBtn"),
+.brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
-  themeSelect: document.getElementById("themeSelect"),
-  bannerTitleInput: document.getElementById("bannerTitleInput"),
-  bannerSubInput: document.getElementById("bannerSubInput"),
-  bannerTitleText: document.getElementById("bannerTitleText"),
-  bannerSubText: document.getElementById("bannerSubText"),
+.brand-title {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.1;
+}
 
-  topLogoInput: document.getElementById("topLogoInput"),
-  wheelLogoInput: document.getElementById("wheelLogoInput"),
-  brandLogoImg: document.getElementById("brandLogoImg"),
-  brandLogoFallback: document.getElementById("brandLogoFallback"),
-  wheelCenterLogoImg: document.getElementById("wheelCenterLogoImg"),
-  wheelCenterFallback: document.getElementById("wheelCenterFallback"),
+.brand-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
 
-  musicFileInput: document.getElementById("musicFileInput"),
-  musicOnBtn: document.getElementById("musicOnBtn"),
-  musicOffBtn: document.getElementById("musicOffBtn"),
-  bgMusicPlayer: document.getElementById("bgMusicPlayer"),
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
-  exportHistoryBtn: document.getElementById("exportHistoryBtn"),
+.icon-btn,
+.primary-btn,
+.secondary-btn,
+.spin-btn,
+.tab-btn,
+.small-btn {
+  border: 0;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.2s ease;
+}
 
-  winnerPopup: document.getElementById("winnerPopup"),
-  winnerPopupBackdrop: document.getElementById("winnerPopupBackdrop"),
-  winnerPopupName: document.getElementById("winnerPopupName"),
-  winnerPopupPrize: document.getElementById("winnerPopupPrize"),
-  winnerPopupCloseBtn: document.getElementById("winnerPopupCloseBtn"),
-  confettiLayer: document.getElementById("confettiLayer"),
-};
+.icon-btn:hover,
+.primary-btn:hover,
+.secondary-btn:hover,
+.spin-btn:hover,
+.tab-btn:hover,
+.small-btn:hover {
+  transform: translateY(-1px);
+}
 
-const wheelCtx = el.wheelCanvas.getContext("2d");
-let settings = loadSettings();
+.icon-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  background: var(--chip);
+  color: var(--text);
+  font-size: 20px;
+}
 
-function loadSettings() {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { ...defaultSettings };
-    return { ...defaultSettings, ...JSON.parse(raw) };
-  } catch {
-    return { ...defaultSettings };
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 18px 20px;
+  border-radius: 26px;
+  background: linear-gradient(135deg, var(--banner-1), var(--banner-2));
+}
+
+.banner-title {
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.banner-sub {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 1.08fr 0.92fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.panel {
+  border-radius: 30px;
+  padding: 18px;
+}
+
+.hero-panel {
+  grid-column: 1;
+}
+
+.wheel-panel {
+  grid-column: 2;
+  grid-row: span 2;
+}
+
+.prize-panel {
+  grid-column: 1;
+}
+
+.list-panel {
+  grid-column: 1 / -1;
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.eyebrow {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: 1.12;
+}
+
+h1 {
+  font-size: clamp(28px, 4vw, 42px);
+}
+
+h2 {
+  font-size: clamp(22px, 3vw, 30px);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.stat-card {
+  padding: 18px;
+  border-radius: 22px;
+  background: var(--bg-soft);
+  border: 1px solid var(--card-border);
+}
+
+.stat-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.stat-card strong {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 900;
+}
+
+.scan-box {
+  margin-top: 16px;
+  border-radius: 22px;
+  background: var(--bg-soft);
+  border: 1px solid var(--card-border);
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.scan-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scan-summary {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.pill {
+  width: fit-content;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.neutral {
+  background: var(--chip);
+  color: var(--text);
+}
+
+.success {
+  background: rgba(27, 179, 107, 0.14);
+  color: var(--success);
+}
+
+.warning {
+  background: rgba(211, 138, 13, 0.14);
+  color: var(--warning);
+}
+
+.danger {
+  background: rgba(224, 79, 106, 0.14);
+  color: var(--danger);
+}
+
+.primary-btn,
+.secondary-btn,
+.spin-btn,
+.small-btn {
+  min-height: 48px;
+  padding: 12px 18px;
+  border-radius: 18px;
+  color: var(--text);
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, var(--primary-1), var(--primary-2));
+  color: #fff;
+}
+
+.secondary-btn {
+  background: var(--chip);
+}
+
+.danger-outline {
+  border: 1px solid rgba(224, 79, 106, 0.22);
+  color: var(--danger);
+}
+
+.empty-banner {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(224, 79, 106, 0.12);
+  color: var(--danger);
+  margin-bottom: 14px;
+  font-weight: 700;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.wheel-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 16px 0 10px;
+}
+
+.wheel-pointer {
+  position: absolute;
+  top: 14px;
+  width: 0;
+  height: 0;
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-top: 28px solid #ffe6a8;
+  filter: drop-shadow(0 8px 18px rgba(255, 195, 90, 0.4));
+  z-index: 3;
+}
+
+.wheel-ring {
+  width: min(100%, 470px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  position: relative;
+  overflow: visible;
+}
+
+.wheel-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 50%;
+  border: 10px solid var(--wheel-border);
+  box-shadow:
+    0 0 0 10px rgba(255, 198, 72, 0.12),
+    0 22px 55px rgba(0, 0, 0, 0.18),
+    0 0 40px rgba(255, 190, 58, 0.22);
+  background: transparent;
+  transition: transform 4.8s cubic-bezier(0.12, 0.8, 0.18, 1);
+}
+
+.wheel-center {
+  position: absolute;
+  inset: 50%;
+  width: 112px;
+  height: 112px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--wheel-center-bg);
+  border: 7px solid rgba(255, 214, 93, 0.95);
+  box-shadow:
+    0 0 0 8px rgba(255, 194, 71, 0.16),
+    0 8px 20px rgba(0, 0, 0, 0.26);
+  overflow: hidden;
+  text-align: center;
+}
+
+.wheel-center img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wheel-center-top {
+  position: absolute;
+  top: 18px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: #ffe3a6;
+  font-weight: 800;
+}
+
+.wheel-center-main {
+  font-size: 46px;
+  font-weight: 900;
+  color: #fff2be;
+  line-height: 1;
+}
+
+.wheel-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.spin-btn {
+  background: linear-gradient(90deg, #ff4d79, var(--primary-1) 50%, var(--primary-2));
+  color: #fff;
+  box-shadow: 0 16px 30px rgba(123, 92, 255, 0.18);
+  font-size: 20px;
+  letter-spacing: 0.06em;
+}
+
+.winner-flash {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(123, 92, 255, 0.16), rgba(24, 210, 255, 0.12));
+  border: 1px solid var(--card-border);
+}
+
+.winner-name {
+  font-size: 28px;
+  font-weight: 900;
+  margin-top: 6px;
+}
+
+.winner-prize {
+  font-size: 18px;
+  color: #d69007;
+  margin-top: 6px;
+  font-weight: 700;
+}
+
+.prize-text,
+.text-input,
+.select-input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  border-radius: 18px;
+  padding: 14px 15px;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--input);
+  border: 1px solid var(--card-border);
+}
+
+.prize-text {
+  min-height: 130px;
+  resize: vertical;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.tab-btn {
+  min-height: 50px;
+  border-radius: 18px;
+  background: var(--chip);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, var(--primary-1), var(--primary-2));
+  color: #fff;
+}
+
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.search-wrap {
+  flex: 1 1 280px;
+}
+
+.search-input {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 16px;
+  border: 0;
+  outline: none;
+  padding: 0 16px;
+  color: var(--text);
+  background: var(--input);
+  border: 1px solid var(--card-border);
+}
+
+.toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.list-title {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.list-count {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.list-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item-card {
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--bg-soft);
+  border: 1px solid var(--card-border);
+}
+
+.item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.item-title {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.item-sub {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.badge.active {
+  background: rgba(27, 179, 107, 0.14);
+  color: var(--success);
+}
+
+.badge.left {
+  background: rgba(211, 138, 13, 0.14);
+  color: var(--warning);
+}
+
+.badge.removed {
+  background: rgba(224, 79, 106, 0.14);
+  color: var(--danger);
+}
+
+.badge.winner {
+  background: rgba(123, 92, 255, 0.14);
+  color: var(--primary-1);
+}
+
+.item-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.small-btn.notice {
+  background: linear-gradient(135deg, var(--primary-1), var(--primary-2));
+  color: #fff;
+}
+
+.small-btn.telegram {
+  background: var(--chip);
+}
+
+.small-btn.done {
+  background: var(--chip);
+}
+
+.empty {
+  padding: 18px;
+  text-align: center;
+  color: var(--muted);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+  transform: translateX(-50%);
+  width: min(92vw, 420px);
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--card-solid);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow);
+  z-index: 140;
+  text-align: center;
+  font-weight: 700;
+}
+
+.drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  pointer-events: none;
+}
+
+.drawer.open {
+  pointer-events: auto;
+}
+
+.drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--overlay);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.drawer.open .drawer-backdrop {
+  opacity: 1;
+}
+
+.drawer-panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: min(92vw, 420px);
+  background: var(--card-solid);
+  border-left: 1px solid var(--card-border);
+  box-shadow: -24px 0 40px rgba(0, 0, 0, 0.16);
+  transform: translateX(100%);
+  transition: transform 0.28s ease;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.drawer.open .drawer-panel {
+  transform: translateX(0);
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.drawer-section {
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--bg-soft);
+  border: 1px solid var(--card-border);
+  margin-bottom: 14px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.file-input {
+  width: 100%;
+  color: var(--muted);
+}
+
+.music-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.drawer-actions {
+  margin-top: 10px;
+}
+
+.winner-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+}
+
+.winner-popup-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--overlay);
+  backdrop-filter: blur(8px);
+}
+
+.winner-popup-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(92vw, 480px);
+  transform: translate(-50%, -50%) scale(1);
+  background: var(--card-solid);
+  border: 1px solid var(--card-border);
+  border-radius: 30px;
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.24);
+  padding: 28px 22px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.winner-popup-emoji {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--primary-1);
+}
+
+.winner-popup-name {
+  font-size: clamp(30px, 6vw, 44px);
+  font-weight: 900;
+  margin-top: 18px;
+}
+
+.winner-popup-won {
+  font-size: 18px;
+  color: var(--muted);
+  margin-top: 12px;
+}
+
+.winner-popup-prize {
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 900;
+  margin-top: 8px;
+  color: #d88c00;
+}
+
+.winner-close-btn {
+  min-width: 160px;
+  margin-top: 24px;
+}
+
+.confetti-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti {
+  position: absolute;
+  top: -20px;
+  width: 10px;
+  height: 18px;
+  border-radius: 3px;
+  opacity: 0.9;
+  animation: confetti-fall linear forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-30px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(540deg);
+    opacity: 0.05;
   }
 }
 
-function saveSettings() {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-}
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function formatTime(value) {
-  if (!value) return "-";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleString();
-}
-
-function setPill(node, text, type) {
-  if (!node) return;
-  node.textContent = text;
-  node.className = `pill ${type}`;
-}
-
-function showToast(message, type = "normal") {
-  if (!el.toast) return;
-  el.toast.textContent = message;
-  el.toast.classList.remove("hidden");
-
-  if (type === "error") {
-    el.toast.style.borderColor = "rgba(224,79,106,0.35)";
-  } else if (type === "success") {
-    el.toast.style.borderColor = "rgba(27,179,107,0.35)";
-  } else {
-    el.toast.style.borderColor = "rgba(0,0,0,0.08)";
+@media (max-width: 980px) {
+  .dashboard {
+    grid-template-columns: 1fr;
   }
 
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => {
-    el.toast.classList.add("hidden");
-  }, 2600);
-}
+  .hero-panel,
+  .wheel-panel,
+  .prize-panel,
+  .list-panel {
+    grid-column: auto;
+    grid-row: auto;
+  }
 
-async function api(path, options = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
-
-  try {
-    const response = await fetch(`${CONFIG.BASE_URL}${path}`, {
-      ...options,
-      headers: {
-        "x-api-key": CONFIG.API_KEY,
-        ...(options.method && options.method !== "GET"
-          ? { "Content-Type": "application/json" }
-          : {}),
-        ...(options.headers || {}),
-      },
-      signal: controller.signal,
-    });
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok || data.ok === false) {
-      throw new Error(data.error || `HTTP ${response.status}`);
-    }
-
-    return data;
-  } catch (err) {
-    if (err?.name === "AbortError") {
-      throw new Error("Request timeout");
-    }
-    throw err;
-  } finally {
-    clearTimeout(timeoutId);
+  .wheel-ring {
+    width: min(100%, 420px);
   }
 }
 
-function parsePrizeLines(text) {
-  return String(text || "")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const m = line.match(/^(.+?)\s+(\d+)\s*time$/i) || line.match(/^(.+?)\s+(\d+)$/i);
-      if (!m) return null;
-      return {
-        name: m[1].trim(),
-        times: Number(m[2]) || 1,
-      };
-    })
-    .filter(Boolean);
-}
-
-function buildWheelPrizeSegments() {
-  const parsed = parsePrizeLines(el.prizeText.value);
-  const names = parsed.map((p) => p.name).filter(Boolean);
-
-  state.prizes = names.length
-    ? names
-    : ["10000Ks", "20000Ks", "30000Ks", "Lucky", "Prize", "Spin"];
-}
-
-function drawWheel() {
-  const canvas = el.wheelCanvas;
-  const ctx = wheelCtx;
-  const w = canvas.width;
-  const h = canvas.height;
-  const cx = w / 2;
-  const cy = h / 2;
-  const radius = Math.min(cx, cy) - 8;
-
-  ctx.clearRect(0, 0, w, h);
-
-  const prizes = state.prizes.length ? state.prizes : ["Lucky77"];
-  const count = prizes.length;
-  const anglePer = (Math.PI * 2) / count;
-
-  const colors = [
-    "#ff5f6d",
-    "#ffc371",
-    "#23d5ab",
-    "#23a6d5",
-    "#8b5dff",
-    "#ff4fd8",
-    "#1bb36b",
-    "#ffd166",
-    "#7b5cff",
-    "#18d2ff",
-  ];
-
-  for (let i = 0; i < count; i++) {
-    const start = -Math.PI / 2 + i * anglePer;
-    const end = start + anglePer;
-
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, radius, start, end);
-    ctx.closePath();
-    ctx.fillStyle = colors[i % colors.length];
-    ctx.fill();
-
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "rgba(255,255,255,0.22)";
-    ctx.stroke();
-
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(start + anglePer / 2);
-
-    const text = prizes[i];
-    ctx.textAlign = "right";
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 23px Inter, sans-serif";
-
-    const maxWidth = radius * 0.48;
-    let shown = text;
-    while (ctx.measureText(shown).width > maxWidth && shown.length > 6) {
-      shown = shown.slice(0, -1);
-    }
-    if (shown !== text) shown = shown.slice(0, -1) + "…";
-
-    ctx.fillText(shown, radius - 34, 8);
-    ctx.restore();
+@media (max-width: 640px) {
+  .app-shell {
+    padding-left: 12px;
+    padding-right: 12px;
   }
 
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius - 8, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(255,255,255,0.16)";
-  ctx.lineWidth = 4;
-  ctx.stroke();
-}
-
-function getPrizeIndexByName(prizeName) {
-  return state.prizes.findIndex((name) => String(name).trim() === String(prizeName).trim());
-}
-
-function computeTargetRotationDeg(prizeName) {
-  const count = state.prizes.length || 1;
-  const idx = getPrizeIndexByName(prizeName);
-  const safeIdx = idx >= 0 ? idx : 0;
-
-  const slice = 360 / count;
-  const sliceCenter = safeIdx * slice + slice / 2;
-
-  const pointerDeg = 0;
-  let target = 360 - sliceCenter + pointerDeg;
-
-  while (target < 0) target += 360;
-  while (target >= 360) target -= 360;
-
-  return target;
-}
-
-async function loadHealth() {
-  state.health = await api("/health");
-}
-
-async function loadMembers() {
-  const includeRemoved = el.showRemovedToggle?.checked ? "1" : "0";
-  const data = await api(`/members?include_removed=${includeRemoved}&backfill=0`);
-  state.members = Array.isArray(data.members) ? data.members : [];
-}
-
-async function loadWinners() {
-  const data = await api("/winners");
-  state.winners = Array.isArray(data.winners) ? data.winners : [];
-}
-
-async function loadHistory() {
-  const data = await api("/history");
-  state.history = Array.isArray(data.history) ? data.history : [];
-}
-
-async function loadPool() {
-  const data = await api("/pool");
-  state.pool = {
-    count: Number(data.count || 0),
-    ids: Array.isArray(data.ids) ? data.ids : [],
-  };
-}
-
-async function loadScanStatus() {
-  const data = await api("/scan/status");
-  state.scan = {
-    status: data.status || "idle",
-    summary: data.summary || null,
-    last_scan_at: data.last_scan_at || "",
-  };
-}
-
-async function firstLoad() {
-  await loadHealth().catch(() => {
-    state.health = null;
-  });
-  await loadMembers().catch(() => {
-    state.members = [];
-  });
-  await loadWinners().catch(() => {
-    state.winners = [];
-  });
-  await loadHistory().catch(() => {
-    state.history = [];
-  });
-  await loadPool().catch(() => {
-    state.pool = { count: 0, ids: [] };
-  });
-  await loadScanStatus().catch(() => {
-    state.scan = { status: "idle", summary: null, last_scan_at: "" };
-  });
-
-  buildWheelPrizeSegments();
-  drawWheel();
-  renderAll();
-}
-
-async function refreshAllData() {
-  await loadHealth().catch(() => {});
-  await loadMembers().catch(() => {});
-  await loadWinners().catch(() => {});
-  await loadHistory().catch(() => {});
-  await loadPool().catch(() => {});
-  await loadScanStatus().catch(() => {});
-  buildWheelPrizeSegments();
-  drawWheel();
-  renderAll();
-}
-
-async function refreshAfterScan() {
-  await loadScanStatus().catch(() => {});
-  await loadMembers().catch(() => {});
-  await loadPool().catch(() => {});
-  await loadHealth().catch(() => {});
-  renderAll();
-}
-
-async function refreshAfterSpin() {
-  await loadWinners().catch(() => {});
-  await loadHistory().catch(() => {});
-  await loadPool().catch(() => {});
-  await loadHealth().catch(() => {});
-  renderAll();
-}
-
-async function refreshAfterWinnerAction() {
-  await loadWinners().catch(() => {});
-  renderWinners();
-}
-
-function renderHealth() {
-  const h = state.health || {};
-  el.statMembers.textContent = h.members ?? 0;
-  el.statPool.textContent = h.pool ?? 0;
-  el.statWinners.textContent = h.winners ?? 0;
-  el.statPrizes.textContent = h.remaining_prizes ?? 0;
-
-  el.serverTimeText.textContent = h.time ? `Server: ${formatTime(h.time)}` : "Connected";
-
-  if (h.scan_status === "completed") setPill(el.healthBadge, "Healthy", "success");
-  else if (h.scan_status === "scanning") setPill(el.healthBadge, "Scanning", "warning");
-  else if (h.scan_status === "error") setPill(el.healthBadge, "Error", "danger");
-  else setPill(el.healthBadge, "Live", "neutral");
-
-  if ((state.pool?.count || 0) <= 0) {
-    el.poolEmptyText.classList.remove("hidden");
-  } else {
-    el.poolEmptyText.classList.add("hidden");
-  }
-}
-
-function renderScan() {
-  const s = state.scan || {};
-  const summary = s.summary || null;
-
-  if (s.status === "completed") setPill(el.scanStatusBadge, "completed", "success");
-  else if (s.status === "scanning") setPill(el.scanStatusBadge, "scanning", "warning");
-  else if (s.status === "error") setPill(el.scanStatusBadge, "error", "danger");
-  else setPill(el.scanStatusBadge, "idle", "neutral");
-
-  if (summary) {
-    el.scanSummaryText.textContent = `Active ${summary.active ?? 0} · Left ${summary.left ?? 0} · Pool ${summary.pool ?? 0}`;
-  } else if (s.last_scan_at) {
-    el.scanSummaryText.textContent = `Last scan ${formatTime(s.last_scan_at)}`;
-  } else {
-    el.scanSummaryText.textContent = "No scan yet";
-  }
-}
-
-function renderMembers() {
-  const q = (el.searchInput.value || "").trim().toLowerCase();
-  const showRemoved = !!el.showRemovedToggle.checked;
-
-  const filtered = (state.members || []).filter((m) => {
-    if (!showRemoved && m.removed) return false;
-    if (!q) return true;
-
-    const blob = [m.display, m.name, m.username, m.id, m.left_reason].join(" ").toLowerCase();
-    return blob.includes(q);
-  });
-
-  el.membersCountText.textContent = `${filtered.length} users`;
-
-  if (!filtered.length) {
-    el.memberList.innerHTML = `<div class="empty">No members found</div>`;
-    return;
+  .topbar {
+    padding: 14px;
+    border-radius: 24px;
   }
 
-  el.memberList.innerHTML = filtered.map((m) => {
-    const statusText = m.removed ? "removed" : m.active ? "active" : "left";
-    const statusClass = m.removed ? "removed" : m.active ? "active" : "left";
-
-    return `
-      <div class="item-card">
-        <div class="item-top">
-          <div>
-            <div class="item-title">${escapeHtml(m.display || m.id)}</div>
-            <div class="item-sub">
-              ID: ${escapeHtml(m.id)} · ${m.username ? "@" + escapeHtml(m.username) : "no username"}
-            </div>
-          </div>
-          <div class="badge ${statusClass}">${escapeHtml(statusText)}</div>
-        </div>
-
-        <div class="badges">
-          ${m.isWinner ? `<span class="badge winner">winner</span>` : ""}
-          ${m.dm_ready ? `<span class="badge active">dm ready</span>` : `<span class="badge left">dm off</span>`}
-          ${m.registered_at ? `<span class="badge">reg ${escapeHtml(formatTime(m.registered_at))}</span>` : ""}
-          ${m.left_at ? `<span class="badge">left ${escapeHtml(formatTime(m.left_at))}</span>` : ""}
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-function renderWinners() {
-  const winners = state.winners || [];
-  el.winnersCountText.textContent = `${winners.length} winners`;
-
-  if (!winners.length) {
-    el.winnerList.innerHTML = `<div class="empty">No winners yet</div>`;
-    return;
+  .banner {
+    padding: 16px;
+    border-radius: 22px;
   }
 
-  el.winnerList.innerHTML = winners.map((w) => {
-    const username = String(w.username || "").replace(/^@+/, "");
-
-    return `
-      <div class="item-card">
-        <div class="item-top">
-          <div>
-            <div class="item-title">#${escapeHtml(w.turn)} · ${escapeHtml(w.display || w.user_id)}</div>
-            <div class="item-sub">
-              Prize: ${escapeHtml(w.prize || "-")} · ${escapeHtml(formatTime(w.at))}
-            </div>
-          </div>
-          <div class="badge ${w.done ? "active" : "left"}">${w.done ? "done" : "pending"}</div>
-        </div>
-
-        <div class="badges">
-          ${w.notice_sent ? `<span class="badge active">notice sent</span>` : `<span class="badge left">notice pending</span>`}
-          ${username ? `<span class="badge">@${escapeHtml(username)}</span>` : ""}
-          ${w.done_at ? `<span class="badge">done ${escapeHtml(formatTime(w.done_at))}</span>` : ""}
-        </div>
-
-        <div class="item-actions">
-          ${username ? `<button class="small-btn telegram" data-tg-user="${escapeHtml(username)}">Telegram</button>` : ""}
-          <button class="small-btn notice" data-notice-user="${escapeHtml(w.user_id)}" data-notice-prize="${escapeHtml(w.prize || "")}">
-            Notice
-          </button>
-          <button class="small-btn done" data-done-user="${escapeHtml(w.user_id)}">
-            ${w.done ? "Undo Done" : "Done"}
-          </button>
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  bindWinnerActionButtons();
-}
-
-function renderHistory() {
-  const history = state.history || [];
-  el.historyCountText.textContent = `${history.length} logs`;
-
-  if (!history.length) {
-    el.historyList.innerHTML = `<div class="empty">No history yet</div>`;
-    return;
+  .panel {
+    padding: 15px;
+    border-radius: 24px;
   }
 
-  el.historyList.innerHTML = history.map((h) => {
-    const winnerDisplay =
-      h?.winner?.display ||
-      h?.winner?.name ||
-      h?.winner?.username ||
-      h?.winner?.id ||
-      h?.display ||
-      h?.user_id ||
-      "-";
-
-    return `
-      <div class="item-card">
-        <div class="item-top">
-          <div>
-            <div class="item-title">#${escapeHtml(h.turn || "-")} · ${escapeHtml(winnerDisplay)}</div>
-            <div class="item-sub">
-              Prize: ${escapeHtml(h.prize || "-")} · ${escapeHtml(formatTime(h.at))}
-            </div>
-          </div>
-          <div class="badge">history</div>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-function renderAll() {
-  renderHealth();
-  renderScan();
-  renderMembers();
-  renderWinners();
-  renderHistory();
-}
-
-function openSettings() {
-  el.settingsDrawer.classList.add("open");
-}
-
-function closeSettings() {
-  el.settingsDrawer.classList.remove("open");
-}
-
-async function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result || ""));
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
-
-function applySettingsToUI() {
-  document.documentElement.setAttribute("data-theme", settings.theme || "white");
-
-  el.bannerTitleText.textContent = settings.bannerTitle || defaultSettings.bannerTitle;
-  el.bannerSubText.textContent = settings.bannerSub || defaultSettings.bannerSub;
-
-  el.bannerTitleInput.value = settings.bannerTitle || "";
-  el.bannerSubInput.value = settings.bannerSub || "";
-  el.themeSelect.value = settings.theme || "white";
-
-  if (settings.topLogo) {
-    el.brandLogoImg.src = settings.topLogo;
-    el.brandLogoImg.classList.remove("hidden");
-    el.brandLogoFallback.classList.add("hidden");
-  } else {
-    el.brandLogoImg.classList.add("hidden");
-    el.brandLogoFallback.classList.remove("hidden");
+  .stats-grid {
+    gap: 10px;
   }
 
-  if (settings.wheelLogo) {
-    el.wheelCenterLogoImg.src = settings.wheelLogo;
-    el.wheelCenterLogoImg.classList.remove("hidden");
-    el.wheelCenterFallback.classList.add("hidden");
-  } else {
-    el.wheelCenterLogoImg.classList.add("hidden");
-    el.wheelCenterFallback.classList.remove("hidden");
+  .stat-card {
+    padding: 14px;
+    border-radius: 18px;
   }
 
-  if (settings.musicDataUrl) {
-    el.bgMusicPlayer.src = settings.musicDataUrl;
-  }
-}
-
-function playWinnerTone() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const notes = [880, 1320, 1760];
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.value = freq;
-      gain.gain.value = 0.06;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      const start = ctx.currentTime + i * 0.12;
-      osc.start(start);
-      osc.stop(start + 0.12);
-    });
-  } catch {}
-}
-
-function launchConfetti() {
-  el.confettiLayer.innerHTML = "";
-  const colors = ["#ff5a7d", "#ffd166", "#7b5cff", "#18d2ff", "#1bb36b", "#ff8fab"];
-  const count = 70;
-
-  for (let i = 0; i < count; i++) {
-    const node = document.createElement("div");
-    node.className = "confetti";
-    node.style.left = `${Math.random() * 100}%`;
-    node.style.background = colors[Math.floor(Math.random() * colors.length)];
-    node.style.animationDuration = `${2.4 + Math.random() * 2.2}s`;
-    node.style.animationDelay = `${Math.random() * 0.4}s`;
-    node.style.transform = `rotate(${Math.random() * 180}deg)`;
-    el.confettiLayer.appendChild(node);
+  .scan-box {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  setTimeout(() => {
-    el.confettiLayer.innerHTML = "";
-  }, 4800);
-}
-
-function showWinnerPopup(name, prize) {
-  el.winnerPopupName.textContent = name || "-";
-  el.winnerPopupPrize.textContent = prize || "-";
-  el.winnerPopup.classList.remove("hidden");
-  launchConfetti();
-  playWinnerTone();
-}
-
-function hideWinnerPopup() {
-  el.winnerPopup.classList.add("hidden");
-  el.confettiLayer.innerHTML = "";
-}
-
-async function handleScan() {
-  if (state.spinning) {
-    showToast("Spin နေချိန် scan မလုပ်ရပါ", "error");
-    return;
+  .wheel-ring {
+    width: min(100%, 330px);
+    padding: 10px;
   }
 
-  try {
-    el.scanBtn.disabled = true;
-    setPill(el.scanStatusBadge, "scanning", "warning");
-    el.scanSummaryText.textContent = "Checking registered member IDs...";
-
-    await api("/scan/members", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-
-    await refreshAfterScan();
-    showToast("Scan completed", "success");
-  } catch (err) {
-    showToast(err.message || "Scan failed", "error");
-    await loadScanStatus().catch(() => {});
-    renderScan();
-  } finally {
-    el.scanBtn.disabled = false;
-  }
-}
-
-async function handleSpin() {
-  if (state.spinning) return;
-
-  try {
-    state.spinning = true;
-    el.spinBtn.disabled = true;
-    el.scanBtn.disabled = true;
-    el.winnerFlash.classList.add("hidden");
-
-    const result = await api("/spin", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-
-    const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
-    const prize = result?.prize || "—";
-
-    const targetDeg = computeTargetRotationDeg(prize);
-    const extraRounds = 360 * (5 + Math.floor(Math.random() * 3));
-    state.wheelDeg += extraRounds + targetDeg;
-
-    el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
-
-    setTimeout(async () => {
-      el.winnerFlash.classList.remove("hidden");
-      el.winnerFlashName.textContent = winnerName;
-      el.winnerFlashPrize.textContent = prize;
-
-      showWinnerPopup(winnerName, prize);
-      await refreshAfterSpin();
-      showToast(`Winner: ${winnerName}`, "success");
-    }, 4800);
-  } catch (err) {
-    showToast(err.message || "Spin failed", "error");
-  } finally {
-    setTimeout(() => {
-      state.spinning = false;
-      el.spinBtn.disabled = false;
-      el.scanBtn.disabled = false;
-    }, 5000);
-  }
-}
-
-async function handleSavePrize() {
-  const prizeText = el.prizeText.value.trim();
-  if (!prizeText) {
-    showToast("Prize text required", "error");
-    return;
+  .wheel-center {
+    width: 94px;
+    height: 94px;
   }
 
-  try {
-    el.savePrizeBtn.disabled = true;
-    await api("/config/prizes", {
-      method: "POST",
-      body: JSON.stringify({ prizeText }),
-    });
+  .wheel-center-main {
+    font-size: 38px;
+  }
 
-    buildWheelPrizeSegments();
-    drawWheel();
+  .wheel-actions {
+    grid-template-columns: 1fr;
+  }
 
-    await loadHealth().catch(() => {});
-    renderHealth();
-    showToast("Prize bag saved", "success");
-  } catch (err) {
-    showToast(err.message || "Save prize failed", "error");
-  } finally {
-    el.savePrizeBtn.disabled = false;
+  .item-title {
+    font-size: 18px;
+  }
+
+  .list-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .music-actions {
+    flex-direction: column;
   }
 }
-
-async function handleRestart() {
-  const ok = window.confirm("Restart event now?");
-  if (!ok) return;
-
-  try {
-    el.restartBtn.disabled = true;
-    await api("/restart-spin", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-
-    el.winnerFlash.classList.add("hidden");
-    hideWinnerPopup();
-    await refreshAllData();
-    showToast("Event restarted", "success");
-  } catch (err) {
-    showToast(err.message || "Restart failed", "error");
-  } finally {
-    el.restartBtn.disabled = false;
-  }
-}
-
-async function sendNotice(userId, prize) {
-  try {
-    const data = await api("/notice", {
-      method: "POST",
-      body: JSON.stringify({
-        user_id: userId,
-        prize,
-      }),
-    });
-
-    await refreshAfterWinnerAction();
-
-    if (data.dm_ok === false) {
-      showToast("DM failed", "error");
-      return;
-    }
-
-    showToast("Notice sent", "success");
-  } catch (err) {
-    showToast(err.message || "Notice failed", "error");
-  }
-}
-
-async function toggleDone(userId) {
-  try {
-    await api("/winner/done", {
-      method: "POST",
-      body: JSON.stringify({
-        user_id: userId,
-        toggle: true,
-      }),
-    });
-
-    await refreshAfterWinnerAction();
-    showToast("Winner updated", "success");
-  } catch (err) {
-    showToast(err.message || "Done update failed", "error");
-  }
-}
-
-function bindWinnerActionButtons() {
-  document.querySelectorAll("[data-notice-user]").forEach((btn) => {
-    btn.onclick = () => {
-      const userId = btn.getAttribute("data-notice-user");
-      const prize = btn.getAttribute("data-notice-prize") || "";
-      sendNotice(userId, prize);
-    };
-  });
-
-  document.querySelectorAll("[data-done-user]").forEach((btn) => {
-    btn.onclick = () => {
-      const userId = btn.getAttribute("data-done-user");
-      toggleDone(userId);
-    };
-  });
-
-  document.querySelectorAll("[data-tg-user]").forEach((btn) => {
-    btn.onclick = () => {
-      const username = btn.getAttribute("data-tg-user");
-      if (!username) return;
-      window.open(`https://t.me/${username}`, "_blank");
-    };
-  });
-}
-
-function bindTabs() {
-  const tabs = Array.from(document.querySelectorAll(".tab-btn"));
-  const panels = Array.from(document.querySelectorAll(".tab-panel"));
-
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      const target = tab.dataset.tab;
-      tabs.forEach((t) => t.classList.toggle("active", t === tab));
-      panels.forEach((p) => p.classList.toggle("active", p.id === `tab-${target}`));
-    });
-  });
-}
-
-function exportHistoryCsv() {
-  const rows = [["Turn", "Winner", "Prize", "Time"]];
-
-  (state.history || []).forEach((h) => {
-    const winnerDisplay =
-      h?.winner?.display ||
-      h?.winner?.name ||
-      h?.winner?.username ||
-      h?.winner?.id ||
-      h?.display ||
-      h?.user_id ||
-      "-";
-
-    rows.push([
-      String(h.turn || ""),
-      String(winnerDisplay || ""),
-      String(h.prize || ""),
-      String(h.at || ""),
-    ]);
-  });
-
-  const csv = rows
-    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-    .join("\n");
-
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "lucky77-history.csv";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-function bindEvents() {
-  el.refreshBtn.addEventListener("click", async () => {
-    try {
-      el.refreshBtn.disabled = true;
-      await refreshAllData();
-      showToast("Refreshed", "success");
-    } catch (err) {
-      showToast(err.message || "Refresh failed", "error");
-    } finally {
-      el.refreshBtn.disabled = false;
-    }
-  });
-
-  el.scanBtn.addEventListener("click", handleScan);
-  el.spinBtn.addEventListener("click", handleSpin);
-  el.restartBtn.addEventListener("click", handleRestart);
-  el.savePrizeBtn.addEventListener("click", handleSavePrize);
-
-  el.searchInput.addEventListener("input", renderMembers);
-
-  el.showRemovedToggle.addEventListener("change", async () => {
-    await loadMembers().catch(() => {
-      state.members = [];
-    });
-    renderMembers();
-  });
-
-  el.settingsBtn.addEventListener("click", openSettings);
-  el.settingsBackdrop.addEventListener("click", closeSettings);
-  el.settingsCloseBtn.addEventListener("click", closeSettings);
-
-  el.saveSettingsBtn.addEventListener("click", () => {
-    settings.theme = el.themeSelect.value;
-    settings.bannerTitle = el.bannerTitleInput.value.trim() || defaultSettings.bannerTitle;
-    settings.bannerSub = el.bannerSubInput.value.trim() || defaultSettings.bannerSub;
-    saveSettings();
-    applySettingsToUI();
-    closeSettings();
-    showToast("Settings saved", "success");
-  });
-
-  el.topLogoInput.addEventListener("change", async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    settings.topLogo = await fileToDataUrl(file);
-    saveSettings();
-    applySettingsToUI();
-    showToast("Top logo updated", "success");
-  });
-
-  el.wheelLogoInput.addEventListener("change", async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    settings.wheelLogo = await fileToDataUrl(file);
-    saveSettings();
-    applySettingsToUI();
-    showToast("Wheel logo updated", "success");
-  });
-
-  el.musicFileInput.addEventListener("change", async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    settings.musicDataUrl = await fileToDataUrl(file);
-    saveSettings();
-    applySettingsToUI();
-    showToast("Music uploaded", "success");
-  });
-
-  el.musicOnBtn.addEventListener("click", async () => {
-    if (!settings.musicDataUrl) {
-      showToast("Upload MP3 first", "error");
-      return;
-    }
-    try {
-      settings.musicOn = true;
-      saveSettings();
-      el.bgMusicPlayer.src = settings.musicDataUrl;
-      el.bgMusicPlayer.loop = true;
-      await el.bgMusicPlayer.play();
-      showToast("Music ON", "success");
-    } catch {
-      showToast("Music play blocked", "error");
-    }
-  });
-
-  el.musicOffBtn.addEventListener("click", () => {
-    settings.musicOn = false;
-    saveSettings();
-    el.bgMusicPlayer.pause();
-    showToast("Music OFF", "success");
-  });
-
-  el.exportHistoryBtn.addEventListener("click", () => {
-    exportHistoryCsv();
-    showToast("History exported", "success");
-  });
-
-  el.winnerPopupBackdrop.addEventListener("click", hideWinnerPopup);
-  el.winnerPopupCloseBtn.addEventListener("click", hideWinnerPopup);
-}
-
-(function resizeWheelCanvas() {
-  const size = 520;
-  el.wheelCanvas.width = size;
-  el.wheelCanvas.height = size;
-})();
-
-(async function init() {
-  applySettingsToUI();
-  bindTabs();
-  bindEvents();
-  buildWheelPrizeSegments();
-  drawWheel();
-
-  try {
-    await firstLoad();
-  } catch (err) {
-    showToast(err.message || "Initial load failed", "error");
-  }
-})();
