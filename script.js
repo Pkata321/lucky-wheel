@@ -2,10 +2,10 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot.onrender.com",
   API_KEY: "Lucky77_luckywheel_77",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "v6",
+  CACHE_BUSTER: "full-polished-v1",
 };
 
-const SETTINGS_KEY = "lucky77_premium_settings_v6";
+const SETTINGS_KEY = "lucky77_premium_settings_full_v1";
 
 const defaultSettings = {
   theme: "white",
@@ -15,6 +15,10 @@ const defaultSettings = {
   wheelLogo: "",
   musicDataUrl: "",
   musicOn: false,
+  bgColor: "#f6f7fb",
+  cardColor: "#ffffff",
+  accent1: "#7b5cff",
+  accent2: "#18d2ff",
 };
 
 const state = {
@@ -27,6 +31,7 @@ const state = {
   spinning: false,
   wheelDeg: 0,
   prizes: [],
+  currentSection: "wheel",
 };
 
 const el = {
@@ -74,6 +79,11 @@ const el = {
   saveSettingsBtn: document.getElementById("saveSettingsBtn"),
 
   themeSelect: document.getElementById("themeSelect"),
+  bgColorInput: document.getElementById("bgColorInput"),
+  cardColorInput: document.getElementById("cardColorInput"),
+  accent1Input: document.getElementById("accent1Input"),
+  accent2Input: document.getElementById("accent2Input"),
+
   bannerTitleInput: document.getElementById("bannerTitleInput"),
   bannerSubInput: document.getElementById("bannerSubInput"),
   bannerTitleText: document.getElementById("bannerTitleText"),
@@ -104,6 +114,11 @@ const el = {
   quickMenuDrawer: document.getElementById("quickMenuDrawer"),
   quickMenuBackdrop: document.getElementById("quickMenuBackdrop"),
   quickMenuCloseBtn: document.getElementById("quickMenuCloseBtn"),
+
+  wheelHomeSection: document.getElementById("wheelHomeSection"),
+  liveDashboardSection: document.getElementById("liveDashboardSection"),
+  prizeBuilderSection: document.getElementById("prizeBuilderSection"),
+  listsSection: document.getElementById("listsSection"),
 };
 
 const wheelCtx = el.wheelCanvas ? el.wheelCanvas.getContext("2d") : null;
@@ -220,7 +235,9 @@ function buildWheelPrizeSegments() {
   if (!el.prizeText) return;
   const parsed = parsePrizeLines(el.prizeText.value);
   const names = parsed.map((p) => p.name).filter(Boolean);
-  state.prizes = names.length ? names : ["10000Ks", "20000Ks", "30000Ks", "Lucky", "Prize", "Spin"];
+  state.prizes = names.length
+    ? names
+    : ["10000Ks", "20000Ks", "30000Ks", "Lucky", "Prize", "Spin"];
 }
 
 function drawWheel() {
@@ -297,14 +314,11 @@ function computeTargetRotationDeg(prizeName) {
   const count = state.prizes.length || 1;
   const idx = getPrizeIndexByName(prizeName);
   const safeIdx = idx >= 0 ? idx : 0;
-
   const slice = 360 / count;
   const sliceCenter = safeIdx * slice + slice / 2;
   let target = 360 - sliceCenter;
-
   while (target < 0) target += 360;
   while (target >= 360) target -= 360;
-
   return target;
 }
 
@@ -399,7 +413,9 @@ async function refreshAfterSpin() {
 
 async function refreshAfterWinnerAction() {
   await loadWinners().catch(() => {});
+  await loadHistory().catch(() => {});
   renderWinners();
+  renderHistory();
 }
 
 function renderHealth() {
@@ -454,11 +470,7 @@ function renderMembers() {
   const filtered = (state.members || []).filter((m) => {
     if (!showRemoved && m.removed) return false;
     if (!q) return true;
-
-    const blob = [m.display, m.name, m.username, m.id, m.left_reason]
-      .join(" ")
-      .toLowerCase();
-
+    const blob = [m.display, m.name, m.username, m.id, m.left_reason].join(" ").toLowerCase();
     return blob.includes(q);
   });
 
@@ -585,20 +597,38 @@ function renderAll() {
   renderHistory();
 }
 
+function showSection(section) {
+  state.currentSection = section;
+
+  const allSections = [
+    el.liveDashboardSection,
+    el.prizeBuilderSection,
+    el.listsSection,
+  ];
+
+  allSections.forEach((node) => node?.classList.add("hidden"));
+
+  if (section === "live") el.liveDashboardSection?.classList.remove("hidden");
+  if (section === "prize") el.prizeBuilderSection?.classList.remove("hidden");
+  if (section === "lists") el.listsSection?.classList.remove("hidden");
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 function openSettings() {
-  if (el.settingsDrawer) el.settingsDrawer.classList.add("open");
+  el.settingsDrawer?.classList.add("open");
 }
 
 function closeSettings() {
-  if (el.settingsDrawer) el.settingsDrawer.classList.remove("open");
+  el.settingsDrawer?.classList.remove("open");
 }
 
 function openQuickMenu() {
-  if (el.quickMenuDrawer) el.quickMenuDrawer.classList.add("open");
+  el.quickMenuDrawer?.classList.add("open");
 }
 
 function closeQuickMenu() {
-  if (el.quickMenuDrawer) el.quickMenuDrawer.classList.remove("open");
+  el.quickMenuDrawer?.classList.remove("open");
 }
 
 async function fileToDataUrl(file) {
@@ -610,19 +640,29 @@ async function fileToDataUrl(file) {
   });
 }
 
+function applyCustomColors() {
+  document.documentElement.style.setProperty("--bg", settings.bgColor || defaultSettings.bgColor);
+  document.documentElement.style.setProperty("--card-solid", settings.cardColor || defaultSettings.cardColor);
+  document.documentElement.style.setProperty("--bg-soft", settings.cardColor || defaultSettings.cardColor);
+  document.documentElement.style.setProperty("--primary-1", settings.accent1 || defaultSettings.accent1);
+  document.documentElement.style.setProperty("--primary-2", settings.accent2 || defaultSettings.accent2);
+}
+
 function applySettingsToUI() {
   document.documentElement.setAttribute("data-theme", settings.theme || "white");
+  applyCustomColors();
 
-  if (el.bannerTitleText) {
-    el.bannerTitleText.textContent = settings.bannerTitle || defaultSettings.bannerTitle;
-  }
-  if (el.bannerSubText) {
-    el.bannerSubText.textContent = settings.bannerSub || defaultSettings.bannerSub;
-  }
+  if (el.bannerTitleText) el.bannerTitleText.textContent = settings.bannerTitle || defaultSettings.bannerTitle;
+  if (el.bannerSubText) el.bannerSubText.textContent = settings.bannerSub || defaultSettings.bannerSub;
 
   if (el.bannerTitleInput) el.bannerTitleInput.value = settings.bannerTitle || "";
   if (el.bannerSubInput) el.bannerSubInput.value = settings.bannerSub || "";
   if (el.themeSelect) el.themeSelect.value = settings.theme || "white";
+
+  if (el.bgColorInput) el.bgColorInput.value = settings.bgColor || defaultSettings.bgColor;
+  if (el.cardColorInput) el.cardColorInput.value = settings.cardColor || defaultSettings.cardColor;
+  if (el.accent1Input) el.accent1Input.value = settings.accent1 || defaultSettings.accent1;
+  if (el.accent2Input) el.accent2Input.value = settings.accent2 || defaultSettings.accent2;
 
   if (settings.topLogo && el.brandLogoImg && el.brandLogoFallback) {
     el.brandLogoImg.src = settings.topLogo;
@@ -959,6 +999,16 @@ function exportHistoryCsv() {
   URL.revokeObjectURL(url);
 }
 
+function bindSectionMenu() {
+  document.querySelectorAll(".quick-nav-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.section;
+      showSection(target);
+      closeQuickMenu();
+    });
+  });
+}
+
 function bindEvents() {
   el.refreshBtn?.addEventListener("click", async () => {
     try {
@@ -994,14 +1044,14 @@ function bindEvents() {
   el.quickMenuBackdrop?.addEventListener("click", closeQuickMenu);
   el.quickMenuCloseBtn?.addEventListener("click", closeQuickMenu);
 
-  document.querySelectorAll(".quick-link").forEach((link) => {
-    link.addEventListener("click", () => closeQuickMenu());
-  });
-
   el.saveSettingsBtn?.addEventListener("click", () => {
     settings.theme = el.themeSelect?.value || defaultSettings.theme;
     settings.bannerTitle = el.bannerTitleInput?.value.trim() || defaultSettings.bannerTitle;
     settings.bannerSub = el.bannerSubInput?.value.trim() || defaultSettings.bannerSub;
+    settings.bgColor = el.bgColorInput?.value || defaultSettings.bgColor;
+    settings.cardColor = el.cardColorInput?.value || defaultSettings.cardColor;
+    settings.accent1 = el.accent1Input?.value || defaultSettings.accent1;
+    settings.accent2 = el.accent2Input?.value || defaultSettings.accent2;
 
     persistSettings();
     applySettingsToUI();
@@ -1081,6 +1131,11 @@ function bindEvents() {
   applySettingsToUI();
   bindTabs();
   bindEvents();
+  bindSectionMenu();
+
+  // default = spin wheel only
+  showSection("wheel");
+
   buildWheelPrizeSegments();
   drawWheel();
 
