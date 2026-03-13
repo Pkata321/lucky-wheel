@@ -92,8 +92,8 @@ body {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(circle at top left, rgba(123, 92, 255, 0.14), transparent 28%),
-    radial-gradient(circle at top right, rgba(24, 210, 255, 0.1), transparent 24%),
+    radial-gradient(circle at top left, color-mix(in srgb, var(--primary-1) 20%, transparent), transparent 28%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--primary-2) 18%, transparent), transparent 24%),
     linear-gradient(180deg, var(--bg), var(--bg));
   z-index: 0;
   pointer-events: none;
@@ -116,15 +116,21 @@ body {
 }
 
 .topbar {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px 18px 16px 94px;
+  gap: 14px;
+  padding: 14px 18px;
   border-radius: 28px;
   margin-bottom: 16px;
-  min-height: 98px;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
 }
 
 .brand {
@@ -132,16 +138,21 @@ body {
   align-items: center;
   gap: 14px;
   min-width: 0;
+  flex: 1;
+}
+
+.brand-texts {
+  min-width: 0;
 }
 
 .brand-logo {
-  width: 54px;
-  height: 54px;
+  width: 56px;
+  height: 56px;
   border-radius: 18px;
   display: grid;
   place-items: center;
   background: linear-gradient(135deg, var(--primary-1), var(--primary-2));
-  box-shadow: 0 14px 34px rgba(123, 92, 255, 0.22);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--primary-1) 24%, transparent);
   color: #fff;
   font-size: 24px;
   font-weight: 900;
@@ -165,12 +176,14 @@ body {
   font-size: 13px;
   color: var(--muted);
   margin-top: 4px;
+  line-height: 1.35;
 }
 
 .topbar-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 0 0 auto;
 }
 
 .icon-btn,
@@ -179,10 +192,11 @@ body {
 .spin-btn,
 .tab-btn,
 .small-btn,
-.quick-menu-btn {
+.quick-link {
   border: 0;
   cursor: pointer;
-  transition: transform 0.15s ease, opacity 0.2s ease, background 0.2s ease;
+  transition: transform 0.15s ease, opacity 0.2s ease;
+  font-family: inherit;
 }
 
 .icon-btn:hover,
@@ -191,17 +205,24 @@ body {
 .spin-btn:hover,
 .tab-btn:hover,
 .small-btn:hover,
-.quick-menu-btn:hover {
+.quick-link:hover {
   transform: translateY(-1px);
 }
 
 .icon-btn {
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   border-radius: 16px;
   background: var(--chip);
   color: var(--text);
   font-size: 20px;
+  flex: 0 0 auto;
+}
+
+.menu-btn {
+  width: 54px;
+  height: 54px;
+  font-size: 28px;
 }
 
 .banner {
@@ -228,32 +249,24 @@ body {
 
 .dashboard {
   display: grid;
-  grid-template-columns: 1.08fr 0.92fr;
   gap: 18px;
-  align-items: start;
+}
+
+.dashboard-single {
+  grid-template-columns: 1fr;
 }
 
 .panel {
   border-radius: 30px;
   padding: 18px;
-  scroll-margin-top: 90px;
 }
 
-.hero-panel {
-  grid-column: 1;
+.page-section.hidden {
+  display: none !important;
 }
 
-.wheel-panel {
-  grid-column: 2;
-  grid-row: span 2;
-}
-
-.prize-panel {
-  grid-column: 1;
-}
-
-.list-panel {
-  grid-column: 1 / -1;
+.wheel-home-section {
+  display: block;
 }
 
 .panel-head {
@@ -338,10 +351,11 @@ h2 {
 
 .pill {
   width: fit-content;
-  padding: 7px 12px;
+  padding: 7px 14px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .neutral {
@@ -388,6 +402,7 @@ h2 {
 .danger-outline {
   border: 1px solid rgba(224, 79, 106, 0.22);
   color: var(--danger);
+  background: color-mix(in srgb, var(--card-solid) 88%, transparent);
 }
 
 .empty-banner {
@@ -496,7 +511,7 @@ h2 {
 .spin-btn {
   background: linear-gradient(90deg, #ff4d79, var(--primary-1) 50%, var(--primary-2));
   color: #fff;
-  box-shadow: 0 16px 30px rgba(123, 92, 255, 0.18);
+  box-shadow: 0 16px 30px color-mix(in srgb, var(--primary-1) 20%, transparent);
   font-size: 20px;
   letter-spacing: 0.06em;
 }
@@ -534,6 +549,10 @@ h2 {
   color: var(--text);
   background: var(--input);
   border: 1px solid var(--card-border);
+}
+
+.text-input + .text-input {
+  margin-top: 10px;
 }
 
 .prize-text {
@@ -705,10 +724,7 @@ h2 {
   color: #fff;
 }
 
-.small-btn.telegram {
-  background: var(--chip);
-}
-
+.small-btn.telegram,
 .small-btn.done {
   background: var(--chip);
 }
@@ -733,7 +749,7 @@ h2 {
   color: var(--text);
   border: 1px solid var(--card-border);
   box-shadow: var(--shadow);
-  z-index: 190;
+  z-index: 200;
   text-align: center;
   font-weight: 700;
 }
@@ -741,7 +757,7 @@ h2 {
 .drawer {
   position: fixed;
   inset: 0;
-  z-index: 160;
+  z-index: 180;
   pointer-events: none;
 }
 
@@ -777,6 +793,19 @@ h2 {
 }
 
 .drawer.open .drawer-panel {
+  transform: translateX(0);
+}
+
+.quick-menu-panel {
+  left: 0;
+  right: auto;
+  border-left: 0;
+  border-right: 1px solid var(--card-border);
+  box-shadow: 24px 0 40px rgba(0, 0, 0, 0.16);
+  transform: translateX(-100%);
+}
+
+.quick-menu-drawer.open .quick-menu-panel {
   transform: translateX(0);
 }
 
@@ -817,10 +846,53 @@ h2 {
   margin-top: 10px;
 }
 
+.quick-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quick-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--bg-soft);
+  border: 1px solid var(--card-border);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.color-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.color-field input[type="color"] {
+  width: 100%;
+  height: 46px;
+  border: 1px solid var(--card-border);
+  background: transparent;
+  border-radius: 12px;
+  padding: 4px;
+}
+
 .winner-popup {
   position: fixed;
   inset: 0;
-  z-index: 180;
+  z-index: 190;
 }
 
 .winner-popup-backdrop {
@@ -828,7 +900,6 @@ h2 {
   inset: 0;
   background: var(--overlay);
   backdrop-filter: blur(8px);
-  z-index: 1;
 }
 
 .winner-popup-card {
@@ -844,7 +915,6 @@ h2 {
   padding: 28px 22px;
   text-align: center;
   overflow: hidden;
-  z-index: 3;
 }
 
 .winner-popup-emoji {
@@ -882,7 +952,6 @@ h2 {
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  z-index: 2;
 }
 
 .confetti {
@@ -906,75 +975,7 @@ h2 {
   }
 }
 
-.quick-menu-btn {
-  position: fixed;
-  left: 30px;
-  top: calc(env(safe-area-inset-top, 0px) + 28px);
-  z-index: 170;
-  width: 50px;
-  height: 50px;
-  border: 1px solid var(--card-border);
-  border-radius: 18px;
-  background: var(--card-solid);
-  color: var(--text);
-  box-shadow: var(--shadow);
-  font-size: 24px;
-  display: grid;
-  place-items: center;
-  line-height: 1;
-}
-
-.quick-menu-drawer {
-  z-index: 170;
-}
-
-.quick-menu-panel {
-  left: 0;
-  right: auto;
-  width: min(78vw, 320px);
-  border-left: 0;
-  border-right: 1px solid var(--card-border);
-  transform: translateX(-100%);
-}
-
-.quick-menu-drawer.open .quick-menu-panel {
-  transform: translateX(0);
-}
-
-.quick-links {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.quick-link {
-  display: block;
-  padding: 16px 18px;
-  border-radius: 18px;
-  background: var(--bg-soft);
-  border: 1px solid var(--card-border);
-  color: var(--text);
-  text-decoration: none;
-  font-weight: 800;
-}
-
-.quick-link:hover {
-  background: var(--chip);
-}
-
 @media (max-width: 980px) {
-  .dashboard {
-    grid-template-columns: 1fr;
-  }
-
-  .hero-panel,
-  .wheel-panel,
-  .prize-panel,
-  .list-panel {
-    grid-column: auto;
-    grid-row: auto;
-  }
-
   .wheel-ring {
     width: min(100%, 420px);
   }
@@ -987,9 +988,43 @@ h2 {
   }
 
   .topbar {
-    padding: 14px 14px 14px 82px;
+    padding: 14px;
     border-radius: 24px;
-    min-height: 92px;
+    align-items: flex-start;
+  }
+
+  .topbar-left {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .brand {
+    align-items: flex-start;
+  }
+
+  .brand-sub {
+    max-width: 140px;
+  }
+
+  .topbar-actions {
+    gap: 8px;
+    align-self: center;
+  }
+
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .menu-btn {
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+  }
+
+  .pill {
+    padding: 7px 10px;
+    font-size: 11px;
   }
 
   .banner {
@@ -1047,16 +1082,11 @@ h2 {
     flex-direction: column;
   }
 
-  .quick-menu-btn {
-    width: 46px;
-    height: 46px;
-    left: 22px;
-    top: calc(env(safe-area-inset-top, 0px) + 26px);
-    font-size: 22px;
-    border-radius: 16px;
+  .color-grid {
+    grid-template-columns: 1fr;
   }
 
-  .quick-menu-panel {
-    width: min(82vw, 300px);
+  .drawer-panel {
+    width: min(96vw, 420px);
   }
 }
