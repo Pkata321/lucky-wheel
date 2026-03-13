@@ -9,6 +9,8 @@
 <body>
   <div class="bg-layer"></div>
 
+  <button id="quickMenuBtn" class="quick-menu-btn" aria-label="Open quick menu">☰</button>
+
   <div class="app-shell">
     <header class="topbar glass">
       <div class="brand">
@@ -37,7 +39,7 @@
     </section>
 
     <main class="dashboard">
-      <section class="panel glass hero-panel">
+      <section id="liveDashboard" class="panel glass hero-panel">
         <div class="panel-head">
           <div>
             <div class="eyebrow">Live Dashboard</div>
@@ -88,19 +90,19 @@
         </div>
 
         <div class="wheel-wrap">
-  <div class="wheel-pointer"></div>
-  <div class="wheel-ring">
-    <canvas id="wheelCanvas" width="520" height="520" class="wheel-canvas"></canvas>
+          <div class="wheel-pointer"></div>
+          <div class="wheel-ring">
+            <canvas id="wheelCanvas" width="520" height="520" class="wheel-canvas"></canvas>
 
-    <div class="wheel-center" id="wheelCenterBox">
-      <img id="wheelCenterLogoImg" class="hidden" alt="Wheel Logo" />
-      <div id="wheelCenterFallback">
-        <span class="wheel-center-top">LUCKY</span>
-        <span class="wheel-center-main">77</span>
-      </div>
-    </div>
-  </div>
-</div>
+            <div class="wheel-center" id="wheelCenterBox">
+              <img id="wheelCenterLogoImg" class="hidden" alt="Wheel Logo" />
+              <div id="wheelCenterFallback">
+                <span class="wheel-center-top">LUCKY</span>
+                <span class="wheel-center-main">77</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div class="wheel-actions">
           <button id="spinBtn" class="spin-btn">SPIN</button>
@@ -114,7 +116,7 @@
         </div>
       </section>
 
-      <section class="panel glass prize-panel">
+      <section id="prizeBuilderSection" class="panel glass prize-panel">
         <div class="panel-head">
           <div>
             <div class="eyebrow">Prize Config</div>
@@ -128,7 +130,7 @@
 30000Ks 3time</textarea>
       </section>
 
-      <section class="panel glass list-panel">
+      <section id="historySection" class="panel glass list-panel">
         <div class="tabs">
           <button class="tab-btn active" data-tab="members">Members</button>
           <button class="tab-btn" data-tab="winners">Winners</button>
@@ -172,6 +174,22 @@
       </section>
     </main>
   </div>
+
+  <aside id="quickMenuDrawer" class="drawer quick-menu-drawer">
+    <div class="drawer-backdrop" id="quickMenuBackdrop"></div>
+    <div class="drawer-panel quick-menu-panel">
+      <div class="drawer-head">
+        <h3>Quick Menu</h3>
+        <button id="quickMenuCloseBtn" class="icon-btn">✕</button>
+      </div>
+
+      <div class="quick-links">
+        <a href="#liveDashboard" class="quick-link">Live Dashboard</a>
+        <a href="#prizeBuilderSection" class="quick-link">Prize Builder</a>
+        <a href="#historySection" class="quick-link">History</a>
+      </div>
+    </div>
+  </aside>
 
   <aside id="settingsDrawer" class="drawer">
     <div class="drawer-backdrop" id="settingsBackdrop"></div>
