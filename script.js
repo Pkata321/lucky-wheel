@@ -4,7 +4,7 @@ const CONFIG = {
   TIMEOUT_MS: 60000,
 };
 
-const SETTINGS_KEY = "lucky77_premium_settings_v3";
+const SETTINGS_KEY = "lucky77_premium_settings_v4";
 
 const defaultSettings = {
   theme: "white",
@@ -98,6 +98,11 @@ const el = {
   winnerPopupPrize: document.getElementById("winnerPopupPrize"),
   winnerPopupCloseBtn: document.getElementById("winnerPopupCloseBtn"),
   confettiLayer: document.getElementById("confettiLayer"),
+
+  quickMenuBtn: document.getElementById("quickMenuBtn"),
+  quickMenuDrawer: document.getElementById("quickMenuDrawer"),
+  quickMenuBackdrop: document.getElementById("quickMenuBackdrop"),
+  quickMenuCloseBtn: document.getElementById("quickMenuCloseBtn"),
 };
 
 const wheelCtx = el.wheelCanvas.getContext("2d");
@@ -197,7 +202,9 @@ function parsePrizeLines(text) {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const m = line.match(/^(.+?)\s+(\d+)\s*time$/i) || line.match(/^(.+?)\s+(\d+)$/i);
+      const m =
+        line.match(/^(.+?)\s+(\d+)\s*time$/i) ||
+        line.match(/^(.+?)\s+(\d+)$/i);
       if (!m) return null;
       return {
         name: m[1].trim(),
@@ -287,7 +294,9 @@ function drawWheel() {
 }
 
 function getPrizeIndexByName(prizeName) {
-  return state.prizes.findIndex((name) => String(name).trim() === String(prizeName).trim());
+  return state.prizes.findIndex(
+    (name) => String(name).trim() === String(prizeName).trim()
+  );
 }
 
 function computeTargetRotationDeg(prizeName) {
@@ -298,8 +307,7 @@ function computeTargetRotationDeg(prizeName) {
   const slice = 360 / count;
   const sliceCenter = safeIdx * slice + slice / 2;
 
-  const pointerDeg = 0;
-  let target = 360 - sliceCenter + pointerDeg;
+  let target = 360 - sliceCenter;
 
   while (target < 0) target += 360;
   while (target >= 360) target -= 360;
@@ -309,6 +317,13 @@ function computeTargetRotationDeg(prizeName) {
 
 async function loadHealth() {
   state.health = await api("/health");
+}
+
+async function loadPrizeConfig() {
+  const data = await api("/config");
+  if (data?.prize_source && String(data.prize_source).trim()) {
+    el.prizeText.value = String(data.prize_source).trim();
+  }
 }
 
 async function loadMembers() {
@@ -348,6 +363,7 @@ async function firstLoad() {
   await loadHealth().catch(() => {
     state.health = null;
   });
+  await loadPrizeConfig().catch(() => {});
   await loadMembers().catch(() => {
     state.members = [];
   });
@@ -371,6 +387,7 @@ async function firstLoad() {
 
 async function refreshAllData() {
   await loadHealth().catch(() => {});
+  await loadPrizeConfig().catch(() => {});
   await loadMembers().catch(() => {});
   await loadWinners().catch(() => {});
   await loadHistory().catch(() => {});
@@ -433,7 +450,8 @@ function renderScan() {
   else setPill(el.scanStatusBadge, "idle", "neutral");
 
   if (summary) {
-    el.scanSummaryText.textContent = `Active ${summary.active ?? 0} · Left ${summary.left ?? 0} · Pool ${summary.pool ?? 0}`;
+    el.scanSummaryText.textContent =
+      `Active ${summary.active ?? 0} · Left ${summary.left ?? 0} · Pool ${summary.pool ?? 0}`;
   } else if (s.last_scan_at) {
     el.scanSummaryText.textContent = `Last scan ${formatTime(s.last_scan_at)}`;
   } else {
@@ -449,7 +467,10 @@ function renderMembers() {
     if (!showRemoved && m.removed) return false;
     if (!q) return true;
 
-    const blob = [m.display, m.name, m.username, m.id, m.left_reason].join(" ").toLowerCase();
+    const blob = [m.display, m.name, m.username, m.id, m.left_reason]
+      .join(" ")
+      .toLowerCase();
+
     return blob.includes(q);
   });
 
@@ -460,31 +481,33 @@ function renderMembers() {
     return;
   }
 
-  el.memberList.innerHTML = filtered.map((m) => {
-    const statusText = m.removed ? "removed" : m.active ? "active" : "left";
-    const statusClass = m.removed ? "removed" : m.active ? "active" : "left";
+  el.memberList.innerHTML = filtered
+    .map((m) => {
+      const statusText = m.removed ? "removed" : m.active ? "active" : "left";
+      const statusClass = m.removed ? "removed" : m.active ? "active" : "left";
 
-    return `
-      <div class="item-card">
-        <div class="item-top">
-          <div>
-            <div class="item-title">${escapeHtml(m.display || m.id)}</div>
-            <div class="item-sub">
-              ID: ${escapeHtml(m.id)} · ${m.username ? "@" + escapeHtml(m.username) : "no username"}
+      return `
+        <div class="item-card">
+          <div class="item-top">
+            <div>
+              <div class="item-title">${escapeHtml(m.display || m.id)}</div>
+              <div class="item-sub">
+                ID: ${escapeHtml(m.id)} · ${m.username ? "@" + escapeHtml(m.username) : "no username"}
+              </div>
             </div>
+            <div class="badge ${statusClass}">${escapeHtml(statusText)}</div>
           </div>
-          <div class="badge ${statusClass}">${escapeHtml(statusText)}</div>
-        </div>
 
-        <div class="badges">
-          ${m.isWinner ? `<span class="badge winner">winner</span>` : ""}
-          ${m.dm_ready ? `<span class="badge active">dm ready</span>` : `<span class="badge left">dm off</span>`}
-          ${m.registered_at ? `<span class="badge">reg ${escapeHtml(formatTime(m.registered_at))}</span>` : ""}
-          ${m.left_at ? `<span class="badge">left ${escapeHtml(formatTime(m.left_at))}</span>` : ""}
+          <div class="badges">
+            ${m.isWinner ? `<span class="badge winner">winner</span>` : ""}
+            ${m.dm_ready ? `<span class="badge active">dm ready</span>` : `<span class="badge left">dm off</span>`}
+            ${m.registered_at ? `<span class="badge">reg ${escapeHtml(formatTime(m.registered_at))}</span>` : ""}
+            ${m.left_at ? `<span class="badge">left ${escapeHtml(formatTime(m.left_at))}</span>` : ""}
+          </div>
         </div>
-      </div>
-    `;
-  }).join("");
+      `;
+    })
+    .join("");
 }
 
 function renderWinners() {
@@ -496,39 +519,41 @@ function renderWinners() {
     return;
   }
 
-  el.winnerList.innerHTML = winners.map((w) => {
-    const username = String(w.username || "").replace(/^@+/, "");
+  el.winnerList.innerHTML = winners
+    .map((w) => {
+      const username = String(w.username || "").replace(/^@+/, "");
 
-    return `
-      <div class="item-card">
-        <div class="item-top">
-          <div>
-            <div class="item-title">#${escapeHtml(w.turn)} · ${escapeHtml(w.display || w.user_id)}</div>
-            <div class="item-sub">
-              Prize: ${escapeHtml(w.prize || "-")} · ${escapeHtml(formatTime(w.at))}
+      return `
+        <div class="item-card">
+          <div class="item-top">
+            <div>
+              <div class="item-title">#${escapeHtml(w.turn)} · ${escapeHtml(w.display || w.user_id)}</div>
+              <div class="item-sub">
+                Prize: ${escapeHtml(w.prize || "-")} · ${escapeHtml(formatTime(w.at))}
+              </div>
             </div>
+            <div class="badge ${w.done ? "active" : "left"}">${w.done ? "done" : "pending"}</div>
           </div>
-          <div class="badge ${w.done ? "active" : "left"}">${w.done ? "done" : "pending"}</div>
-        </div>
 
-        <div class="badges">
-          ${w.notice_sent ? `<span class="badge active">notice sent</span>` : `<span class="badge left">notice pending</span>`}
-          ${username ? `<span class="badge">@${escapeHtml(username)}</span>` : ""}
-          ${w.done_at ? `<span class="badge">done ${escapeHtml(formatTime(w.done_at))}</span>` : ""}
-        </div>
+          <div class="badges">
+            ${w.notice_sent ? `<span class="badge active">notice sent</span>` : `<span class="badge left">notice pending</span>`}
+            ${username ? `<span class="badge">@${escapeHtml(username)}</span>` : ""}
+            ${w.done_at ? `<span class="badge">done ${escapeHtml(formatTime(w.done_at))}</span>` : ""}
+          </div>
 
-        <div class="item-actions">
-          ${username ? `<button class="small-btn telegram" data-tg-user="${escapeHtml(username)}">Telegram</button>` : ""}
-          <button class="small-btn notice" data-notice-user="${escapeHtml(w.user_id)}" data-notice-prize="${escapeHtml(w.prize || "")}">
-            Notice
-          </button>
-          <button class="small-btn done" data-done-user="${escapeHtml(w.user_id)}">
-            ${w.done ? "Undo Done" : "Done"}
-          </button>
+          <div class="item-actions">
+            ${username ? `<button class="small-btn telegram" data-tg-user="${escapeHtml(username)}">Telegram</button>` : ""}
+            <button class="small-btn notice" data-notice-user="${escapeHtml(w.user_id)}" data-notice-prize="${escapeHtml(w.prize || "")}">
+              Notice
+            </button>
+            <button class="small-btn done" data-done-user="${escapeHtml(w.user_id)}">
+              ${w.done ? "Undo Done" : "Done"}
+            </button>
+          </div>
         </div>
-      </div>
-    `;
-  }).join("");
+      `;
+    })
+    .join("");
 
   bindWinnerActionButtons();
 }
@@ -542,30 +567,32 @@ function renderHistory() {
     return;
   }
 
-  el.historyList.innerHTML = history.map((h) => {
-    const winnerDisplay =
-      h?.winner?.display ||
-      h?.winner?.name ||
-      h?.winner?.username ||
-      h?.winner?.id ||
-      h?.display ||
-      h?.user_id ||
-      "-";
+  el.historyList.innerHTML = history
+    .map((h) => {
+      const winnerDisplay =
+        h?.winner?.display ||
+        h?.winner?.name ||
+        h?.winner?.username ||
+        h?.winner?.id ||
+        h?.display ||
+        h?.user_id ||
+        "-";
 
-    return `
-      <div class="item-card">
-        <div class="item-top">
-          <div>
-            <div class="item-title">#${escapeHtml(h.turn || "-")} · ${escapeHtml(winnerDisplay)}</div>
-            <div class="item-sub">
-              Prize: ${escapeHtml(h.prize || "-")} · ${escapeHtml(formatTime(h.at))}
+      return `
+        <div class="item-card">
+          <div class="item-top">
+            <div>
+              <div class="item-title">#${escapeHtml(h.turn || "-")} · ${escapeHtml(winnerDisplay)}</div>
+              <div class="item-sub">
+                Prize: ${escapeHtml(h.prize || "-")} · ${escapeHtml(formatTime(h.at))}
+              </div>
             </div>
+            <div class="badge">history</div>
           </div>
-          <div class="badge">history</div>
         </div>
-      </div>
-    `;
-  }).join("");
+      `;
+    })
+    .join("");
 }
 
 function renderAll() {
@@ -582,6 +609,14 @@ function openSettings() {
 
 function closeSettings() {
   el.settingsDrawer.classList.remove("open");
+}
+
+function openQuickMenu() {
+  el.quickMenuDrawer.classList.add("open");
+}
+
+function closeQuickMenu() {
+  el.quickMenuDrawer.classList.remove("open");
 }
 
 async function fileToDataUrl(file) {
@@ -715,6 +750,13 @@ async function handleSpin() {
     el.scanBtn.disabled = true;
     el.winnerFlash.classList.add("hidden");
 
+    buildWheelPrizeSegments();
+    drawWheel();
+
+    el.wheelCanvas.style.transition = "transform 0.9s linear";
+    state.wheelDeg += 720;
+    el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
+
     const result = await api("/spin", {
       method: "POST",
       body: JSON.stringify({}),
@@ -723,11 +765,21 @@ async function handleSpin() {
     const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
     const prize = result?.prize || "—";
 
-    const targetDeg = computeTargetRotationDeg(prize);
-    const extraRounds = 360 * (5 + Math.floor(Math.random() * 3));
-    state.wheelDeg += extraRounds + targetDeg;
+    await loadPrizeConfig().catch(() => {});
+    buildWheelPrizeSegments();
+    drawWheel();
 
-    el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
+    const targetDeg = computeTargetRotationDeg(prize);
+    const extraRounds = 360 * (6 + Math.floor(Math.random() * 3));
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.wheelCanvas.style.transition =
+          "transform 4.8s cubic-bezier(0.12, 0.8, 0.18, 1)";
+        state.wheelDeg += extraRounds + targetDeg;
+        el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
+      });
+    });
 
     setTimeout(async () => {
       el.winnerFlash.classList.remove("hidden");
@@ -737,7 +789,7 @@ async function handleSpin() {
       showWinnerPopup(winnerName, prize);
       await refreshAfterSpin();
       showToast(`Winner: ${winnerName}`, "success");
-    }, 4800);
+    }, 4900);
   } catch (err) {
     showToast(err.message || "Spin failed", "error");
   } finally {
@@ -745,7 +797,7 @@ async function handleSpin() {
       state.spinning = false;
       el.spinBtn.disabled = false;
       el.scanBtn.disabled = false;
-    }, 5000);
+    }, 5200);
   }
 }
 
@@ -763,6 +815,7 @@ async function handleSavePrize() {
       body: JSON.stringify({ prizeText }),
     });
 
+    await loadPrizeConfig().catch(() => {});
     buildWheelPrizeSegments();
     drawWheel();
 
@@ -898,7 +951,9 @@ function exportHistoryCsv() {
   });
 
   const csv = rows
-    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .map((row) =>
+      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+    )
     .join("\n");
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -944,10 +999,22 @@ function bindEvents() {
   el.settingsBackdrop.addEventListener("click", closeSettings);
   el.settingsCloseBtn.addEventListener("click", closeSettings);
 
+  el.quickMenuBtn.addEventListener("click", openQuickMenu);
+  el.quickMenuBackdrop.addEventListener("click", closeQuickMenu);
+  el.quickMenuCloseBtn.addEventListener("click", closeQuickMenu);
+
+  document.querySelectorAll(".quick-link").forEach((link) => {
+    link.addEventListener("click", () => {
+      closeQuickMenu();
+    });
+  });
+
   el.saveSettingsBtn.addEventListener("click", () => {
     settings.theme = el.themeSelect.value;
-    settings.bannerTitle = el.bannerTitleInput.value.trim() || defaultSettings.bannerTitle;
-    settings.bannerSub = el.bannerSubInput.value.trim() || defaultSettings.bannerSub;
+    settings.bannerTitle =
+      el.bannerTitleInput.value.trim() || defaultSettings.bannerTitle;
+    settings.bannerSub =
+      el.bannerSubInput.value.trim() || defaultSettings.bannerSub;
     saveSettings();
     applySettingsToUI();
     closeSettings();
@@ -986,6 +1053,7 @@ function bindEvents() {
       showToast("Upload MP3 first", "error");
       return;
     }
+
     try {
       settings.musicOn = true;
       saveSettings();
@@ -1033,81 +1101,3 @@ function bindEvents() {
     showToast(err.message || "Initial load failed", "error");
   }
 })();
-html {
-  scroll-behavior: smooth;
-}
-
-.quick-menu-btn {
-  position: fixed;
-  left: 16px;
-  top: 16px;
-  z-index: 160;
-  width: 58px;
-  height: 58px;
-  border: 1px solid var(--card-border);
-  border-radius: 20px;
-  background: var(--card-solid);
-  color: var(--text);
-  box-shadow: var(--shadow);
-  font-size: 28px;
-  cursor: pointer;
-}
-
-.quick-menu-drawer {
-  z-index: 150;
-}
-
-.quick-menu-panel {
-  left: 0;
-  right: auto;
-  border-left: 0;
-  border-right: 1px solid var(--card-border);
-  transform: translateX(-100%);
-}
-
-.quick-menu-drawer.open .quick-menu-panel {
-  transform: translateX(0);
-}
-
-.quick-links {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.quick-link {
-  display: block;
-  padding: 16px 18px;
-  border-radius: 18px;
-  background: var(--bg-soft);
-  border: 1px solid var(--card-border);
-  color: var(--text);
-  text-decoration: none;
-  font-weight: 800;
-}
-
-.quick-link:hover {
-  background: var(--chip);
-}
-
-.wheel-wrap {
-  position: relative;
-  display: grid;
-  place-items: center;
-  padding: 8px 0 10px;
-}
-
-.wheel-pointer {
-  top: -6px;
-}
-
-@media (max-width: 640px) {
-  .quick-menu-btn {
-    width: 52px;
-    height: 52px;
-    top: 12px;
-    left: 12px;
-    font-size: 24px;
-  }
-}
-
