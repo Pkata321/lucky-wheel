@@ -1033,3 +1033,81 @@ function bindEvents() {
     showToast(err.message || "Initial load failed", "error");
   }
 })();
+html {
+  scroll-behavior: smooth;
+}
+
+.quick-menu-btn {
+  position: fixed;
+  left: 16px;
+  top: 16px;
+  z-index: 160;
+  width: 58px;
+  height: 58px;
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  background: var(--card-solid);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.quick-menu-drawer {
+  z-index: 150;
+}
+
+.quick-menu-panel {
+  left: 0;
+  right: auto;
+  border-left: 0;
+  border-right: 1px solid var(--card-border);
+  transform: translateX(-100%);
+}
+
+.quick-menu-drawer.open .quick-menu-panel {
+  transform: translateX(0);
+}
+
+.quick-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quick-link {
+  display: block;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--bg-soft);
+  border: 1px solid var(--card-border);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.quick-link:hover {
+  background: var(--chip);
+}
+
+.wheel-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 8px 0 10px;
+}
+
+.wheel-pointer {
+  top: -6px;
+}
+
+@media (max-width: 640px) {
+  .quick-menu-btn {
+    width: 52px;
+    height: 52px;
+    top: 12px;
+    left: 12px;
+    font-size: 24px;
+  }
+}
+
