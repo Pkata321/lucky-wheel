@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+  />
   <title>Lucky77 Premium Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -34,7 +37,7 @@
     <section class="banner glass" id="bannerCard">
       <div class="banner-texts">
         <div class="banner-title" id="bannerTitleText">Lucky77 Event</div>
-        <div class="banner-sub" id="bannerSubText">Spin & Win premium prizes</div>
+        <div class="banner-sub" id="bannerSubText">Spin &amp; Win premium prizes</div>
       </div>
     </section>
 
@@ -70,7 +73,7 @@
           <div class="scan-meta">
             <div class="eyebrow">Scan Status</div>
             <div id="scanStatusBadge" class="pill neutral">idle</div>
-            <div class="scan-summary" id="scanSummaryText">No scan yet</div>
+            <div id="scanSummaryText" class="scan-summary">No scan yet</div>
           </div>
 
           <button id="scanBtn" class="primary-btn">Scan Channel Member</button>
@@ -91,6 +94,7 @@
 
         <div class="wheel-wrap">
           <div class="wheel-pointer"></div>
+
           <div class="wheel-ring">
             <canvas id="wheelCanvas" width="520" height="520" class="wheel-canvas"></canvas>
 
@@ -139,7 +143,12 @@
 
         <div class="list-toolbar">
           <div class="search-wrap">
-            <input id="searchInput" class="search-input" type="text" placeholder="Search member / username / id" />
+            <input
+              id="searchInput"
+              class="search-input"
+              type="text"
+              placeholder="Search member / username / id"
+            />
           </div>
 
           <label class="toggle-wrap">
@@ -249,9 +258,9 @@
     <div class="winner-popup-backdrop" id="winnerPopupBackdrop"></div>
     <div class="winner-popup-card">
       <div class="winner-popup-emoji">🎉 CONGRATULATIONS 🎉</div>
-      <div class="winner-popup-name" id="winnerPopupName">Mg Mg</div>
+      <div id="winnerPopupName" class="winner-popup-name">Mg Mg</div>
       <div class="winner-popup-won">Won</div>
-      <div class="winner-popup-prize" id="winnerPopupPrize">10000Ks</div>
+      <div id="winnerPopupPrize" class="winner-popup-prize">10000Ks</div>
       <button id="winnerPopupCloseBtn" class="primary-btn winner-close-btn">Close</button>
     </div>
     <div id="confettiLayer" class="confetti-layer"></div>
