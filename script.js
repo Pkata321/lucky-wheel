@@ -2,9 +2,10 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot.onrender.com",
   API_KEY: "Lucky77_luckywheel_77",
   TIMEOUT_MS: 60000,
+  CACHE_BUSTER: "v5",
 };
 
-const SETTINGS_KEY = "lucky77_premium_settings_v4";
+const SETTINGS_KEY = "lucky77_premium_settings_v5";
 
 const defaultSettings = {
   theme: "white",
@@ -166,11 +167,17 @@ async function api(path, options = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
 
+  const separator = path.includes("?") ? "&" : "?";
+  const url = `${CONFIG.BASE_URL}${path}${separator}_=${encodeURIComponent(Date.now())}&v=${encodeURIComponent(CONFIG.CACHE_BUSTER)}`;
+
   try {
-    const response = await fetch(`${CONFIG.BASE_URL}${path}`, {
+    const response = await fetch(url, {
       ...options,
+      cache: "no-store",
       headers: {
         "x-api-key": CONFIG.API_KEY,
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
         ...(options.method && options.method !== "GET"
           ? { "Content-Type": "application/json" }
           : {}),
@@ -421,8 +428,10 @@ async function refreshAfterWinnerAction() {
 
 function renderHealth() {
   const h = state.health || {};
+  const poolCount = Number(state.pool?.count || h.pool || 0);
+
   el.statMembers.textContent = h.members ?? 0;
-  el.statPool.textContent = h.pool ?? 0;
+  el.statPool.textContent = poolCount;
   el.statWinners.textContent = h.winners ?? 0;
   el.statPrizes.textContent = h.remaining_prizes ?? 0;
 
@@ -433,7 +442,7 @@ function renderHealth() {
   else if (h.scan_status === "error") setPill(el.healthBadge, "Error", "danger");
   else setPill(el.healthBadge, "Live", "neutral");
 
-  if ((state.pool?.count || 0) <= 0) {
+  if (poolCount <= 0) {
     el.poolEmptyText.classList.remove("hidden");
   } else {
     el.poolEmptyText.classList.add("hidden");
@@ -745,6 +754,11 @@ async function handleSpin() {
   if (state.spinning) return;
 
   try {
+    if (Number(state.pool?.count || 0) <= 0) {
+      showToast("No members left in pool", "error");
+      return;
+    }
+
     state.spinning = true;
     el.spinBtn.disabled = true;
     el.scanBtn.disabled = true;
@@ -753,8 +767,8 @@ async function handleSpin() {
     buildWheelPrizeSegments();
     drawWheel();
 
-    el.wheelCanvas.style.transition = "transform 0.9s linear";
-    state.wheelDeg += 720;
+    el.wheelCanvas.style.transition = "transform 0.25s linear";
+    state.wheelDeg += 40;
     el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
 
     const result = await api("/spin", {
@@ -765,18 +779,19 @@ async function handleSpin() {
     const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
     const prize = result?.prize || "—";
 
-    await loadPrizeConfig().catch(() => {});
-    buildWheelPrizeSegments();
-    drawWheel();
-
     const targetDeg = computeTargetRotationDeg(prize);
+    const currentBase = state.wheelDeg % 360;
+    let needed = targetDeg - currentBase;
+    if (needed < 0) needed += 360;
+
     const extraRounds = 360 * (6 + Math.floor(Math.random() * 3));
+    const finalDeg = state.wheelDeg + extraRounds + needed;
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         el.wheelCanvas.style.transition =
           "transform 4.8s cubic-bezier(0.12, 0.8, 0.18, 1)";
-        state.wheelDeg += extraRounds + targetDeg;
+        state.wheelDeg = finalDeg;
         el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
       });
     });
@@ -792,6 +807,7 @@ async function handleSpin() {
     }, 4900);
   } catch (err) {
     showToast(err.message || "Spin failed", "error");
+    await refreshAllData().catch(() => {});
   } finally {
     setTimeout(() => {
       state.spinning = false;
