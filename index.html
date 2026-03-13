@@ -12,18 +12,21 @@
 <body>
   <div class="bg-layer"></div>
 
-  <button id="quickMenuBtn" class="quick-menu-btn" aria-label="Open quick menu">☰</button>
-
   <div class="app-shell">
     <header class="topbar glass">
-      <div class="brand">
-        <div class="brand-logo" id="brandLogoBox">
-          <img id="brandLogoImg" class="hidden" alt="Logo" />
-          <span id="brandLogoFallback">77</span>
-        </div>
-        <div>
-          <div class="brand-title">Lucky77</div>
-          <div class="brand-sub" id="serverTimeText">Connecting...</div>
+      <div class="topbar-left">
+        <button id="quickMenuBtn" class="icon-btn menu-btn" aria-label="Open menu">☰</button>
+
+        <div class="brand">
+          <div class="brand-logo" id="brandLogoBox">
+            <img id="brandLogoImg" class="hidden" alt="Logo" />
+            <span id="brandLogoFallback">77</span>
+          </div>
+
+          <div class="brand-texts">
+            <div class="brand-title">Lucky77</div>
+            <div class="brand-sub" id="serverTimeText">Connecting...</div>
+          </div>
         </div>
       </div>
 
@@ -41,8 +44,9 @@
       </div>
     </section>
 
-    <main class="dashboard">
-      <section id="liveDashboard" class="panel glass hero-panel">
+    <main class="dashboard dashboard-single">
+      <!-- LIVE DASHBOARD -->
+      <section id="liveDashboardSection" class="panel glass page-section hidden">
         <div class="panel-head">
           <div>
             <div class="eyebrow">Live Dashboard</div>
@@ -80,7 +84,8 @@
         </div>
       </section>
 
-      <section class="panel glass wheel-panel">
+      <!-- WHEEL / HOME -->
+      <section id="wheelHomeSection" class="panel glass wheel-home-section">
         <div class="panel-head">
           <div>
             <div class="eyebrow">Spin Engine</div>
@@ -120,7 +125,8 @@
         </div>
       </section>
 
-      <section id="prizeBuilderSection" class="panel glass prize-panel">
+      <!-- PRIZE BUILDER -->
+      <section id="prizeBuilderSection" class="panel glass page-section hidden">
         <div class="panel-head">
           <div>
             <div class="eyebrow">Prize Config</div>
@@ -134,7 +140,8 @@
 30000Ks 3time</textarea>
       </section>
 
-      <section id="historySection" class="panel glass list-panel">
+      <!-- LISTS -->
+      <section id="listsSection" class="panel glass page-section hidden">
         <div class="tabs">
           <button class="tab-btn active" data-tab="members">Members</button>
           <button class="tab-btn" data-tab="winners">Winners</button>
@@ -184,6 +191,7 @@
     </main>
   </div>
 
+  <!-- QUICK MENU -->
   <aside id="quickMenuDrawer" class="drawer quick-menu-drawer">
     <div class="drawer-backdrop" id="quickMenuBackdrop"></div>
     <div class="drawer-panel quick-menu-panel">
@@ -193,13 +201,15 @@
       </div>
 
       <div class="quick-links">
-        <a href="#liveDashboard" class="quick-link">Live Dashboard</a>
-        <a href="#prizeBuilderSection" class="quick-link">Prize Builder</a>
-        <a href="#historySection" class="quick-link">History</a>
+        <button class="quick-link quick-nav-btn" data-section="wheel">Spin Wheel</button>
+        <button class="quick-link quick-nav-btn" data-section="live">Live Dashboard</button>
+        <button class="quick-link quick-nav-btn" data-section="prize">Prize Builder</button>
+        <button class="quick-link quick-nav-btn" data-section="lists">Members / Winners / History</button>
       </div>
     </div>
   </aside>
 
+  <!-- SETTINGS -->
   <aside id="settingsDrawer" class="drawer">
     <div class="drawer-backdrop" id="settingsBackdrop"></div>
     <div class="drawer-panel">
@@ -216,6 +226,28 @@
           <option value="gold">Lucky77 Gold</option>
           <option value="neon">Purple Neon</option>
         </select>
+      </div>
+
+      <div class="drawer-section">
+        <div class="section-title">Custom Colors</div>
+        <div class="color-grid">
+          <label class="color-field">
+            <span>Background</span>
+            <input id="bgColorInput" type="color" value="#f6f7fb" />
+          </label>
+          <label class="color-field">
+            <span>Card</span>
+            <input id="cardColorInput" type="color" value="#ffffff" />
+          </label>
+          <label class="color-field">
+            <span>Accent 1</span>
+            <input id="accent1Input" type="color" value="#7b5cff" />
+          </label>
+          <label class="color-field">
+            <span>Accent 2</span>
+            <input id="accent2Input" type="color" value="#18d2ff" />
+          </label>
+        </div>
       </div>
 
       <div class="drawer-section">
@@ -254,6 +286,7 @@
     </div>
   </aside>
 
+  <!-- WINNER POPUP -->
   <div id="winnerPopup" class="winner-popup hidden">
     <div class="winner-popup-backdrop" id="winnerPopupBackdrop"></div>
     <div class="winner-popup-card">
