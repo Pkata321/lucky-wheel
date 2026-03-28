@@ -404,10 +404,21 @@ async function refreshAfterScan() {
 }
 
 async function refreshAfterSpin() {
-  await loadWinners().catch(() => {});
-  await loadHistory().catch(() => {});
-  await loadPool().catch(() => {});
-  await loadHealth().catch(() => {});
+  let ok = false;
+
+  for (let i = 0; i < 2; i++) {
+    try {
+      await loadWinners();
+      await loadHistory();
+      await loadPool();
+      await loadHealth();
+      ok = true;
+      break;
+    } catch (_) {
+      await new Promise((r) => setTimeout(r, 800));
+    }
+  }
+
   renderAll();
 }
 
@@ -799,6 +810,50 @@ async function handleSpin() {
 
     const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
     const prize = result?.prize || "—";
+
+const result = await api("/spin", {
+  method: "POST",
+  body: JSON.stringify({}),
+});
+
+const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
+const prize = result?.prize || "—";
+
+// 🔥 ဒီနေရာမှာထည့်
+const optimisticItem = {
+  turn: result?.turn || 0,
+  at: new Date().toISOString(),
+  prize,
+  winner: {
+    id: result?.winner?.id || "",
+    name: result?.winner?.name || "",
+    username: result?.winner?.username || "",
+    display: winnerName,
+  },
+};
+
+state.history = [optimisticItem, ...(state.history || [])];
+
+state.winners = [
+  {
+    turn: result?.turn || 0,
+    at: optimisticItem.at,
+    prize,
+    user_id: result?.winner?.id || "",
+    name: result?.winner?.name || "",
+    username: result?.winner?.username || "",
+    display: winnerName,
+    done: false,
+    done_at: "",
+    notice_sent: false,
+    notice_at: "",
+  },
+  ...(state.winners || []),
+];
+
+state.pool.count = Math.max(0, Number(state.pool?.count || 0) - 1);
+
+renderAll();
 
     const targetDeg = computeTargetRotationDeg(prize);
     const currentBase = state.wheelDeg % 360;
