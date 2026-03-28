@@ -811,14 +811,6 @@ async function handleSpin() {
     const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
     const prize = result?.prize || "—";
 
-const result = await api("/spin", {
-  method: "POST",
-  body: JSON.stringify({}),
-});
-
-const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
-const prize = result?.prize || "—";
-
 // 🔥 ဒီနေရာမှာထည့်
 const optimisticItem = {
   turn: result?.turn || 0,
