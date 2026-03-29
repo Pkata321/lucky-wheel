@@ -30,6 +30,8 @@ const state = {
   scan: { status: "idle", summary: null, last_scan_at: "" },
   spinning: false,
   wheelDeg: 0,
+  spinLoopTimer: null,
+  spinLoopDegStep: 18,
   prizes: [],
   currentSection: "wheel",
 };
@@ -404,15 +406,12 @@ async function refreshAfterScan() {
 }
 
 async function refreshAfterSpin() {
-  let ok = false;
-
   for (let i = 0; i < 2; i++) {
     try {
       await loadWinners();
       await loadHistory();
       await loadPool();
       await loadHealth();
-      ok = true;
       break;
     } catch (_) {
       await new Promise((r) => setTimeout(r, 800));
@@ -753,6 +752,25 @@ function hideWinnerPopup() {
   if (el.confettiLayer) el.confettiLayer.innerHTML = "";
 }
 
+function startWheelLoop() {
+  if (!el.wheelCanvas) return;
+  stopWheelLoop();
+
+  el.wheelCanvas.style.transition = "transform 0.12s linear";
+
+  state.spinLoopTimer = setInterval(() => {
+    state.wheelDeg += state.spinLoopDegStep;
+    el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
+  }, 120);
+}
+
+function stopWheelLoop() {
+  if (state.spinLoopTimer) {
+    clearInterval(state.spinLoopTimer);
+    state.spinLoopTimer = null;
+  }
+}
+
 async function handleScan() {
   if (state.spinning) {
     showToast("Spin နေချိန် scan မလုပ်ရပါ", "error");
@@ -797,11 +815,7 @@ async function handleSpin() {
     buildWheelPrizeSegments();
     drawWheel();
 
-    if (el.wheelCanvas) {
-      el.wheelCanvas.style.transition = "transform 0.25s linear";
-      state.wheelDeg += 40;
-      el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
-    }
+    startWheelLoop();
 
     const result = await api("/spin", {
       method: "POST",
@@ -811,41 +825,41 @@ async function handleSpin() {
     const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
     const prize = result?.prize || "—";
 
-// 🔥 ဒီနေရာမှာထည့်
-const optimisticItem = {
-  turn: result?.turn || 0,
-  at: new Date().toISOString(),
-  prize,
-  winner: {
-    id: result?.winner?.id || "",
-    name: result?.winner?.name || "",
-    username: result?.winner?.username || "",
-    display: winnerName,
-  },
-};
+    const optimisticItem = {
+      turn: result?.turn || 0,
+      at: new Date().toISOString(),
+      prize,
+      winner: {
+        id: result?.winner?.id || "",
+        name: result?.winner?.name || "",
+        username: result?.winner?.username || "",
+        display: winnerName,
+      },
+    };
 
-state.history = [optimisticItem, ...(state.history || [])];
+    state.history = [optimisticItem, ...(state.history || [])];
 
-state.winners = [
-  {
-    turn: result?.turn || 0,
-    at: optimisticItem.at,
-    prize,
-    user_id: result?.winner?.id || "",
-    name: result?.winner?.name || "",
-    username: result?.winner?.username || "",
-    display: winnerName,
-    done: false,
-    done_at: "",
-    notice_sent: false,
-    notice_at: "",
-  },
-  ...(state.winners || []),
-];
+    state.winners = [
+      {
+        turn: result?.turn || 0,
+        at: optimisticItem.at,
+        prize,
+        user_id: result?.winner?.id || "",
+        name: result?.winner?.name || "",
+        username: result?.winner?.username || "",
+        display: winnerName,
+        done: false,
+        done_at: "",
+        notice_sent: false,
+        notice_at: "",
+      },
+      ...(state.winners || []),
+    ];
 
-state.pool.count = Math.max(0, Number(state.pool?.count || 0) - 1);
+    state.pool.count = Math.max(0, Number(state.pool?.count || 0) - 1);
+    renderAll();
 
-renderAll();
+    stopWheelLoop();
 
     const targetDeg = computeTargetRotationDeg(prize);
     const currentBase = state.wheelDeg % 360;
@@ -876,6 +890,7 @@ renderAll();
       showToast(`Winner: ${winnerName}`, "success");
     }, 4900);
   } catch (err) {
+    stopWheelLoop();
     showToast(err.message || "Spin failed", "error");
     await refreshAllData().catch(() => {});
   } finally {
@@ -1180,7 +1195,6 @@ function bindEvents() {
   bindEvents();
   bindSectionMenu();
 
-  // default = spin wheel only
   showSection("wheel");
 
   buildWheelPrizeSegments();
