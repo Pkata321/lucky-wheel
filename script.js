@@ -802,8 +802,6 @@ async function handleSpin() {
   if (state.spinning) return;
 
   try {
-    alert("spin clicked");
-
     if (Number(state.pool?.count || 0) <= 0) {
       showToast("No members left in pool", "error");
       return;
@@ -823,8 +821,6 @@ async function handleSpin() {
       method: "POST",
       body: JSON.stringify({}),
     });
-
-    alert("spin result: " + JSON.stringify(result));
 
     const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
     const prize = result?.prize || "—";
@@ -894,7 +890,6 @@ async function handleSpin() {
       showToast(`Winner: ${winnerName}`, "success");
     }, 4900);
   } catch (err) {
-    alert("spin error: " + (err.message || err));
     stopWheelLoop();
     showToast(err.message || "Spin failed", "error");
     await refreshAllData().catch(() => {});
