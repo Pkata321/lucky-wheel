@@ -2,25 +2,23 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot.onrender.com",
   API_KEY: "Lucky77_luckywheel_77",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "winners-only-v1",
-  MAIN_UI_URL: "./index.html",
+  CACHE_BUSTER: "cs-winners-v1",
 };
 
 const state = {
   winners: [],
-  filtered: [],
 };
 
 const el = {
-  list: document.getElementById("list"),
-  countText: document.getElementById("countText"),
-  updatedText: document.getElementById("updatedText"),
+  totalWinners: document.getElementById("totalWinners"),
+  doneCount: document.getElementById("doneCount"),
+  pendingCount: document.getElementById("pendingCount"),
+  winnerList: document.getElementById("winnerList"),
   searchInput: document.getElementById("searchInput"),
   refreshBtn: document.getElementById("refreshBtn"),
-  reloadBtn: document.getElementById("reloadBtn"),
   exportBtn: document.getElementById("exportBtn"),
-  openMainBtn: document.getElementById("openMainBtn"),
-  baseUrlText: document.getElementById("baseUrlText"),
+  footerText: document.getElementById("footerText"),
+  toast: document.getElementById("toast"),
 };
 
 function escapeHtml(value) {
@@ -36,6 +34,25 @@ function formatTime(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleString();
+}
+
+function showToast(message, type = "normal") {
+  if (!el.toast) return;
+  el.toast.textContent = message;
+  el.toast.classList.remove("hidden");
+
+  if (type === "error") {
+    el.toast.style.borderColor = "rgba(224,79,106,0.35)";
+  } else if (type === "success") {
+    el.toast.style.borderColor = "rgba(27,179,107,0.35)";
+  } else {
+    el.toast.style.borderColor = "rgba(0,0,0,0.08)";
+  }
+
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => {
+    el.toast.classList.add("hidden");
+  }, 2400);
 }
 
 async function api(path, options = {}) {
@@ -79,26 +96,33 @@ async function api(path, options = {}) {
 async function loadWinners() {
   const data = await api("/winners/cs");
   state.winners = Array.isArray(data.winners) ? data.winners : [];
-  state.filtered = [...state.winners];
 }
 
-function applySearch() {
-  const q = String(el.searchInput?.value || "").trim().toLowerCase();
+function renderStats(filtered) {
+  const all = state.winners || [];
+  const done = all.filter((x) => x.done).length;
+  const pending = all.filter((x) => !x.done).length;
 
-  if (!q) {
-    state.filtered = [...state.winners];
-    return;
-  }
+  if (el.totalWinners) el.totalWinners.textContent = String(all.length);
+  if (el.doneCount) el.doneCount.textContent = String(done);
+  if (el.pendingCount) el.pendingCount.textContent = String(pending);
+  if (el.footerText) el.footerText.textContent = `${filtered.length} item(s) shown`;
+}
 
-  state.filtered = state.winners.filter((w) => {
+function renderWinners() {
+  if (!el.winnerList) return;
+
+  const q = (el.searchInput?.value || "").trim().toLowerCase();
+
+  const filtered = (state.winners || []).filter((w) => {
+    if (!q) return true;
     const blob = [
       w.turn,
-      w.at,
-      w.prize,
       w.user_id,
       w.name,
       w.username,
       w.display,
+      w.prize,
       w.done ? "done" : "pending",
     ]
       .join(" ")
@@ -106,30 +130,53 @@ function applySearch() {
 
     return blob.includes(q);
   });
-}
 
-async function markDone(userId) {
-  await api("/winner/done", {
-    method: "POST",
-    body: JSON.stringify({ user_id: userId, toggle: true }),
-  });
-  await refreshAll();
+  renderStats(filtered);
+
+  if (!filtered.length) {
+    el.winnerList.innerHTML = `<div class="cs-empty">No winners found</div>`;
+    return;
+  }
+
+  el.winnerList.innerHTML = filtered
+    .map((w) => {
+      const username = String(w.username || "").replace(/^@+/, "");
+
+      return `
+        <div class="cs-item">
+          <div class="cs-item-top">
+            <div>
+              <div class="cs-item-title">#${escapeHtml(w.turn)} · ${escapeHtml(w.display || w.user_id || "-")}</div>
+              <div class="cs-item-sub">
+                Prize: <strong>${escapeHtml(w.prize || "-")}</strong><br>
+                User ID: ${escapeHtml(w.user_id || "-")}<br>
+                Username: ${username ? "@" + escapeHtml(username) : "-"}<br>
+                Time: ${escapeHtml(formatTime(w.at))}
+              </div>
+            </div>
+
+            <div class="cs-badge ${w.done ? "done" : "pending"}">
+              ${w.done ? "DONE" : "PENDING"}
+            </div>
+          </div>
+
+          <div class="cs-badges">
+            ${w.done_at ? `<span class="cs-badge">Done At: ${escapeHtml(formatTime(w.done_at))}</span>` : ""}
+          </div>
+
+          <div class="cs-item-actions">
+            ${username ? `<a class="cs-link-btn secondary" href="https://t.me/${encodeURIComponent(username)}" target="_blank">Telegram</a>` : ""}
+          </div>
+        </div>
+      `;
+    })
+    .join("");
 }
 
 function exportCsv() {
-  const rows = [[
-    "Turn",
-    "At",
-    "Prize",
-    "User ID",
-    "Name",
-    "Username",
-    "Display",
-    "Done",
-    "Done At",
-  ]];
+  const rows = [["Turn", "At", "Prize", "User ID", "Name", "Username", "Display", "Done", "Done At"]];
 
-  state.filtered.forEach((w) => {
+  (state.winners || []).forEach((w) => {
     rows.push([
       String(w.turn || ""),
       String(w.at || ""),
@@ -138,7 +185,7 @@ function exportCsv() {
       String(w.name || ""),
       String(w.username || ""),
       String(w.display || ""),
-      w.done ? "1" : "0",
+      String(w.done ? "YES" : "NO"),
       String(w.done_at || ""),
     ]);
   });
@@ -152,127 +199,46 @@ function exportCsv() {
 
   const a = document.createElement("a");
   a.href = url;
-  a.download = "lucky77-winners-cs.csv";
+  a.download = "lucky77-cs-winners.csv";
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+
+  showToast("CSV exported", "success");
 }
 
-function render() {
-  if (el.baseUrlText) {
-    el.baseUrlText.textContent = CONFIG.BASE_URL;
+async function refreshPage() {
+  try {
+    if (el.refreshBtn) el.refreshBtn.disabled = true;
+    await loadWinners();
+    renderWinners();
+    showToast("Refreshed", "success");
+  } catch (err) {
+    showToast(err.message || "Load failed", "error");
+  } finally {
+    if (el.refreshBtn) el.refreshBtn.disabled = false;
   }
-
-  if (el.countText) {
-    el.countText.textContent = `${state.filtered.length} winners`;
-  }
-
-  if (el.updatedText) {
-    el.updatedText.textContent = `Updated: ${new Date().toLocaleString()}`;
-  }
-
-  if (!el.list) return;
-
-  if (!state.filtered.length) {
-    el.list.innerHTML = `<div class="empty">No winners found</div>`;
-    return;
-  }
-
-  el.list.innerHTML = state.filtered
-    .map((w) => {
-      const username = String(w.username || "").replace(/^@+/, "");
-      const tgButton = username
-        ? `<button class="small-btn" data-tg="${escapeHtml(username)}">Telegram</button>`
-        : "";
-
-      return `
-        <div class="winner">
-          <div class="winner-top">
-            <div>
-              <div class="winner-name">
-                #${escapeHtml(w.turn)} · ${escapeHtml(w.display || w.name || w.user_id || "-")}
-              </div>
-              <div class="winner-sub">
-                Prize: ${escapeHtml(w.prize || "-")} · ${escapeHtml(formatTime(w.at))}
-                <br />
-                ID: ${escapeHtml(w.user_id || "-")}
-                ${username ? ` · @${escapeHtml(username)}` : ""}
-              </div>
-            </div>
-
-            <div class="badge ${w.done ? "success" : "warn"}">
-              ${w.done ? "done" : "pending"}
-            </div>
-          </div>
-
-          <div class="badges">
-            ${w.done
-              ? `<span class="badge success">done ${escapeHtml(formatTime(w.done_at))}</span>`
-              : `<span class="badge warn">not done yet</span>`}
-          </div>
-
-          <div class="actions">
-            ${tgButton}
-            <button class="small-btn done" data-done="${escapeHtml(w.user_id)}">
-              ${w.done ? "Undo Done" : "Done"}
-            </button>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-
-  document.querySelectorAll("[data-done]").forEach((btn) => {
-    btn.onclick = async () => {
-      const userId = btn.getAttribute("data-done");
-      if (!userId) return;
-      btn.disabled = true;
-      try {
-        await markDone(userId);
-      } catch (err) {
-        alert(err.message || "Done update failed");
-        btn.disabled = false;
-      }
-    };
-  });
-
-  document.querySelectorAll("[data-tg]").forEach((btn) => {
-    btn.onclick = () => {
-      const username = btn.getAttribute("data-tg");
-      if (!username) return;
-      window.open(`https://t.me/${username}`, "_blank");
-    };
-  });
-}
-
-async function refreshAll() {
-  el.list.innerHTML = `<div class="loading">Loading winners...</div>`;
-  await loadWinners();
-  applySearch();
-  render();
 }
 
 function bindEvents() {
-  el.searchInput?.addEventListener("input", () => {
-    applySearch();
-    render();
-  });
-
-  el.refreshBtn?.addEventListener("click", refreshAll);
-  el.reloadBtn?.addEventListener("click", refreshAll);
+  el.searchInput?.addEventListener("input", renderWinners);
+  el.refreshBtn?.addEventListener("click", refreshPage);
   el.exportBtn?.addEventListener("click", exportCsv);
-
-  el.openMainBtn?.addEventListener("click", () => {
-    window.location.href = CONFIG.MAIN_UI_URL;
-  });
 }
 
 (async function init() {
   bindEvents();
+
   try {
-    await refreshAll();
+    await loadWinners();
+    renderWinners();
+    showToast("CS winners loaded", "success");
   } catch (err) {
-    el.list.innerHTML = `<div class="empty">Load failed: ${escapeHtml(err.message || "Unknown error")}</div>`;
+    showToast(err.message || "Initial load failed", "error");
+    if (el.winnerList) {
+      el.winnerList.innerHTML = `<div class="cs-empty">Failed to load winner list</div>`;
+    }
+    if (el.footerText) el.footerText.textContent = "Load failed";
   }
 })();
