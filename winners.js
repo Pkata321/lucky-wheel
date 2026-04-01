@@ -109,18 +109,35 @@ function renderStats(filtered) {
   if (el.footerText) el.footerText.textContent = `${filtered.length} item(s) shown`;
 }
 
-async function toggleDone(userId) {
+async function toggleDone(userId, btn) {
+  const idx = state.winners.findIndex((w) => String(w.user_id) === String(userId));
+  if (idx === -1) return;
+
+  const prev = { ...state.winners[idx] };
+  const nextDone = !prev.done;
+
+  state.winners[idx] = {
+    ...prev,
+    done: nextDone,
+    done_at: nextDone ? new Date().toISOString() : "",
+  };
+  renderWinners();
+
   try {
+    if (btn) btn.disabled = true;
+
     await api("/winner/done", {
       method: "POST",
       body: JSON.stringify({ user_id: userId, toggle: true }),
     });
 
-    await loadWinners();
-    renderWinners();
     showToast("Done updated", "success");
   } catch (err) {
+    state.winners[idx] = prev;
+    renderWinners();
     showToast(err.message || "Done update failed", "error");
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -145,15 +162,13 @@ async function sendNotice(userId, prize) {
   }
 }
 
-function bindActionButtons() {
-  document.querySelectorAll("[data-done-user]").forEach((btn) => {
-    btn.onclick = () => {
-      const userId = btn.getAttribute("data-done-user");
-      if (!userId) return;
-      toggleDone(userId);
-    };
-  });
-
+document.querySelectorAll("[data-done-user]").forEach((btn) => {
+  btn.onclick = () => {
+    const userId = btn.getAttribute("data-done-user");
+    if (!userId) return;
+    toggleDone(userId, btn);
+  };
+});
   document.querySelectorAll("[data-notice-user]").forEach((btn) => {
     btn.onclick = () => {
       const userId = btn.getAttribute("data-notice-user");
