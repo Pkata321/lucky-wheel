@@ -2,7 +2,7 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot.onrender.com",
   API_KEY: "Lucky77_luckywheel_77",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "cs-winners-v1",
+  CACHE_BUSTER: "cs-winners-v2",
 };
 
 const state = {
@@ -109,6 +109,61 @@ function renderStats(filtered) {
   if (el.footerText) el.footerText.textContent = `${filtered.length} item(s) shown`;
 }
 
+async function toggleDone(userId) {
+  try {
+    await api("/winner/done", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId, toggle: true }),
+    });
+
+    await loadWinners();
+    renderWinners();
+    showToast("Done updated", "success");
+  } catch (err) {
+    showToast(err.message || "Done update failed", "error");
+  }
+}
+
+async function sendNotice(userId, prize) {
+  try {
+    const data = await api("/notice", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId, prize }),
+    });
+
+    await loadWinners();
+    renderWinners();
+
+    if (data.dm_ok === false) {
+      showToast("DM failed", "error");
+      return;
+    }
+
+    showToast("Notice sent", "success");
+  } catch (err) {
+    showToast(err.message || "Notice failed", "error");
+  }
+}
+
+function bindActionButtons() {
+  document.querySelectorAll("[data-done-user]").forEach((btn) => {
+    btn.onclick = () => {
+      const userId = btn.getAttribute("data-done-user");
+      if (!userId) return;
+      toggleDone(userId);
+    };
+  });
+
+  document.querySelectorAll("[data-notice-user]").forEach((btn) => {
+    btn.onclick = () => {
+      const userId = btn.getAttribute("data-notice-user");
+      const prize = btn.getAttribute("data-notice-prize") || "";
+      if (!userId) return;
+      sendNotice(userId, prize);
+    };
+  });
+}
+
 function renderWinners() {
   if (!el.winnerList) return;
 
@@ -124,6 +179,7 @@ function renderWinners() {
       w.display,
       w.prize,
       w.done ? "done" : "pending",
+      w.notice_sent ? "notice sent" : "notice pending",
     ]
       .join(" ")
       .toLowerCase();
@@ -161,20 +217,32 @@ function renderWinners() {
           </div>
 
           <div class="cs-badges">
+            <span class="cs-badge ${w.notice_sent ? "done" : "pending"}">
+              ${w.notice_sent ? "NOTICE SENT" : "NOTICE PENDING"}
+            </span>
             ${w.done_at ? `<span class="cs-badge">Done At: ${escapeHtml(formatTime(w.done_at))}</span>` : ""}
+            ${w.notice_at ? `<span class="cs-badge">Notice At: ${escapeHtml(formatTime(w.notice_at))}</span>` : ""}
           </div>
 
           <div class="cs-item-actions">
             ${username ? `<a class="cs-link-btn secondary" href="https://t.me/${encodeURIComponent(username)}" target="_blank">Telegram</a>` : ""}
+            <button class="cs-link-btn notice" data-notice-user="${escapeHtml(w.user_id)}" data-notice-prize="${escapeHtml(w.prize || "")}">
+              Notice
+            </button>
+            <button class="cs-link-btn ${w.done ? "secondary" : "primary"}" data-done-user="${escapeHtml(w.user_id)}">
+              ${w.done ? "Undo Done" : "Done"}
+            </button>
           </div>
         </div>
       `;
     })
     .join("");
+
+  bindActionButtons();
 }
 
 function exportCsv() {
-  const rows = [["Turn", "At", "Prize", "User ID", "Name", "Username", "Display", "Done", "Done At"]];
+  const rows = [["Turn", "At", "Prize", "User ID", "Name", "Username", "Display", "Done", "Done At", "Notice Sent", "Notice At"]];
 
   (state.winners || []).forEach((w) => {
     rows.push([
@@ -187,6 +255,8 @@ function exportCsv() {
       String(w.display || ""),
       String(w.done ? "YES" : "NO"),
       String(w.done_at || ""),
+      String(w.notice_sent ? "YES" : "NO"),
+      String(w.notice_at || ""),
     ]);
   });
 
