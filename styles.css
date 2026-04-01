@@ -1090,3 +1090,103 @@ h2 {
     width: min(96vw, 420px);
   }
 }
+
+/* old css ... */
+
+/* old css ... */
+
+/* old css ... */
+
+
+/* ===== CS Winners Page ===== */
+.cs-item {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.cs-item-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.cs-item-title {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.cs-item-sub {
+  line-height: 1.6;
+  opacity: 0.82;
+}
+
+.cs-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.cs-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #f1f3f7;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.cs-badge.done {
+  background: #dff5e8;
+  color: #1b8f57;
+}
+
+.cs-badge.pending {
+  background: #fff3d8;
+  color: #bb8320;
+}
+
+.cs-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.cs-link-btn {
+  border: 0;
+  border-radius: 14px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.cs-link-btn.primary {
+  background: linear-gradient(90deg, #7b5cff, #18d2ff);
+  color: white;
+}
+
+.cs-link-btn.secondary {
+  background: #ececf1;
+  color: #111827;
+}
+
+.cs-link-btn.notice {
+  background: #111827;
+  color: white;
+}
+
+.cs-empty {
+  padding: 28px;
+  text-align: center;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px dashed rgba(0,0,0,0.15);
+}
