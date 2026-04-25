@@ -432,8 +432,8 @@ h2 {
   height: 0;
   border-left: 16px solid transparent;
   border-right: 16px solid transparent;
-  border-top: 28px solid #ffe6a8;
-  filter: drop-shadow(0 8px 18px rgba(255, 195, 90, 0.4));
+  border-top: 28px solid var(--arrow-color, #ffe6a8);
+  filter: drop-shadow(0 8px 18px color-mix(in srgb, var(--arrow-color, #ffe6a8) 45%, transparent));
   z-index: 3;
 }
 
