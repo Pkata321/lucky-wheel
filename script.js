@@ -19,6 +19,8 @@ const defaultSettings = {
   cardColor: "#ffffff",
   accent1: "#7b5cff",
   accent2: "#18d2ff",
+  arrowColor: "#ffe6a8",
+  spinDurationMs: 5600,
 };
 
 const state = {
@@ -35,6 +37,7 @@ const state = {
   spinLoopTimer: null,
   tickTimer: null,
   audioCtx: null,
+  autoCloseTimer: null,
   spinLoopDegStep: 18,
   prizes: [],
   currentSection: "wheel",
@@ -90,6 +93,7 @@ const el = {
   cardColorInput: document.getElementById("cardColorInput"),
   accent1Input: document.getElementById("accent1Input"),
   accent2Input: document.getElementById("accent2Input"),
+  arrowColorInput: document.getElementById("arrowColorInput"),
 
   bannerTitleInput: document.getElementById("bannerTitleInput"),
   bannerSubInput: document.getElementById("bannerSubInput"),
@@ -739,6 +743,7 @@ function applyCustomColors() {
   document.documentElement.style.setProperty("--bg-soft", settings.cardColor || defaultSettings.cardColor);
   document.documentElement.style.setProperty("--primary-1", settings.accent1 || defaultSettings.accent1);
   document.documentElement.style.setProperty("--primary-2", settings.accent2 || defaultSettings.accent2);
+  document.documentElement.style.setProperty("--arrow-color", settings.arrowColor || defaultSettings.arrowColor);
 }
 
 function applySettingsToUI() {
@@ -756,6 +761,7 @@ function applySettingsToUI() {
   if (el.cardColorInput) el.cardColorInput.value = settings.cardColor || defaultSettings.cardColor;
   if (el.accent1Input) el.accent1Input.value = settings.accent1 || defaultSettings.accent1;
   if (el.accent2Input) el.accent2Input.value = settings.accent2 || defaultSettings.accent2;
+  if (el.arrowColorInput) el.arrowColorInput.value = settings.arrowColor || defaultSettings.arrowColor;
 
   if (settings.topLogo && el.brandLogoImg && el.brandLogoFallback) {
     el.brandLogoImg.src = settings.topLogo;
@@ -822,7 +828,23 @@ function launchConfetti() {
   }, 4800);
 }
 
+function clearAutoCloseTimer() {
+  if (state.autoCloseTimer) {
+    clearTimeout(state.autoCloseTimer);
+    state.autoCloseTimer = null;
+  }
+}
+
+function autoCloseWinnerPopup(delayMs = 3000) {
+  clearAutoCloseTimer();
+  state.autoCloseTimer = setTimeout(() => {
+    state.autoCloseTimer = null;
+    hideWinnerPopup();
+  }, delayMs);
+}
+
 function showWinnerPopup(name, prize) {
+  clearAutoCloseTimer();
   if (el.winnerPopupName) el.winnerPopupName.textContent = name || "-";
   if (el.winnerPopupPrize) el.winnerPopupPrize.textContent = prize || "-";
   if (el.winnerPopup) el.winnerPopup.classList.remove("hidden");
@@ -831,6 +853,7 @@ function showWinnerPopup(name, prize) {
 }
 
 function hideWinnerPopup() {
+  clearAutoCloseTimer();
   if (el.winnerPopup) el.winnerPopup.classList.add("hidden");
   if (el.confettiLayer) el.confettiLayer.innerHTML = "";
 }
@@ -957,6 +980,7 @@ async function handleSpin(options = {}) {
     drawWheel();
 
     startWheelLoop();
+    const spinStartedAt = performance.now();
 
     const result = await api("/spin", {
       method: "POST",
@@ -1007,48 +1031,63 @@ async function handleSpin(options = {}) {
     let needed = targetDeg - currentBase;
     if (needed < 0) needed += 360;
 
-    const extraRounds = 360 * (6 + Math.floor(Math.random() * 3));
+    const targetTotalDuration = Number(settings.spinDurationMs || defaultSettings.spinDurationMs || 5600);
+    const elapsedBeforeStop = performance.now() - spinStartedAt;
+    const spinDuration = Math.max(1800, Math.min(targetTotalDuration, targetTotalDuration - elapsedBeforeStop));
+    const extraRounds = 360 * (spinDuration < 2600 ? 2 : 4 + Math.floor(Math.random() * 2));
     const finalDeg = state.wheelDeg + extraRounds + needed;
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (el.wheelCanvas) {
           el.wheelCanvas.style.transition =
-            "transform 4.8s cubic-bezier(0.04, 0.82, 0.08, 1)";
+            `transform ${spinDuration}ms cubic-bezier(0.06, 0.82, 0.08, 1)`;
           state.wheelDeg = finalDeg;
           el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
         }
       });
     });
 
-    setTimeout(async () => {
-      if (el.winnerFlash) el.winnerFlash.classList.remove("hidden");
-      if (el.winnerFlashName) el.winnerFlashName.textContent = winnerName;
-      if (el.winnerFlashPrize) el.winnerFlashPrize.textContent = prize;
+    await new Promise((resolve) => setTimeout(resolve, spinDuration + 120));
 
-      showWinnerPopup(winnerName, prize);
-      await refreshAfterSpin();
-      showToast(`Winner: ${winnerName}`, "success");
-      stopTickSound();
-    }, 4900);
+    if (el.winnerFlash) el.winnerFlash.classList.remove("hidden");
+    if (el.winnerFlashName) el.winnerFlashName.textContent = winnerName;
+    if (el.winnerFlashPrize) el.winnerFlashPrize.textContent = prize;
+
+    showWinnerPopup(winnerName, prize);
+    await refreshAfterSpin();
+    showToast(`Winner: ${winnerName}`, "success");
+    stopTickSound();
   } catch (err) {
     stopWheelLoop();
     stopTickSound();
     showToast(err.message || "Spin failed", "error");
     await refreshAllData().catch(() => {});
   } finally {
-    setTimeout(() => {
-      state.spinning = false;
-      if (el.spinBtn) {
-        el.spinBtn.disabled = false;
-        el.spinBtn.classList.remove("is-loading");
-        el.spinBtn.textContent = "SPIN";
-      }
-      if (el.scanBtn && !state.autoSpinning) el.scanBtn.disabled = false;
-    }, 5100);
+    state.spinning = false;
+    if (el.spinBtn) {
+      el.spinBtn.disabled = false;
+      el.spinBtn.classList.remove("is-loading");
+      el.spinBtn.textContent = "SPIN";
+    }
+    if (el.scanBtn && !state.autoSpinning) el.scanBtn.disabled = false;
   }
 
-  return new Promise((resolve) => setTimeout(() => resolve(true), autoMode ? 5200 : 5200));
+  return true;
+}
+
+function interruptibleSleep(ms) {
+  return new Promise((resolve) => {
+    const step = 100;
+    let elapsed = 0;
+    const tick = () => {
+      if (!state.autoSpinning || state.autoSpinStopRequested) return resolve(false);
+      elapsed += step;
+      if (elapsed >= ms) return resolve(true);
+      setTimeout(tick, step);
+    };
+    setTimeout(tick, step);
+  });
 }
 
 async function runAutoSpin() {
@@ -1067,10 +1106,11 @@ async function runAutoSpin() {
         showToast("Auto Spin stopped: pool empty", "error");
         break;
       }
-      await handleSpin({ auto: true });
+      const ok = await handleSpin({ auto: true });
+      if (!ok || !state.autoSpinning || state.autoSpinStopRequested) break;
+      autoCloseWinnerPopup(3000);
+      await interruptibleSleep(3000);
       if (!state.autoSpinning || state.autoSpinStopRequested) break;
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      hideWinnerPopup();
     }
   } finally {
     state.autoSpinning = false;
@@ -1089,7 +1129,14 @@ function toggleAutoSpin() {
   if (state.autoSpinning) {
     state.autoSpinStopRequested = true;
     state.autoSpinning = false;
-    if (el.autoSpinBtn) el.autoSpinBtn.textContent = "STOPPING...";
+    clearAutoCloseTimer();
+    hideWinnerPopup();
+    if (el.autoSpinBtn) {
+      el.autoSpinBtn.textContent = "AUTO SPIN";
+      el.autoSpinBtn.classList.remove("is-loading");
+      el.autoSpinBtn.disabled = false;
+    }
+    showToast("Auto Spin stopped", "normal");
     return;
   }
   runAutoSpin();
@@ -1365,6 +1412,7 @@ function bindEvents() {
     settings.cardColor = el.cardColorInput?.value || defaultSettings.cardColor;
     settings.accent1 = el.accent1Input?.value || defaultSettings.accent1;
     settings.accent2 = el.accent2Input?.value || defaultSettings.accent2;
+    settings.arrowColor = el.arrowColorInput?.value || defaultSettings.arrowColor;
 
     persistSettings();
     applySettingsToUI();
@@ -1393,14 +1441,36 @@ function bindEvents() {
   el.musicFileInput?.addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    settings.musicDataUrl = await fileToDataUrl(file);
-    persistSettings();
-    applySettingsToUI();
-    showToast("Music uploaded", "success");
+
+    if (!file.type.startsWith("audio/") && !file.name.toLowerCase().endsWith(".mp3")) {
+      showToast("Please choose an MP3/audio file", "error");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    if (el.bgMusicPlayer) {
+      el.bgMusicPlayer.src = objectUrl;
+      el.bgMusicPlayer.loop = true;
+    }
+
+    try {
+      if (file.size <= 4 * 1024 * 1024) {
+        settings.musicDataUrl = await fileToDataUrl(file);
+        persistSettings();
+      } else {
+        settings.musicDataUrl = "";
+        persistSettings();
+        showToast("Large MP3 loaded for this session only", "normal");
+      }
+      showToast("Music uploaded", "success");
+    } catch {
+      settings.musicDataUrl = "";
+      showToast("MP3 loaded for this session only", "normal");
+    }
   });
 
   el.musicOnBtn?.addEventListener("click", async () => {
-    if (!settings.musicDataUrl || !el.bgMusicPlayer) {
+    if (!el.bgMusicPlayer || (!settings.musicDataUrl && !el.bgMusicPlayer.src)) {
       showToast("Upload MP3 first", "error");
       return;
     }
@@ -1408,7 +1478,7 @@ function bindEvents() {
     try {
       settings.musicOn = true;
       persistSettings();
-      el.bgMusicPlayer.src = settings.musicDataUrl;
+      if (settings.musicDataUrl) el.bgMusicPlayer.src = settings.musicDataUrl;
       el.bgMusicPlayer.loop = true;
       await el.bgMusicPlayer.play();
       showToast("Music ON", "success");
