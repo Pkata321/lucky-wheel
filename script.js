@@ -29,8 +29,12 @@ const state = {
   pool: { count: 0, ids: [] },
   scan: { status: "idle", summary: null, last_scan_at: "" },
   spinning: false,
+  autoSpinning: false,
+  autoSpinStopRequested: false,
   wheelDeg: 0,
   spinLoopTimer: null,
+  tickTimer: null,
+  audioCtx: null,
   spinLoopDegStep: 18,
   prizes: [],
   currentSection: "wheel",
@@ -50,6 +54,7 @@ const el = {
 
   wheelCanvas: document.getElementById("wheelCanvas"),
   spinBtn: document.getElementById("spinBtn"),
+  autoSpinBtn: document.getElementById("autoSpinBtn"),
   restartBtn: document.getElementById("restartBtn"),
   refreshBtn: document.getElementById("refreshBtn"),
 
@@ -425,16 +430,10 @@ async function refreshAfterScan() {
 }
 
 async function refreshAfterSpin() {
-  for (let i = 0; i < 2; i++) {
-    try {
-      await loadWinners();
-      await loadHistory();
-      await loadPool();
-      await loadHealth();
-      break;
-    } catch (_) {
-      await new Promise((r) => setTimeout(r, 800));
-    }
+  try {
+    await Promise.all([loadWinners(), loadHistory(), loadPool(), loadHealth()]);
+  } catch (_) {
+    // Optimistic UI already updated; keep controls fast if one refresh is slow.
   }
 
   renderAll();
@@ -503,6 +502,32 @@ function matchesSearch(fields, q) {
     .includes(q);
 }
 
+function debounce(fn, delay = 140) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+const debouncedRenderAll = debounce(renderAll, 120);
+
+function renderChunked(listEl, htmlItems, emptyHtml, chunkSize = 40) {
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  if (!htmlItems.length) {
+    listEl.innerHTML = emptyHtml;
+    return;
+  }
+  let index = 0;
+  const append = () => {
+    listEl.insertAdjacentHTML("beforeend", htmlItems.slice(index, index + chunkSize).join(""));
+    index += chunkSize;
+    if (index < htmlItems.length) requestAnimationFrame(append);
+  };
+  append();
+}
+
 function renderMembers() {
   if (!el.memberList || !el.membersCountText) return;
 
@@ -525,12 +550,7 @@ function renderMembers() {
 
   el.membersCountText.textContent = `${filtered.length} users`;
 
-  if (!filtered.length) {
-    el.memberList.innerHTML = `<div class="empty">No members found</div>`;
-    return;
-  }
-
-  el.memberList.innerHTML = filtered.map((m) => {
+  const items = filtered.map((m) => {
     const statusText = m.removed ? "removed" : m.active ? "active" : "left";
     const statusClass = m.removed ? "removed" : m.active ? "active" : "left";
 
@@ -554,7 +574,9 @@ function renderMembers() {
         </div>
       </div>
     `;
-  }).join("");
+  });
+
+  renderChunked(el.memberList, items, `<div class="empty">No members found</div>`);
 }
 
 function renderWinners() {
@@ -577,12 +599,7 @@ function renderWinners() {
     ? `${winners.length} / ${(state.winners || []).length} winners`
     : `${winners.length} winners`;
 
-  if (!winners.length) {
-    el.winnerList.innerHTML = `<div class="empty">No winners found</div>`;
-    return;
-  }
-
-  el.winnerList.innerHTML = winners.map((w) => {
+  const items = winners.map((w) => {
     const username = String(w.username || "").replace(/^@+/, "");
 
     return `
@@ -610,9 +627,9 @@ function renderWinners() {
         </div>
       </div>
     `;
-  }).join("");
+  });
 
-  bindWinnerActionButtons();
+  renderChunked(el.winnerList, items, `<div class="empty">No winners found</div>`);
 }
 
 function renderHistory() {
@@ -637,12 +654,7 @@ function renderHistory() {
     ? `${history.length} / ${(state.history || []).length} logs`
     : `${history.length} logs`;
 
-  if (!history.length) {
-    el.historyList.innerHTML = `<div class="empty">No history found</div>`;
-    return;
-  }
-
-  el.historyList.innerHTML = history.map((h) => {
+  const items = history.map((h) => {
     const winnerDisplay =
       h?.winner?.display ||
       h?.winner?.name ||
@@ -665,7 +677,9 @@ function renderHistory() {
         </div>
       </div>
     `;
-  }).join("");
+  });
+
+  renderChunked(el.historyList, items, `<div class="empty">No history found</div>`);
 }
 
 function renderAll() {
@@ -821,22 +835,68 @@ function hideWinnerPopup() {
   if (el.confettiLayer) el.confettiLayer.innerHTML = "";
 }
 
+function getAudioContext() {
+  try {
+    if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (state.audioCtx.state === "suspended") state.audioCtx.resume().catch(() => {});
+    return state.audioCtx;
+  } catch {
+    return null;
+  }
+}
+
+function playTickTone(intensity = 1) {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "square";
+  osc.frequency.value = 900 + Math.random() * 260;
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.035 * intensity, ctx.currentTime + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.045);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.05);
+}
+
+function startTickSound() {
+  stopTickSound();
+  let interval = 52;
+  const run = () => {
+    if (!state.spinning) return;
+    playTickTone(0.75);
+    interval = Math.min(160, interval + 3.8);
+    state.tickTimer = setTimeout(run, interval);
+  };
+  run();
+}
+
+function stopTickSound() {
+  if (state.tickTimer) {
+    clearTimeout(state.tickTimer);
+    state.tickTimer = null;
+  }
+}
+
 function startWheelLoop() {
   if (!el.wheelCanvas) return;
   stopWheelLoop();
-
   el.wheelCanvas.style.transition = "none";
   let last = performance.now();
-  const speedDegPerSecond = 520;
-
+  let speedDegPerSecond = 160;
+  const maxSpeed = 980;
+  const accel = 2600;
   const tick = (now) => {
     const dt = Math.min(50, now - last) / 1000;
     last = now;
+    speedDegPerSecond = Math.min(maxSpeed, speedDegPerSecond + accel * dt);
     state.wheelDeg += speedDegPerSecond * dt;
     el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
     state.spinLoopTimer = requestAnimationFrame(tick);
   };
-
+  startTickSound();
   state.spinLoopTimer = requestAnimationFrame(tick);
 }
 
@@ -874,8 +934,9 @@ async function handleScan() {
   }
 }
 
-async function handleSpin() {
-  if (state.spinning) return;
+async function handleSpin(options = {}) {
+  const autoMode = !!options.auto;
+  if (state.spinning) return false;
 
   try {
     if (Number(state.pool?.count || 0) <= 0) {
@@ -953,7 +1014,7 @@ async function handleSpin() {
       requestAnimationFrame(() => {
         if (el.wheelCanvas) {
           el.wheelCanvas.style.transition =
-            "transform 4.2s cubic-bezier(0.08, 0.86, 0.18, 1)";
+            "transform 4.8s cubic-bezier(0.04, 0.82, 0.08, 1)";
           state.wheelDeg = finalDeg;
           el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
         }
@@ -968,9 +1029,11 @@ async function handleSpin() {
       showWinnerPopup(winnerName, prize);
       await refreshAfterSpin();
       showToast(`Winner: ${winnerName}`, "success");
-    }, 4300);
+      stopTickSound();
+    }, 4900);
   } catch (err) {
     stopWheelLoop();
+    stopTickSound();
     showToast(err.message || "Spin failed", "error");
     await refreshAllData().catch(() => {});
   } finally {
@@ -981,9 +1044,55 @@ async function handleSpin() {
         el.spinBtn.classList.remove("is-loading");
         el.spinBtn.textContent = "SPIN";
       }
-      if (el.scanBtn) el.scanBtn.disabled = false;
-    }, 4500);
+      if (el.scanBtn && !state.autoSpinning) el.scanBtn.disabled = false;
+    }, 5100);
   }
+
+  return new Promise((resolve) => setTimeout(() => resolve(true), autoMode ? 5200 : 5200));
+}
+
+async function runAutoSpin() {
+  if (state.autoSpinning) return;
+  state.autoSpinning = true;
+  state.autoSpinStopRequested = false;
+  if (el.autoSpinBtn) {
+    el.autoSpinBtn.textContent = "STOP AUTO";
+    el.autoSpinBtn.classList.add("is-loading");
+  }
+  if (el.scanBtn) el.scanBtn.disabled = true;
+
+  try {
+    while (state.autoSpinning && !state.autoSpinStopRequested) {
+      if (Number(state.pool?.count || 0) <= 0) {
+        showToast("Auto Spin stopped: pool empty", "error");
+        break;
+      }
+      await handleSpin({ auto: true });
+      if (!state.autoSpinning || state.autoSpinStopRequested) break;
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      hideWinnerPopup();
+    }
+  } finally {
+    state.autoSpinning = false;
+    state.autoSpinStopRequested = false;
+    if (el.autoSpinBtn) {
+      el.autoSpinBtn.textContent = "AUTO SPIN";
+      el.autoSpinBtn.classList.remove("is-loading");
+      el.autoSpinBtn.disabled = false;
+    }
+    if (el.spinBtn) el.spinBtn.disabled = false;
+    if (el.scanBtn) el.scanBtn.disabled = false;
+  }
+}
+
+function toggleAutoSpin() {
+  if (state.autoSpinning) {
+    state.autoSpinStopRequested = true;
+    state.autoSpinning = false;
+    if (el.autoSpinBtn) el.autoSpinBtn.textContent = "STOPPING...";
+    return;
+  }
+  runAutoSpin();
 }
 
 async function handleSavePrize() {
@@ -1026,24 +1135,50 @@ async function handleSavePrize() {
 }
 
 async function handleRestart() {
-  const ok = window.confirm("Restart event now?");
+  if (state.spinning || state.autoSpinning) {
+    showToast("Spin/Auto Spin ရပ်ပြီးမှ restart လုပ်ပါ", "error");
+    return;
+  }
+
+  const choice = window.prompt(
+    "Restart mode ရွေးပါ:\n" +
+      "1 = Safe Restart (winners/history clear, members keep, pool rebuild, prizes reload)\n" +
+      "2 = Prize Reload Only (members/winners/history/pool မထိ)\n" +
+      "3 = Full Reset (old behavior: winners/history clear, pool empty until scan)\n\n" +
+      "1, 2, 3 ထဲကတစ်ခုရိုက်ပါ",
+    "1"
+  );
+  if (!choice) return;
+  const modeMap = { "1": "safe_restart", "2": "prize_reload", "3": "full_reset" };
+  const mode = modeMap[String(choice).trim()];
+  if (!mode) {
+    showToast("Invalid restart mode", "error");
+    return;
+  }
+  const label = mode === "safe_restart" ? "Safe Restart" : mode === "prize_reload" ? "Prize Reload Only" : "Full Reset";
+  const ok = window.confirm(`${label} လုပ်မှာသေချာလား?`);
   if (!ok) return;
 
   try {
-    if (el.restartBtn) el.restartBtn.disabled = true;
+    if (el.restartBtn) {
+      el.restartBtn.disabled = true;
+      el.restartBtn.textContent = "Restarting...";
+    }
     await api("/restart-spin", {
       method: "POST",
-      body: JSON.stringify({}),
+      body: JSON.stringify({ mode }),
     });
-
     if (el.winnerFlash) el.winnerFlash.classList.add("hidden");
     hideWinnerPopup();
     await refreshAllData();
-    showToast("Event restarted", "success");
+    showToast(`${label} complete`, "success");
   } catch (err) {
     showToast(err.message || "Restart failed", "error");
   } finally {
-    if (el.restartBtn) el.restartBtn.disabled = false;
+    if (el.restartBtn) {
+      el.restartBtn.disabled = false;
+      el.restartBtn.textContent = "Restart Event";
+    }
   }
 }
 
@@ -1180,11 +1315,32 @@ function bindEvents() {
   });
 
   el.scanBtn?.addEventListener("click", handleScan);
-  el.spinBtn?.addEventListener("click", handleSpin);
+  el.spinBtn?.addEventListener("click", () => handleSpin());
+  el.autoSpinBtn?.addEventListener("click", toggleAutoSpin);
   el.restartBtn?.addEventListener("click", handleRestart);
   el.savePrizeBtn?.addEventListener("click", handleSavePrize);
 
-  el.searchInput?.addEventListener("input", renderAll);
+  el.searchInput?.addEventListener("input", debouncedRenderAll);
+
+  el.winnerList?.addEventListener("click", (event) => {
+    const btn = event.target.closest("button");
+    if (!btn) return;
+
+    if (btn.matches("[data-notice-user]")) {
+      sendNotice(btn.getAttribute("data-notice-user"), btn.getAttribute("data-notice-prize") || "");
+      return;
+    }
+
+    if (btn.matches("[data-done-user]")) {
+      toggleDone(btn.getAttribute("data-done-user"));
+      return;
+    }
+
+    if (btn.matches("[data-tg-user]")) {
+      const username = btn.getAttribute("data-tg-user");
+      if (username) window.open(`https://t.me/${username}`, "_blank");
+    }
+  });
 
   el.showRemovedToggle?.addEventListener("change", async () => {
     await loadMembers().catch(() => {
