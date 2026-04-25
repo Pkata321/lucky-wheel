@@ -1190,3 +1190,61 @@ h2 {
   background: #fff;
   border: 1px dashed rgba(0,0,0,0.15);
 }
+
+/* Smooth interaction upgrades */
+button,
+.quick-link,
+.cs-link-btn {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:disabled,
+.cs-link-btn:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+button.is-loading,
+.cs-link-btn.is-loading {
+  position: relative;
+  pointer-events: none;
+}
+
+button.is-loading::after,
+.cs-link-btn.is-loading::after {
+  content: "";
+  width: 13px;
+  height: 13px;
+  margin-left: 8px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 999px;
+  display: inline-block;
+  vertical-align: -2px;
+  animation: lucky77SpinMini 0.72s linear infinite;
+}
+
+.spin-btn {
+  will-change: transform, opacity;
+}
+
+.spin-btn:active,
+.primary-btn:active,
+.secondary-btn:active,
+.small-btn:active,
+.icon-btn:active,
+.quick-link:active,
+.cs-link-btn:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+.wheel-canvas {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+@keyframes lucky77SpinMini {
+  to { transform: rotate(360deg); }
+}
