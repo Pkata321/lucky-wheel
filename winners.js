@@ -1,6 +1,6 @@
 const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot.onrender.com",
-  API_KEY: "Lucky77_luckywheel_77",
+  API_KEY: "",
   TIMEOUT_MS: 60000,
   CACHE_BUSTER: "cs-winners-fast-v3",
   PAGE_SIZE: 40,
@@ -60,6 +60,20 @@ function showToast(message, type = "normal") {
   }, 2200);
 }
 
+function getApiKey() {
+  let key = sessionStorage.getItem("lucky77_admin_api_key") || "";
+  if (!key) {
+    key = window.prompt("Admin API key ထည့်ပါ") || "";
+    key = key.trim();
+    if (key) sessionStorage.setItem("lucky77_admin_api_key", key);
+  }
+  return key;
+}
+
+function forgetApiKey() {
+  sessionStorage.removeItem("lucky77_admin_api_key");
+}
+
 async function api(path, options = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
@@ -72,7 +86,7 @@ async function api(path, options = {}) {
       ...options,
       cache: "no-store",
       headers: {
-        "x-api-key": CONFIG.API_KEY,
+        "x-api-key": getApiKey(),
         "Cache-Control": "no-cache",
         Pragma: "no-cache",
         ...(options.method && options.method !== "GET"
@@ -84,6 +98,11 @@ async function api(path, options = {}) {
     });
 
     const data = await response.json().catch(() => ({}));
+
+    if (response.status === 401) {
+      forgetApiKey();
+      throw new Error("Unauthorized: API key ပြန်ထည့်ပါ");
+    }
 
     if (!response.ok || data.ok === false) {
       throw new Error(data.error || `HTTP ${response.status}`);
@@ -159,7 +178,10 @@ async function toggleDone(userId, button) {
 
   try {
     state.loading = true;
-    if (button) button.disabled = true;
+    if (button) {
+      button.disabled = true;
+      button.classList.add("is-loading");
+    }
 
     await api("/winner/done", {
       method: "POST",
@@ -179,7 +201,10 @@ async function toggleDone(userId, button) {
     showToast(err.message || "Done update failed", "error");
   } finally {
     state.loading = false;
-    if (button) button.disabled = false;
+    if (button) {
+      button.disabled = false;
+      button.classList.remove("is-loading");
+    }
   }
 }
 
@@ -188,7 +213,10 @@ async function sendNotice(userId, prize, button) {
 
   try {
     state.loading = true;
-    if (button) button.disabled = true;
+    if (button) {
+      button.disabled = true;
+      button.classList.add("is-loading");
+    }
 
     const data = await api("/notice", {
       method: "POST",
@@ -214,7 +242,10 @@ async function sendNotice(userId, prize, button) {
     showToast(err.message || "Notice failed", "error");
   } finally {
     state.loading = false;
-    if (button) button.disabled = false;
+    if (button) {
+      button.disabled = false;
+      button.classList.remove("is-loading");
+    }
   }
 }
 
