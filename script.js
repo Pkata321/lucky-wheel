@@ -1,6 +1,6 @@
 const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot.onrender.com",
-  API_KEY: "Lucky77_luckywheel_77",
+  API_KEY: "",
   TIMEOUT_MS: 60000,
   CACHE_BUSTER: "full-polished-v1",
 };
@@ -180,6 +180,20 @@ function showToast(message, type = "normal") {
   }, 2600);
 }
 
+function getApiKey() {
+  let key = sessionStorage.getItem("lucky77_admin_api_key") || "";
+  if (!key) {
+    key = window.prompt("Admin API key ထည့်ပါ") || "";
+    key = key.trim();
+    if (key) sessionStorage.setItem("lucky77_admin_api_key", key);
+  }
+  return key;
+}
+
+function forgetApiKey() {
+  sessionStorage.removeItem("lucky77_admin_api_key");
+}
+
 async function api(path, options = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
@@ -192,7 +206,7 @@ async function api(path, options = {}) {
       ...options,
       cache: "no-store",
       headers: {
-        "x-api-key": CONFIG.API_KEY,
+        "x-api-key": getApiKey(),
         "Cache-Control": "no-cache",
         Pragma: "no-cache",
         ...(options.method && options.method !== "GET"
@@ -204,6 +218,11 @@ async function api(path, options = {}) {
     });
 
     const data = await response.json().catch(() => ({}));
+
+    if (response.status === 401) {
+      forgetApiKey();
+      throw new Error("Unauthorized: API key ပြန်ထည့်ပါ");
+    }
 
     if (!response.ok || data.ok === false) {
       throw new Error(data.error || `HTTP ${response.status}`);
@@ -471,17 +490,37 @@ function renderScan() {
   }
 }
 
+function getSearchQuery() {
+  return (el.searchInput?.value || "").trim().toLowerCase();
+}
+
+function matchesSearch(fields, q) {
+  if (!q) return true;
+  return fields
+    .map((x) => String(x ?? ""))
+    .join(" ")
+    .toLowerCase()
+    .includes(q);
+}
+
 function renderMembers() {
   if (!el.memberList || !el.membersCountText) return;
 
-  const q = (el.searchInput?.value || "").trim().toLowerCase();
+  const q = getSearchQuery();
   const showRemoved = !!el.showRemovedToggle?.checked;
 
   const filtered = (state.members || []).filter((m) => {
     if (!showRemoved && m.removed) return false;
     if (!q) return true;
-    const blob = [m.display, m.name, m.username, m.id, m.left_reason].join(" ").toLowerCase();
-    return blob.includes(q);
+    return matchesSearch([
+      m.display,
+      m.name,
+      m.username,
+      m.id,
+      m.left_reason,
+      m.status,
+      m.isWinner ? "winner" : "",
+    ], q);
   });
 
   el.membersCountText.textContent = `${filtered.length} users`;
@@ -521,11 +560,25 @@ function renderMembers() {
 function renderWinners() {
   if (!el.winnerList || !el.winnersCountText) return;
 
-  const winners = state.winners || [];
-  el.winnersCountText.textContent = `${winners.length} winners`;
+  const q = getSearchQuery();
+  const winners = (state.winners || []).filter((w) =>
+    matchesSearch([
+      w.turn,
+      w.user_id,
+      w.name,
+      w.username,
+      w.display,
+      w.prize,
+      w.done ? "done" : "pending",
+      w.notice_sent ? "notice sent" : "notice pending",
+    ], q)
+  );
+  el.winnersCountText.textContent = q
+    ? `${winners.length} / ${(state.winners || []).length} winners`
+    : `${winners.length} winners`;
 
   if (!winners.length) {
-    el.winnerList.innerHTML = `<div class="empty">No winners yet</div>`;
+    el.winnerList.innerHTML = `<div class="empty">No winners found</div>`;
     return;
   }
 
@@ -565,11 +618,27 @@ function renderWinners() {
 function renderHistory() {
   if (!el.historyList || !el.historyCountText) return;
 
-  const history = state.history || [];
-  el.historyCountText.textContent = `${history.length} logs`;
+  const q = getSearchQuery();
+  const history = (state.history || []).filter((h) => {
+    const winner = h?.winner || {};
+    return matchesSearch([
+      h.turn,
+      h.prize,
+      h.at,
+      winner.id,
+      winner.name,
+      winner.username,
+      winner.display,
+      h.display,
+      h.user_id,
+    ], q);
+  });
+  el.historyCountText.textContent = q
+    ? `${history.length} / ${(state.history || []).length} logs`
+    : `${history.length} logs`;
 
   if (!history.length) {
-    el.historyList.innerHTML = `<div class="empty">No history yet</div>`;
+    el.historyList.innerHTML = `<div class="empty">No history found</div>`;
     return;
   }
 
@@ -756,17 +825,24 @@ function startWheelLoop() {
   if (!el.wheelCanvas) return;
   stopWheelLoop();
 
-  el.wheelCanvas.style.transition = "transform 0.12s linear";
+  el.wheelCanvas.style.transition = "none";
+  let last = performance.now();
+  const speedDegPerSecond = 520;
 
-  state.spinLoopTimer = setInterval(() => {
-    state.wheelDeg += state.spinLoopDegStep;
+  const tick = (now) => {
+    const dt = Math.min(50, now - last) / 1000;
+    last = now;
+    state.wheelDeg += speedDegPerSecond * dt;
     el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
-  }, 120);
+    state.spinLoopTimer = requestAnimationFrame(tick);
+  };
+
+  state.spinLoopTimer = requestAnimationFrame(tick);
 }
 
 function stopWheelLoop() {
   if (state.spinLoopTimer) {
-    clearInterval(state.spinLoopTimer);
+    cancelAnimationFrame(state.spinLoopTimer);
     state.spinLoopTimer = null;
   }
 }
@@ -808,7 +884,11 @@ async function handleSpin() {
     }
 
     state.spinning = true;
-    if (el.spinBtn) el.spinBtn.disabled = true;
+    if (el.spinBtn) {
+      el.spinBtn.disabled = true;
+      el.spinBtn.classList.add("is-loading");
+      el.spinBtn.textContent = "SPINNING...";
+    }
     if (el.scanBtn) el.scanBtn.disabled = true;
     if (el.winnerFlash) el.winnerFlash.classList.add("hidden");
 
@@ -873,7 +953,7 @@ async function handleSpin() {
       requestAnimationFrame(() => {
         if (el.wheelCanvas) {
           el.wheelCanvas.style.transition =
-            "transform 4.8s cubic-bezier(0.12, 0.8, 0.18, 1)";
+            "transform 4.2s cubic-bezier(0.08, 0.86, 0.18, 1)";
           state.wheelDeg = finalDeg;
           el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
         }
@@ -888,7 +968,7 @@ async function handleSpin() {
       showWinnerPopup(winnerName, prize);
       await refreshAfterSpin();
       showToast(`Winner: ${winnerName}`, "success");
-    }, 4900);
+    }, 4300);
   } catch (err) {
     stopWheelLoop();
     showToast(err.message || "Spin failed", "error");
@@ -896,9 +976,13 @@ async function handleSpin() {
   } finally {
     setTimeout(() => {
       state.spinning = false;
-      if (el.spinBtn) el.spinBtn.disabled = false;
+      if (el.spinBtn) {
+        el.spinBtn.disabled = false;
+        el.spinBtn.classList.remove("is-loading");
+        el.spinBtn.textContent = "SPIN";
+      }
       if (el.scanBtn) el.scanBtn.disabled = false;
-    }, 5200);
+    }, 4500);
   }
 }
 
@@ -910,23 +994,34 @@ async function handleSavePrize() {
   }
 
   try {
-    if (el.savePrizeBtn) el.savePrizeBtn.disabled = true;
+    if (el.savePrizeBtn) {
+      el.savePrizeBtn.disabled = true;
+      el.savePrizeBtn.classList.add("is-loading");
+      el.savePrizeBtn.textContent = "Saving...";
+    }
+
+    buildWheelPrizeSegments();
+    drawWheel();
+    showToast("Saving prize bag...", "normal");
+
     await api("/config/prizes", {
       method: "POST",
       body: JSON.stringify({ prizeText }),
     });
 
-    await loadPrizeConfig().catch(() => {});
-    buildWheelPrizeSegments();
-    drawWheel();
-
+    const parsedTotal = parsePrizeLines(prizeText).reduce((sum, p) => sum + Number(p.times || 0), 0);
+    if (state.health) state.health.remaining_prizes = parsedTotal;
     await loadHealth().catch(() => {});
     renderHealth();
     showToast("Prize bag saved", "success");
   } catch (err) {
     showToast(err.message || "Save prize failed", "error");
   } finally {
-    if (el.savePrizeBtn) el.savePrizeBtn.disabled = false;
+    if (el.savePrizeBtn) {
+      el.savePrizeBtn.disabled = false;
+      el.savePrizeBtn.classList.remove("is-loading");
+      el.savePrizeBtn.textContent = "Save Prize";
+    }
   }
 }
 
@@ -1089,7 +1184,7 @@ function bindEvents() {
   el.restartBtn?.addEventListener("click", handleRestart);
   el.savePrizeBtn?.addEventListener("click", handleSavePrize);
 
-  el.searchInput?.addEventListener("input", renderMembers);
+  el.searchInput?.addEventListener("input", renderAll);
 
   el.showRemovedToggle?.addEventListener("change", async () => {
     await loadMembers().catch(() => {
