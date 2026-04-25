@@ -1248,3 +1248,24 @@ button.is-loading::after,
 @keyframes lucky77SpinMini {
   to { transform: rotate(360deg); }
 }
+
+.wheel-actions-three {
+  grid-template-columns: 1.05fr 1fr 1fr;
+}
+
+.auto-spin-btn {
+  background: linear-gradient(90deg, rgba(255, 209, 102, 0.95), rgba(255, 122, 89, 0.95));
+  color: #3d2200;
+  font-weight: 900;
+}
+
+.wheel-canvas {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+@media (max-width: 560px) {
+  .wheel-actions-three {
+    grid-template-columns: 1fr;
+  }
+}
