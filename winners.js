@@ -2,7 +2,7 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "cs-winners-fast-v3",
+  CACHE_BUSTER: "cs-winners-smooth-v7",
   PAGE_SIZE: 40,
 };
 
@@ -11,16 +11,27 @@ const state = {
   filtered: [],
   visibleCount: CONFIG.PAGE_SIZE,
   loading: false,
+  autoNoticeRunning: false,
+  autoNoticeStopRequested: false,
+  noticeFailedIds: new Set(),
 };
 
 const el = {
   totalWinners: document.getElementById("totalWinners"),
   doneCount: document.getElementById("doneCount"),
   pendingCount: document.getElementById("pendingCount"),
+  doneBonusAmount: document.getElementById("doneBonusAmount"),
+  noticeSentCount: document.getElementById("noticeSentCount"),
+  noticePendingCount: document.getElementById("noticePendingCount"),
+  noticeFailedCount: document.getElementById("noticeFailedCount"),
   winnerList: document.getElementById("winnerList"),
   searchInput: document.getElementById("searchInput"),
   refreshBtn: document.getElementById("refreshBtn"),
   exportBtn: document.getElementById("exportBtn"),
+  autoNoticeBtn: document.getElementById("autoNoticeBtn"),
+  autoNoticeStatus: document.getElementById("autoNoticeStatus"),
+  autoNoticeTitle: document.getElementById("autoNoticeTitle"),
+  autoNoticeText: document.getElementById("autoNoticeText"),
   footerText: document.getElementById("footerText"),
   toast: document.getElementById("toast"),
   loadMoreBtn: document.getElementById("loadMoreBtn"),
@@ -39,6 +50,35 @@ function formatTime(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleString();
+}
+
+
+function parsePrizeAmount(value) {
+  const src = String(value || "").replace(/,/g, "");
+  const match = src.match(/(\d+(?:\.\d+)?)/);
+  if (!match) return 0;
+  const num = Number(match[1]);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function formatKs(value) {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n) || n <= 0) return "0 KS";
+  return `${new Intl.NumberFormat().format(Math.round(n))} KS`;
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function updateAutoNoticeStatus(text, running = false) {
+  if (el.autoNoticeStatus) el.autoNoticeStatus.classList.remove("hidden");
+  if (el.autoNoticeTitle) el.autoNoticeTitle.textContent = running ? "Auto Notice Running" : "Auto Notice Status";
+  if (el.autoNoticeText) el.autoNoticeText.textContent = text;
+  if (el.autoNoticeBtn) {
+    el.autoNoticeBtn.textContent = running ? "Stop Auto Notice" : "Auto Notice All";
+    el.autoNoticeBtn.classList.toggle("is-loading", running);
+  }
 }
 
 function showToast(message, type = "normal") {
@@ -150,12 +190,21 @@ function applyFilter() {
 
 function renderStats() {
   const all = state.winners || [];
-  const done = all.filter((x) => x.done).length;
+  const doneRows = all.filter((x) => x.done);
+  const done = doneRows.length;
   const pending = all.filter((x) => !x.done).length;
+  const doneBonus = doneRows.reduce((sum, row) => sum + parsePrizeAmount(row.prize), 0);
+  const noticeSent = all.filter((x) => x.notice_sent).length;
+  const noticePending = all.filter((x) => !x.notice_sent).length;
+  const noticeFailed = state.noticeFailedIds?.size || 0;
 
   if (el.totalWinners) el.totalWinners.textContent = String(all.length);
   if (el.doneCount) el.doneCount.textContent = String(done);
   if (el.pendingCount) el.pendingCount.textContent = String(pending);
+  if (el.doneBonusAmount) el.doneBonusAmount.textContent = formatKs(doneBonus);
+  if (el.noticeSentCount) el.noticeSentCount.textContent = String(noticeSent);
+  if (el.noticePendingCount) el.noticePendingCount.textContent = String(noticePending);
+  if (el.noticeFailedCount) el.noticeFailedCount.textContent = String(noticeFailed);
   if (el.footerText) {
     el.footerText.textContent = `${Math.min(state.visibleCount, state.filtered.length)} / ${state.filtered.length} item(s) shown`;
   }
@@ -246,6 +295,62 @@ async function sendNotice(userId, prize, button) {
       button.disabled = false;
       button.classList.remove("is-loading");
     }
+  }
+}
+
+
+async function runAutoNoticeAll() {
+  if (state.autoNoticeRunning) {
+    state.autoNoticeStopRequested = true;
+    updateAutoNoticeStatus("Stopping after current notice...", true);
+    return;
+  }
+
+  const queue = (state.winners || []).filter((w) => !w.notice_sent && w.user_id);
+  if (!queue.length) {
+    updateAutoNoticeStatus("No pending notices. All winners are already notice sent.", false);
+    showToast("No pending notices", "normal");
+    return;
+  }
+
+  state.autoNoticeRunning = true;
+  state.autoNoticeStopRequested = false;
+  state.noticeFailedIds = new Set();
+  const gapMs = Math.max(20000, Math.floor((60 * 60 * 1000) / Math.max(queue.length, 1)));
+  let sent = 0;
+  let failed = 0;
+
+  try {
+    for (let i = 0; i < queue.length; i++) {
+      if (state.autoNoticeStopRequested) break;
+      const row = queue[i];
+      updateAutoNoticeStatus(`Sending ${i + 1}/${queue.length} · Sent ${sent} · Failed ${failed}`, true);
+      try {
+        const data = await api("/notice", {
+          method: "POST",
+          body: JSON.stringify({ user_id: row.user_id, prize: row.prize || "" }),
+        });
+        if (data.dm_ok === false) throw new Error(data.dm_error || "DM failed");
+        row.notice_sent = true;
+        row.notice_at = new Date().toISOString();
+        sent++;
+      } catch (err) {
+        failed++;
+        state.noticeFailedIds.add(String(row.user_id));
+      }
+      applyFilter();
+      renderWinners();
+      if (i < queue.length - 1 && !state.autoNoticeStopRequested) {
+        const seconds = Math.round(gapMs / 1000);
+        updateAutoNoticeStatus(`Sent ${sent}/${queue.length} · Failed ${failed} · Next notice in ${seconds}s`, true);
+        await wait(gapMs);
+      }
+    }
+  } finally {
+    state.autoNoticeRunning = false;
+    state.autoNoticeStopRequested = false;
+    updateAutoNoticeStatus(`Finished · Sent ${sent}/${queue.length} · Failed ${failed}`, false);
+    renderStats();
   }
 }
 
@@ -401,6 +506,7 @@ function bindEvents() {
 
   el.refreshBtn?.addEventListener("click", refreshPage);
   el.exportBtn?.addEventListener("click", exportCsv);
+  el.autoNoticeBtn?.addEventListener("click", runAutoNoticeAll);
   el.loadMoreBtn?.addEventListener("click", handleLoadMore);
 }
 
