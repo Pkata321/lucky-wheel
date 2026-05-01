@@ -1269,3 +1269,169 @@ button.is-loading::after,
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== PATCH v4: mobile topbar overlap fix ===== */
+@media (max-width: 640px) {
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 12px;
+    overflow: hidden;
+  }
+
+  .topbar-left {
+    flex: 0 0 auto;
+    width: auto;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .brand {
+    flex: 0 0 auto;
+    width: auto;
+    gap: 0;
+    min-width: 0;
+  }
+
+  .brand-texts {
+    display: none;
+  }
+
+  .brand-logo {
+    width: 50px;
+    height: 50px;
+    border-radius: 17px;
+    font-size: 22px;
+  }
+
+  .menu-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 17px;
+    font-size: 24px;
+  }
+
+  .topbar-actions {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  #healthBadge {
+    display: none;
+  }
+
+  .topbar-actions .primary-btn {
+    flex: 1 1 auto;
+    min-width: 112px;
+    max-width: 140px;
+    height: 50px;
+    min-height: 50px;
+    padding: 0 12px !important;
+    border-radius: 17px;
+    font-size: 15px;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .topbar-actions .icon-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 17px;
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-shell {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .topbar {
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .topbar-left,
+  .topbar-actions {
+    gap: 6px;
+  }
+
+  .brand-logo,
+  .menu-btn,
+  .topbar-actions .icon-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 16px;
+  }
+
+  .topbar-actions .primary-btn {
+    min-width: 96px;
+    max-width: 116px;
+    height: 46px;
+    min-height: 46px;
+    font-size: 13px;
+    padding: 0 10px !important;
+  }
+}
+
+
+/* ===== PATCH v7: smooth auto spin and mobile no-overlap ===== */
+.auto-spin-btn.auto-on {
+  background: linear-gradient(90deg, #10b981, #22d3ee);
+  color: #052e2b;
+  box-shadow: 0 12px 30px rgba(16,185,129,0.25);
+}
+@media (max-width: 640px) {
+  .topbar {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    overflow: hidden;
+  }
+  .topbar-left {
+    display: grid;
+    grid-template-columns: 50px 50px;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    min-width: 0;
+    flex: none;
+  }
+  .brand { display: block; width: 50px; min-width: 50px; flex: none; }
+  .brand-texts, #healthBadge { display: none !important; }
+  .brand-logo, .menu-btn { width: 50px; height: 50px; border-radius: 16px; }
+  .topbar-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 50px 50px;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    width: 100%;
+  }
+  .topbar-actions .primary-btn {
+    width: 100%; min-width: 0; max-width: none;
+    height: 50px; min-height: 50px;
+    padding: 0 12px !important; border-radius: 16px;
+    font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .topbar-actions .icon-btn { width: 50px; height: 50px; border-radius: 16px; }
+}
+@media (max-width: 380px) {
+  .topbar { gap: 8px; padding: 10px; }
+  .topbar-left { grid-template-columns: 44px 44px; gap: 6px; }
+  .brand, .brand-logo, .menu-btn { width: 44px; min-width: 44px; height: 44px; border-radius: 14px; }
+  .topbar-actions { grid-template-columns: minmax(0, 1fr) 44px 44px; gap: 6px; }
+  .topbar-actions .primary-btn { height: 44px; min-height: 44px; font-size: 13px; border-radius: 14px; padding: 0 8px !important; }
+  .topbar-actions .icon-btn { width: 44px; height: 44px; border-radius: 14px; }
+}
