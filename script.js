@@ -2,7 +2,7 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "full-polished-v1",
+  CACHE_BUSTER: "smooth-v7",
 };
 
 const SETTINGS_KEY = "lucky77_premium_settings_full_v1";
@@ -20,7 +20,8 @@ const defaultSettings = {
   accent1: "#7b5cff",
   accent2: "#18d2ff",
   arrowColor: "#ffe6a8",
-  spinDurationMs: 5600,
+  spinDurationMs: 4000,
+  autoPopupMs: 2000,
 };
 
 const state = {
@@ -39,6 +40,8 @@ const state = {
   audioCtx: null,
   autoCloseTimer: null,
   spinLoopDegStep: 18,
+  hiddenMemberShuffleTimer: null,
+  hiddenMemberShuffleName: "",
   prizes: [],
   currentSection: "wheel",
 };
@@ -409,6 +412,7 @@ async function firstLoad() {
 
   buildWheelPrizeSegments();
   drawWheel();
+  updateAutoSpinButton();
   renderAll();
 }
 
@@ -957,45 +961,120 @@ async function handleScan() {
   }
 }
 
+
+function startHiddenMemberShuffle() {
+  stopHiddenMemberShuffle();
+  const activeMembers = (state.members || []).filter((m) => {
+    const removed = !!m.removed || String(m.removed || "0") === "1";
+    const active = m.active !== false && String(m.active ?? "1") !== "0";
+    return active && !removed;
+  });
+  if (!activeMembers.length) return;
+  state.hiddenMemberShuffleTimer = setInterval(() => {
+    const pick = activeMembers[Math.floor(Math.random() * activeMembers.length)];
+    state.hiddenMemberShuffleName = pick?.display || pick?.name || pick?.username || pick?.id || "";
+  }, 90);
+}
+
+function stopHiddenMemberShuffle() {
+  if (state.hiddenMemberShuffleTimer) {
+    clearInterval(state.hiddenMemberShuffleTimer);
+    state.hiddenMemberShuffleTimer = null;
+  }
+  state.hiddenMemberShuffleName = "";
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function updateAutoSpinButton() {
+  if (!el.autoSpinBtn) return;
+  const on = state.autoSpinning && !state.autoSpinStopRequested;
+  el.autoSpinBtn.textContent = on ? "AUTO SPIN ON" : "AUTO SPIN OFF";
+  el.autoSpinBtn.classList.toggle("auto-on", on);
+  el.autoSpinBtn.classList.toggle("is-loading", on);
+  el.autoSpinBtn.disabled = false;
+}
+
 async function handleSpin(options = {}) {
   const autoMode = !!options.auto;
   if (state.spinning) return false;
 
+  const spinVisualMs = 4000;
+  const popupMs = Number(settings.autoPopupMs || defaultSettings.autoPopupMs || 2000);
+
   try {
     if (Number(state.pool?.count || 0) <= 0) {
       showToast("No members left in pool", "error");
-      return;
+      return false;
     }
 
     state.spinning = true;
     if (el.spinBtn) {
       el.spinBtn.disabled = true;
       el.spinBtn.classList.add("is-loading");
-      el.spinBtn.textContent = "SPINNING...";
+      el.spinBtn.textContent = autoMode ? "AUTO RUNNING..." : "SPINNING...";
     }
     if (el.scanBtn) el.scanBtn.disabled = true;
     if (el.winnerFlash) el.winnerFlash.classList.add("hidden");
+    hideWinnerPopup();
 
     buildWheelPrizeSegments();
     drawWheel();
-
+    startHiddenMemberShuffle();
     startWheelLoop();
-    const spinStartedAt = performance.now();
+    startTickSound();
 
-    const result = await api("/spin", {
+    const spinStartedAt = performance.now();
+    const resultPromise = api("/spin", {
       method: "POST",
       body: JSON.stringify({}),
     });
 
+    let result;
+    try {
+      result = await resultPromise;
+    } catch (err) {
+      throw err;
+    }
+
     const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
+    const winnerId = result?.winner?.id || "";
     const prize = result?.prize || "—";
+
+    const elapsedAfterApi = performance.now() - spinStartedAt;
+    const remainingToStop = Math.max(0, spinVisualMs - elapsedAfterApi);
+    const finalTransitionMs = Math.max(700, Math.min(remainingToStop || 900, 1400));
+    const waitBeforeFinal = Math.max(0, remainingToStop - finalTransitionMs);
+    if (waitBeforeFinal > 0) await sleep(waitBeforeFinal);
+
+    stopWheelLoop();
+    stopHiddenMemberShuffle();
+
+    const targetDeg = computeTargetRotationDeg(prize);
+    const currentBase = state.wheelDeg % 360;
+    let needed = targetDeg - currentBase;
+    if (needed < 0) needed += 360;
+    const extraRounds = 360 * (finalTransitionMs < 900 ? 1 : 2);
+    const finalDeg = state.wheelDeg + extraRounds + needed;
+
+    if (el.wheelCanvas) {
+      el.wheelCanvas.style.transition =
+        `transform ${finalTransitionMs}ms cubic-bezier(0.05, 0.78, 0.10, 1)`;
+      state.wheelDeg = finalDeg;
+      el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
+    }
+
+    await sleep(finalTransitionMs + 80);
+    stopTickSound();
 
     const optimisticItem = {
       turn: result?.turn || 0,
       at: new Date().toISOString(),
       prize,
       winner: {
-        id: result?.winner?.id || "",
+        id: winnerId,
         name: result?.winner?.name || "",
         username: result?.winner?.username || "",
         display: winnerName,
@@ -1003,13 +1082,12 @@ async function handleSpin(options = {}) {
     };
 
     state.history = [optimisticItem, ...(state.history || [])];
-
     state.winners = [
       {
         turn: result?.turn || 0,
         at: optimisticItem.at,
         prize,
-        user_id: result?.winner?.id || "",
+        user_id: winnerId,
         name: result?.winner?.name || "",
         username: result?.winner?.username || "",
         display: winnerName,
@@ -1020,49 +1098,29 @@ async function handleSpin(options = {}) {
       },
       ...(state.winners || []),
     ];
-
     state.pool.count = Math.max(0, Number(state.pool?.count || 0) - 1);
     renderAll();
-
-    stopWheelLoop();
-
-    const targetDeg = computeTargetRotationDeg(prize);
-    const currentBase = state.wheelDeg % 360;
-    let needed = targetDeg - currentBase;
-    if (needed < 0) needed += 360;
-
-    const targetTotalDuration = Number(settings.spinDurationMs || defaultSettings.spinDurationMs || 5600);
-    const elapsedBeforeStop = performance.now() - spinStartedAt;
-    const spinDuration = Math.max(1800, Math.min(targetTotalDuration, targetTotalDuration - elapsedBeforeStop));
-    const extraRounds = 360 * (spinDuration < 2600 ? 2 : 4 + Math.floor(Math.random() * 2));
-    const finalDeg = state.wheelDeg + extraRounds + needed;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (el.wheelCanvas) {
-          el.wheelCanvas.style.transition =
-            `transform ${spinDuration}ms cubic-bezier(0.06, 0.82, 0.08, 1)`;
-          state.wheelDeg = finalDeg;
-          el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
-        }
-      });
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, spinDuration + 120));
 
     if (el.winnerFlash) el.winnerFlash.classList.remove("hidden");
     if (el.winnerFlashName) el.winnerFlashName.textContent = winnerName;
     if (el.winnerFlashPrize) el.winnerFlashPrize.textContent = prize;
 
-    showWinnerPopup(winnerName, prize);
-    await refreshAfterSpin();
+    showWinnerPopup(`${winnerName}${winnerId ? " · ID " + winnerId : ""}`, prize);
     showToast(`Winner: ${winnerName}`, "success");
-    stopTickSound();
+
+    if (autoMode) {
+      autoCloseWinnerPopup(popupMs);
+      await interruptibleSleep(popupMs);
+    } else {
+      refreshAfterSpin().catch(() => {});
+    }
   } catch (err) {
     stopWheelLoop();
     stopTickSound();
+    stopHiddenMemberShuffle();
     showToast(err.message || "Spin failed", "error");
     await refreshAllData().catch(() => {});
+    return false;
   } finally {
     state.spinning = false;
     if (el.spinBtn) {
@@ -1094,11 +1152,9 @@ async function runAutoSpin() {
   if (state.autoSpinning) return;
   state.autoSpinning = true;
   state.autoSpinStopRequested = false;
-  if (el.autoSpinBtn) {
-    el.autoSpinBtn.textContent = "STOP AUTO";
-    el.autoSpinBtn.classList.add("is-loading");
-  }
+  updateAutoSpinButton();
   if (el.scanBtn) el.scanBtn.disabled = true;
+  if (el.spinBtn) el.spinBtn.disabled = true;
 
   try {
     while (state.autoSpinning && !state.autoSpinStopRequested) {
@@ -1107,38 +1163,29 @@ async function runAutoSpin() {
         break;
       }
       const ok = await handleSpin({ auto: true });
-      if (!ok || !state.autoSpinning || state.autoSpinStopRequested) break;
-      autoCloseWinnerPopup(3000);
-      await interruptibleSleep(3000);
+      if (!ok || state.autoSpinStopRequested) break;
+      hideWinnerPopup();
       if (!state.autoSpinning || state.autoSpinStopRequested) break;
     }
   } finally {
     state.autoSpinning = false;
     state.autoSpinStopRequested = false;
-    if (el.autoSpinBtn) {
-      el.autoSpinBtn.textContent = "AUTO SPIN";
-      el.autoSpinBtn.classList.remove("is-loading");
-      el.autoSpinBtn.disabled = false;
-    }
+    clearAutoCloseTimer();
+    updateAutoSpinButton();
     if (el.spinBtn) el.spinBtn.disabled = false;
     if (el.scanBtn) el.scanBtn.disabled = false;
+    refreshAfterSpin().catch(() => {});
   }
 }
 
 function toggleAutoSpin() {
   if (state.autoSpinning) {
     state.autoSpinStopRequested = true;
-    state.autoSpinning = false;
-    clearAutoCloseTimer();
-    hideWinnerPopup();
-    if (el.autoSpinBtn) {
-      el.autoSpinBtn.textContent = "AUTO SPIN";
-      el.autoSpinBtn.classList.remove("is-loading");
-      el.autoSpinBtn.disabled = false;
-    }
-    showToast("Auto Spin stopped", "normal");
+    updateAutoSpinButton();
+    showToast("Auto Spin OFF: current spin will finish safely", "normal");
     return;
   }
+  showToast("Auto Spin ON", "success");
   runAutoSpin();
 }
 
