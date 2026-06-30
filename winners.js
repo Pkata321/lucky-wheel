@@ -1,5 +1,5 @@
 const CONFIG = {
-  BASE_URL: "https://lucky77-wheel-bot.onrender.com",
+  BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
   CACHE_BUSTER: "cs-winners-fast-v3",
