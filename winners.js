@@ -2,7 +2,7 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "cs-winners-smooth-v7",
+  CACHE_BUSTER: "cs-winners-fast-v3",
   PAGE_SIZE: 40,
 };
 
@@ -11,27 +11,16 @@ const state = {
   filtered: [],
   visibleCount: CONFIG.PAGE_SIZE,
   loading: false,
-  autoNoticeRunning: false,
-  autoNoticeStopRequested: false,
-  noticeFailedIds: new Set(),
 };
 
 const el = {
   totalWinners: document.getElementById("totalWinners"),
   doneCount: document.getElementById("doneCount"),
   pendingCount: document.getElementById("pendingCount"),
-  doneBonusAmount: document.getElementById("doneBonusAmount"),
-  noticeSentCount: document.getElementById("noticeSentCount"),
-  noticePendingCount: document.getElementById("noticePendingCount"),
-  noticeFailedCount: document.getElementById("noticeFailedCount"),
   winnerList: document.getElementById("winnerList"),
   searchInput: document.getElementById("searchInput"),
   refreshBtn: document.getElementById("refreshBtn"),
   exportBtn: document.getElementById("exportBtn"),
-  autoNoticeBtn: document.getElementById("autoNoticeBtn"),
-  autoNoticeStatus: document.getElementById("autoNoticeStatus"),
-  autoNoticeTitle: document.getElementById("autoNoticeTitle"),
-  autoNoticeText: document.getElementById("autoNoticeText"),
   footerText: document.getElementById("footerText"),
   toast: document.getElementById("toast"),
   loadMoreBtn: document.getElementById("loadMoreBtn"),
@@ -50,35 +39,6 @@ function formatTime(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleString();
-}
-
-
-function parsePrizeAmount(value) {
-  const src = String(value || "").replace(/,/g, "");
-  const match = src.match(/(\d+(?:\.\d+)?)/);
-  if (!match) return 0;
-  const num = Number(match[1]);
-  return Number.isFinite(num) ? num : 0;
-}
-
-function formatKs(value) {
-  const n = Number(value || 0);
-  if (!Number.isFinite(n) || n <= 0) return "0 KS";
-  return `${new Intl.NumberFormat().format(Math.round(n))} KS`;
-}
-
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function updateAutoNoticeStatus(text, running = false) {
-  if (el.autoNoticeStatus) el.autoNoticeStatus.classList.remove("hidden");
-  if (el.autoNoticeTitle) el.autoNoticeTitle.textContent = running ? "Auto Notice Running" : "Auto Notice Status";
-  if (el.autoNoticeText) el.autoNoticeText.textContent = text;
-  if (el.autoNoticeBtn) {
-    el.autoNoticeBtn.textContent = running ? "Stop Auto Notice" : "Auto Notice All";
-    el.autoNoticeBtn.classList.toggle("is-loading", running);
-  }
 }
 
 function showToast(message, type = "normal") {
@@ -103,7 +63,7 @@ function showToast(message, type = "normal") {
 function getApiKey() {
   let key = sessionStorage.getItem("lucky77_admin_api_key") || "";
   if (!key) {
-    key = window.prompt("Admin API key ထည့်ပါ") || "";
+    key = window.prompt("Admin API key ááá·áºáá«") || "";
     key = key.trim();
     if (key) sessionStorage.setItem("lucky77_admin_api_key", key);
   }
@@ -141,7 +101,7 @@ async function api(path, options = {}) {
 
     if (response.status === 401) {
       forgetApiKey();
-      throw new Error("Unauthorized: API key ပြန်ထည့်ပါ");
+      throw new Error("Unauthorized: API key áá¼ááºááá·áºáá«");
     }
 
     if (!response.ok || data.ok === false) {
@@ -178,6 +138,10 @@ function applyFilter() {
       w.prize,
       w.done ? "done" : "pending",
       w.notice_sent ? "notice sent" : "notice pending",
+      w.cs_status,
+      w.cs_note,
+      w.game_account,
+      w.last_reply_text,
     ]
       .join(" ")
       .toLowerCase();
@@ -190,21 +154,12 @@ function applyFilter() {
 
 function renderStats() {
   const all = state.winners || [];
-  const doneRows = all.filter((x) => x.done);
-  const done = doneRows.length;
+  const done = all.filter((x) => x.done).length;
   const pending = all.filter((x) => !x.done).length;
-  const doneBonus = doneRows.reduce((sum, row) => sum + parsePrizeAmount(row.prize), 0);
-  const noticeSent = all.filter((x) => x.notice_sent).length;
-  const noticePending = all.filter((x) => !x.notice_sent).length;
-  const noticeFailed = state.noticeFailedIds?.size || 0;
 
   if (el.totalWinners) el.totalWinners.textContent = String(all.length);
   if (el.doneCount) el.doneCount.textContent = String(done);
   if (el.pendingCount) el.pendingCount.textContent = String(pending);
-  if (el.doneBonusAmount) el.doneBonusAmount.textContent = formatKs(doneBonus);
-  if (el.noticeSentCount) el.noticeSentCount.textContent = String(noticeSent);
-  if (el.noticePendingCount) el.noticePendingCount.textContent = String(noticePending);
-  if (el.noticeFailedCount) el.noticeFailedCount.textContent = String(noticeFailed);
   if (el.footerText) {
     el.footerText.textContent = `${Math.min(state.visibleCount, state.filtered.length)} / ${state.filtered.length} item(s) shown`;
   }
@@ -298,59 +253,38 @@ async function sendNotice(userId, prize, button) {
   }
 }
 
-
-async function runAutoNoticeAll() {
-  if (state.autoNoticeRunning) {
-    state.autoNoticeStopRequested = true;
-    updateAutoNoticeStatus("Stopping after current notice...", true);
-    return;
-  }
-
-  const queue = (state.winners || []).filter((w) => !w.notice_sent && w.user_id);
-  if (!queue.length) {
-    updateAutoNoticeStatus("No pending notices. All winners are already notice sent.", false);
-    showToast("No pending notices", "normal");
-    return;
-  }
-
-  state.autoNoticeRunning = true;
-  state.autoNoticeStopRequested = false;
-  state.noticeFailedIds = new Set();
-  const gapMs = Math.max(20000, Math.floor((60 * 60 * 1000) / Math.max(queue.length, 1)));
-  let sent = 0;
-  let failed = 0;
+async function updateWinnerMeta(userId, button) {
+  if (!userId || state.loading) return;
+  const statusEl = document.querySelector(`[data-status-input="${CSS.escape(String(userId))}"]`);
+  const noteEl = document.querySelector(`[data-note-input="${CSS.escape(String(userId))}"]`);
+  const gameEl = document.querySelector(`[data-game-input="${CSS.escape(String(userId))}"]`);
 
   try {
-    for (let i = 0; i < queue.length; i++) {
-      if (state.autoNoticeStopRequested) break;
-      const row = queue[i];
-      updateAutoNoticeStatus(`Sending ${i + 1}/${queue.length} · Sent ${sent} · Failed ${failed}`, true);
-      try {
-        const data = await api("/notice", {
-          method: "POST",
-          body: JSON.stringify({ user_id: row.user_id, prize: row.prize || "" }),
-        });
-        if (data.dm_ok === false) throw new Error(data.dm_error || "DM failed");
-        row.notice_sent = true;
-        row.notice_at = new Date().toISOString();
-        sent++;
-      } catch (err) {
-        failed++;
-        state.noticeFailedIds.add(String(row.user_id));
-      }
-      applyFilter();
-      renderWinners();
-      if (i < queue.length - 1 && !state.autoNoticeStopRequested) {
-        const seconds = Math.round(gapMs / 1000);
-        updateAutoNoticeStatus(`Sent ${sent}/${queue.length} · Failed ${failed} · Next notice in ${seconds}s`, true);
-        await wait(gapMs);
-      }
+    state.loading = true;
+    if (button) {
+      button.disabled = true;
+      button.classList.add("is-loading");
     }
+    const body = {
+      user_id: userId,
+      cs_status: statusEl?.value || "pending",
+      cs_note: noteEl?.value || "",
+      game_account: gameEl?.value || "",
+    };
+    await api("/winner/update", { method: "POST", body: JSON.stringify(body) });
+    const row = state.winners.find((x) => String(x.user_id) === String(userId));
+    if (row) Object.assign(row, body, { done: body.cs_status === "done" ? true : row.done });
+    applyFilter();
+    renderWinners();
+    showToast("Winner saved", "success");
+  } catch (err) {
+    showToast(err.message || "Winner save failed", "error");
   } finally {
-    state.autoNoticeRunning = false;
-    state.autoNoticeStopRequested = false;
-    updateAutoNoticeStatus(`Finished · Sent ${sent}/${queue.length} · Failed ${failed}`, false);
-    renderStats();
+    state.loading = false;
+    if (button) {
+      button.disabled = false;
+      button.classList.remove("is-loading");
+    }
   }
 }
 
@@ -369,6 +303,13 @@ function bindActionButtons() {
       sendNotice(userId, prize, btn);
     };
   });
+
+  document.querySelectorAll("[data-save-user]").forEach((btn) => {
+    btn.onclick = () => {
+      const userId = btn.getAttribute("data-save-user");
+      updateWinnerMeta(userId, btn);
+    };
+  });
 }
 
 function buildWinnerCard(w) {
@@ -378,7 +319,7 @@ function buildWinnerCard(w) {
     <div class="cs-item">
       <div class="cs-item-top">
         <div>
-          <div class="cs-item-title">#${escapeHtml(w.turn)} · ${escapeHtml(w.display || w.user_id || "-")}</div>
+          <div class="cs-item-title">#${escapeHtml(w.turn)} Â· ${escapeHtml(w.display || w.user_id || "-")}</div>
           <div class="cs-item-sub">
             Prize: <strong>${escapeHtml(w.prize || "-")}</strong><br>
             User ID: ${escapeHtml(w.user_id || "-")}<br>
@@ -396,8 +337,20 @@ function buildWinnerCard(w) {
         <span class="cs-badge ${w.notice_sent ? "done" : "pending"}">
           ${w.notice_sent ? "NOTICE SENT" : "NOTICE PENDING"}
         </span>
+        <span class="cs-badge">Status: ${escapeHtml(w.cs_status || (w.done ? "done" : "pending"))}</span>
         ${w.done_at ? `<span class="cs-badge">Done At: ${escapeHtml(formatTime(w.done_at))}</span>` : ""}
         ${w.notice_at ? `<span class="cs-badge">Notice At: ${escapeHtml(formatTime(w.notice_at))}</span>` : ""}
+        ${w.last_reply_at ? `<span class="cs-badge done">User Replied: ${escapeHtml(formatTime(w.last_reply_at))}</span>` : ""}
+      </div>
+
+      ${w.last_reply_text ? `<div class="cs-reply">Last Reply: ${escapeHtml(w.last_reply_text)}</div>` : ""}
+
+      <div class="cs-edit-grid">
+        <select class="cs-input" data-status-input="${escapeHtml(w.user_id)}">
+          ${["pending","notice_sent","user_replied","account_received","prize_added","problem","done"].map((x) => `<option value="${x}" ${(w.cs_status || (w.done ? "done" : "pending")) === x ? "selected" : ""}>${x.replace(/_/g, " ").toUpperCase()}</option>`).join("")}
+        </select>
+        <input class="cs-input" data-game-input="${escapeHtml(w.user_id)}" value="${escapeHtml(w.game_account || "")}" placeholder="Game account / ID" />
+        <textarea class="cs-input cs-note" data-note-input="${escapeHtml(w.user_id)}" placeholder="CS note">${escapeHtml(w.cs_note || "")}</textarea>
       </div>
 
       <div class="cs-item-actions">
@@ -405,6 +358,7 @@ function buildWinnerCard(w) {
         <button class="cs-link-btn notice" data-notice-user="${escapeHtml(w.user_id)}" data-notice-prize="${escapeHtml(w.prize || "")}">
           Notice
         </button>
+        <button class="cs-link-btn secondary" data-save-user="${escapeHtml(w.user_id)}">Save CS</button>
         <button class="cs-link-btn ${w.done ? "secondary" : "primary"}" data-done-user="${escapeHtml(w.user_id)}">
           ${w.done ? "Undo Done" : "Done"}
         </button>
@@ -443,7 +397,12 @@ function exportCsv() {
     "Done",
     "Done At",
     "Notice Sent",
-    "Notice At"
+    "Notice At",
+    "CS Status",
+    "CS Note",
+    "Game Account",
+    "Last Reply",
+    "Last Reply At"
   ]];
 
   (state.winners || []).forEach((w) => {
@@ -459,6 +418,11 @@ function exportCsv() {
       String(w.done_at || ""),
       String(w.notice_sent ? "YES" : "NO"),
       String(w.notice_at || ""),
+      String(w.cs_status || ""),
+      String(w.cs_note || ""),
+      String(w.game_account || ""),
+      String(w.last_reply_text || ""),
+      String(w.last_reply_at || ""),
     ]);
   });
 
@@ -506,7 +470,6 @@ function bindEvents() {
 
   el.refreshBtn?.addEventListener("click", refreshPage);
   el.exportBtn?.addEventListener("click", exportCsv);
-  el.autoNoticeBtn?.addEventListener("click", runAutoNoticeAll);
   el.loadMoreBtn?.addEventListener("click", handleLoadMore);
 }
 
