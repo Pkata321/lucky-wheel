@@ -1,8 +1,8 @@
 const CONFIG = {
-  BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
+  BASE_URL: "https://lucky77-wheel-bot.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "smooth-v7",
+  CACHE_BUSTER: "full-polished-v1",
 };
 
 const SETTINGS_KEY = "lucky77_premium_settings_full_v1";
@@ -20,8 +20,7 @@ const defaultSettings = {
   accent1: "#7b5cff",
   accent2: "#18d2ff",
   arrowColor: "#ffe6a8",
-  spinDurationMs: 4000,
-  autoPopupMs: 2000,
+  spinDurationMs: 5600,
 };
 
 const state = {
@@ -31,6 +30,7 @@ const state = {
   history: [],
   pool: { count: 0, ids: [] },
   scan: { status: "idle", summary: null, last_scan_at: "" },
+  event: { open: true, limit: 0, name: "Lucky77 Event", active_register_count: 0 },
   spinning: false,
   autoSpinning: false,
   autoSpinStopRequested: false,
@@ -40,8 +40,6 @@ const state = {
   audioCtx: null,
   autoCloseTimer: null,
   spinLoopDegStep: 18,
-  hiddenMemberShuffleTimer: null,
-  hiddenMemberShuffleName: "",
   prizes: [],
   currentSection: "wheel",
 };
@@ -116,6 +114,14 @@ const el = {
   bgMusicPlayer: document.getElementById("bgMusicPlayer"),
 
   exportHistoryBtn: document.getElementById("exportHistoryBtn"),
+  eventOpenToggle: document.getElementById("eventOpenToggle"),
+  eventNameInput: document.getElementById("eventNameInput"),
+  eventLimitInput: document.getElementById("eventLimitInput"),
+  eventStatusText: document.getElementById("eventStatusText"),
+  saveEventBtn: document.getElementById("saveEventBtn"),
+  backupExportBtn: document.getElementById("backupExportBtn"),
+  backupRestoreInput: document.getElementById("backupRestoreInput"),
+  backupRestoreBtn: document.getElementById("backupRestoreBtn"),
 
   winnerPopup: document.getElementById("winnerPopup"),
   winnerPopupBackdrop: document.getElementById("winnerPopupBackdrop"),
@@ -195,7 +201,7 @@ function showToast(message, type = "normal") {
 function getApiKey() {
   let key = sessionStorage.getItem("lucky77_admin_api_key") || "";
   if (!key) {
-    key = window.prompt("Admin API key ထည့်ပါ") || "";
+    key = window.prompt("Admin API key ááá·áºáá«") || "";
     key = key.trim();
     if (key) sessionStorage.setItem("lucky77_admin_api_key", key);
   }
@@ -233,7 +239,7 @@ async function api(path, options = {}) {
 
     if (response.status === 401) {
       forgetApiKey();
-      throw new Error("Unauthorized: API key ပြန်ထည့်ပါ");
+      throw new Error("Unauthorized: API key áá¼ááºááá·áºáá«");
     }
 
     if (!response.ok || data.ok === false) {
@@ -324,7 +330,7 @@ function drawWheel() {
     while (ctx.measureText(shown).width > maxWidth && shown.length > 6) {
       shown = shown.slice(0, -1);
     }
-    if (shown !== text) shown = shown.slice(0, -1) + "…";
+    if (shown !== text) shown = shown.slice(0, -1) + "â¦";
 
     ctx.fillText(shown, radius - 34, 8);
     ctx.restore();
@@ -357,12 +363,18 @@ function computeTargetRotationDeg(prizeName) {
 
 async function loadHealth() {
   state.health = await api("/health");
+  if (state.health?.event) {
+    state.event = { ...state.event, ...state.health.event, active_register_count: Number(state.health.active_register_count || 0) };
+  }
 }
 
 async function loadPrizeConfig() {
   const data = await api("/config");
   if (data?.prize_source && String(data.prize_source).trim() && el.prizeText) {
     el.prizeText.value = String(data.prize_source).trim();
+  }
+  if (data?.event) {
+    state.event = { ...state.event, ...data.event, active_register_count: Number(data.active_register_count || 0) };
   }
 }
 
@@ -412,7 +424,6 @@ async function firstLoad() {
 
   buildWheelPrizeSegments();
   drawWheel();
-  updateAutoSpinButton();
   renderAll();
 }
 
@@ -477,6 +488,18 @@ function renderHealth() {
   else el.poolEmptyText.classList.add("hidden");
 }
 
+function renderEventControl() {
+  const e = state.event || {};
+  if (el.eventOpenToggle) el.eventOpenToggle.checked = e.open !== false;
+  if (el.eventNameInput && document.activeElement !== el.eventNameInput) el.eventNameInput.value = e.name || "Lucky77 Event";
+  if (el.eventLimitInput && document.activeElement !== el.eventLimitInput) el.eventLimitInput.value = Number(e.limit || 0);
+  if (el.eventStatusText) {
+    const count = Number(e.active_register_count || 0);
+    const limit = Number(e.limit || 0);
+    el.eventStatusText.textContent = `${e.open !== false ? "OPEN" : "CLOSED"} Â· Registered ${count}${limit ? ` / ${limit}` : ""} Â· Memory kept after event restart`;
+  }
+}
+
 function renderScan() {
   const s = state.scan || {};
   const summary = s.summary || null;
@@ -489,7 +512,7 @@ function renderScan() {
   if (!el.scanSummaryText) return;
   if (summary) {
     el.scanSummaryText.textContent =
-      `Active ${summary.active ?? 0} · Left ${summary.left ?? 0} · Pool ${summary.pool ?? 0}`;
+      `Active ${summary.active ?? 0} Â· Left ${summary.left ?? 0} Â· Needs Register ${summary.needs_register ?? 0} Â· Pool ${summary.pool ?? 0}`;
   } else if (s.last_scan_at) {
     el.scanSummaryText.textContent = `Last scan ${formatTime(s.last_scan_at)}`;
   } else {
@@ -560,7 +583,7 @@ function renderMembers() {
 
   const items = filtered.map((m) => {
     const statusText = m.removed ? "removed" : m.active ? "active" : "left";
-    const statusClass = m.removed ? "removed" : m.active ? "active" : "left";
+    const statusClass = m.removed ? "removed" : m.rejoin_required ? "left" : m.active ? "active" : "left";
 
     return `
       <div class="item-card">
@@ -568,7 +591,7 @@ function renderMembers() {
           <div>
             <div class="item-title">${escapeHtml(m.display || m.id)}</div>
             <div class="item-sub">
-              ID: ${escapeHtml(m.id)} · ${m.username ? "@" + escapeHtml(m.username) : "no username"}
+              ID: ${escapeHtml(m.id)} Â· ${m.username ? "@" + escapeHtml(m.username) : "no username"}
             </div>
           </div>
           <div class="badge ${statusClass}">${escapeHtml(statusText)}</div>
@@ -614,9 +637,9 @@ function renderWinners() {
       <div class="item-card">
         <div class="item-top">
           <div>
-            <div class="item-title">#${escapeHtml(w.turn)} · ${escapeHtml(w.display || w.user_id)}</div>
+            <div class="item-title">#${escapeHtml(w.turn)} Â· ${escapeHtml(w.display || w.user_id)}</div>
             <div class="item-sub">
-              Prize: ${escapeHtml(w.prize || "-")} · ${escapeHtml(formatTime(w.at))}
+              Prize: ${escapeHtml(w.prize || "-")} Â· ${escapeHtml(formatTime(w.at))}
             </div>
           </div>
           <div class="badge ${w.done ? "active" : "left"}">${w.done ? "done" : "pending"}</div>
@@ -676,9 +699,9 @@ function renderHistory() {
       <div class="item-card">
         <div class="item-top">
           <div>
-            <div class="item-title">#${escapeHtml(h.turn || "-")} · ${escapeHtml(winnerDisplay)}</div>
+            <div class="item-title">#${escapeHtml(h.turn || "-")} Â· ${escapeHtml(winnerDisplay)}</div>
             <div class="item-sub">
-              Prize: ${escapeHtml(h.prize || "-")} · ${escapeHtml(formatTime(h.at))}
+              Prize: ${escapeHtml(h.prize || "-")} Â· ${escapeHtml(formatTime(h.at))}
             </div>
           </div>
           <div class="badge">history</div>
@@ -693,6 +716,7 @@ function renderHistory() {
 function renderAll() {
   renderHealth();
   renderScan();
+  renderEventControl();
   renderMembers();
   renderWinners();
   renderHistory();
@@ -936,7 +960,7 @@ function stopWheelLoop() {
 
 async function handleScan() {
   if (state.spinning) {
-    showToast("Spin နေချိန် scan မလုပ်ရပါ", "error");
+    showToast("Spin áá±áá»á­ááº scan ááá¯ááºááá«", "error");
     return;
   }
 
@@ -961,120 +985,55 @@ async function handleScan() {
   }
 }
 
-
-function startHiddenMemberShuffle() {
-  stopHiddenMemberShuffle();
-  const activeMembers = (state.members || []).filter((m) => {
-    const removed = !!m.removed || String(m.removed || "0") === "1";
-    const active = m.active !== false && String(m.active ?? "1") !== "0";
-    return active && !removed;
-  });
-  if (!activeMembers.length) return;
-  state.hiddenMemberShuffleTimer = setInterval(() => {
-    const pick = activeMembers[Math.floor(Math.random() * activeMembers.length)];
-    state.hiddenMemberShuffleName = pick?.display || pick?.name || pick?.username || pick?.id || "";
-  }, 90);
-}
-
-function stopHiddenMemberShuffle() {
-  if (state.hiddenMemberShuffleTimer) {
-    clearInterval(state.hiddenMemberShuffleTimer);
-    state.hiddenMemberShuffleTimer = null;
-  }
-  state.hiddenMemberShuffleName = "";
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function updateAutoSpinButton() {
-  if (!el.autoSpinBtn) return;
-  const on = state.autoSpinning && !state.autoSpinStopRequested;
-  el.autoSpinBtn.textContent = on ? "AUTO SPIN ON" : "AUTO SPIN OFF";
-  el.autoSpinBtn.classList.toggle("auto-on", on);
-  el.autoSpinBtn.classList.toggle("is-loading", on);
-  el.autoSpinBtn.disabled = false;
-}
-
 async function handleSpin(options = {}) {
   const autoMode = !!options.auto;
   if (state.spinning) return false;
 
-  const spinVisualMs = 4000;
-  const popupMs = Number(settings.autoPopupMs || defaultSettings.autoPopupMs || 2000);
-
   try {
+    if (!autoMode) {
+      const poolCount = Number(state.pool?.count || 0);
+      const prizeCount = Number(state.health?.remaining_prizes || 0);
+      if (!window.confirm(`Spin áá¯ááºááá¬á¸?
+Pool: ${poolCount}
+Prizes Left: ${prizeCount}
+Last Scan: ${state.scan?.last_scan_at ? formatTime(state.scan.last_scan_at) : "No scan"}`)) {
+        return false;
+      }
+    }
     if (Number(state.pool?.count || 0) <= 0) {
       showToast("No members left in pool", "error");
-      return false;
+      return;
     }
 
     state.spinning = true;
     if (el.spinBtn) {
       el.spinBtn.disabled = true;
       el.spinBtn.classList.add("is-loading");
-      el.spinBtn.textContent = autoMode ? "AUTO RUNNING..." : "SPINNING...";
+      el.spinBtn.textContent = "SPINNING...";
     }
     if (el.scanBtn) el.scanBtn.disabled = true;
     if (el.winnerFlash) el.winnerFlash.classList.add("hidden");
-    hideWinnerPopup();
 
     buildWheelPrizeSegments();
     drawWheel();
-    startHiddenMemberShuffle();
-    startWheelLoop();
-    startTickSound();
 
+    startWheelLoop();
     const spinStartedAt = performance.now();
-    const resultPromise = api("/spin", {
+
+    const result = await api("/spin", {
       method: "POST",
       body: JSON.stringify({}),
     });
 
-    let result;
-    try {
-      result = await resultPromise;
-    } catch (err) {
-      throw err;
-    }
-
     const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
-    const winnerId = result?.winner?.id || "";
-    const prize = result?.prize || "—";
-
-    const elapsedAfterApi = performance.now() - spinStartedAt;
-    const remainingToStop = Math.max(0, spinVisualMs - elapsedAfterApi);
-    const finalTransitionMs = Math.max(700, Math.min(remainingToStop || 900, 1400));
-    const waitBeforeFinal = Math.max(0, remainingToStop - finalTransitionMs);
-    if (waitBeforeFinal > 0) await sleep(waitBeforeFinal);
-
-    stopWheelLoop();
-    stopHiddenMemberShuffle();
-
-    const targetDeg = computeTargetRotationDeg(prize);
-    const currentBase = state.wheelDeg % 360;
-    let needed = targetDeg - currentBase;
-    if (needed < 0) needed += 360;
-    const extraRounds = 360 * (finalTransitionMs < 900 ? 1 : 2);
-    const finalDeg = state.wheelDeg + extraRounds + needed;
-
-    if (el.wheelCanvas) {
-      el.wheelCanvas.style.transition =
-        `transform ${finalTransitionMs}ms cubic-bezier(0.05, 0.78, 0.10, 1)`;
-      state.wheelDeg = finalDeg;
-      el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
-    }
-
-    await sleep(finalTransitionMs + 80);
-    stopTickSound();
+    const prize = result?.prize || "â";
 
     const optimisticItem = {
       turn: result?.turn || 0,
       at: new Date().toISOString(),
       prize,
       winner: {
-        id: winnerId,
+        id: result?.winner?.id || "",
         name: result?.winner?.name || "",
         username: result?.winner?.username || "",
         display: winnerName,
@@ -1082,12 +1041,13 @@ async function handleSpin(options = {}) {
     };
 
     state.history = [optimisticItem, ...(state.history || [])];
+
     state.winners = [
       {
         turn: result?.turn || 0,
         at: optimisticItem.at,
         prize,
-        user_id: winnerId,
+        user_id: result?.winner?.id || "",
         name: result?.winner?.name || "",
         username: result?.winner?.username || "",
         display: winnerName,
@@ -1098,29 +1058,49 @@ async function handleSpin(options = {}) {
       },
       ...(state.winners || []),
     ];
+
     state.pool.count = Math.max(0, Number(state.pool?.count || 0) - 1);
     renderAll();
+
+    stopWheelLoop();
+
+    const targetDeg = computeTargetRotationDeg(prize);
+    const currentBase = state.wheelDeg % 360;
+    let needed = targetDeg - currentBase;
+    if (needed < 0) needed += 360;
+
+    const targetTotalDuration = Number(settings.spinDurationMs || defaultSettings.spinDurationMs || 5600);
+    const elapsedBeforeStop = performance.now() - spinStartedAt;
+    const spinDuration = Math.max(1800, Math.min(targetTotalDuration, targetTotalDuration - elapsedBeforeStop));
+    const extraRounds = 360 * (spinDuration < 2600 ? 2 : 4 + Math.floor(Math.random() * 2));
+    const finalDeg = state.wheelDeg + extraRounds + needed;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (el.wheelCanvas) {
+          el.wheelCanvas.style.transition =
+            `transform ${spinDuration}ms cubic-bezier(0.06, 0.82, 0.08, 1)`;
+          state.wheelDeg = finalDeg;
+          el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
+        }
+      });
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, spinDuration + 120));
 
     if (el.winnerFlash) el.winnerFlash.classList.remove("hidden");
     if (el.winnerFlashName) el.winnerFlashName.textContent = winnerName;
     if (el.winnerFlashPrize) el.winnerFlashPrize.textContent = prize;
 
-    showWinnerPopup(`${winnerName}${winnerId ? " · ID " + winnerId : ""}`, prize);
+    showWinnerPopup(winnerName, prize);
+    await refreshAfterSpin();
     showToast(`Winner: ${winnerName}`, "success");
-
-    if (autoMode) {
-      autoCloseWinnerPopup(popupMs);
-      await interruptibleSleep(popupMs);
-    } else {
-      refreshAfterSpin().catch(() => {});
-    }
+    stopTickSound();
   } catch (err) {
     stopWheelLoop();
     stopTickSound();
-    stopHiddenMemberShuffle();
     showToast(err.message || "Spin failed", "error");
     await refreshAllData().catch(() => {});
-    return false;
   } finally {
     state.spinning = false;
     if (el.spinBtn) {
@@ -1152,9 +1132,11 @@ async function runAutoSpin() {
   if (state.autoSpinning) return;
   state.autoSpinning = true;
   state.autoSpinStopRequested = false;
-  updateAutoSpinButton();
+  if (el.autoSpinBtn) {
+    el.autoSpinBtn.textContent = "STOP AUTO";
+    el.autoSpinBtn.classList.add("is-loading");
+  }
   if (el.scanBtn) el.scanBtn.disabled = true;
-  if (el.spinBtn) el.spinBtn.disabled = true;
 
   try {
     while (state.autoSpinning && !state.autoSpinStopRequested) {
@@ -1163,29 +1145,38 @@ async function runAutoSpin() {
         break;
       }
       const ok = await handleSpin({ auto: true });
-      if (!ok || state.autoSpinStopRequested) break;
-      hideWinnerPopup();
+      if (!ok || !state.autoSpinning || state.autoSpinStopRequested) break;
+      autoCloseWinnerPopup(3000);
+      await interruptibleSleep(3000);
       if (!state.autoSpinning || state.autoSpinStopRequested) break;
     }
   } finally {
     state.autoSpinning = false;
     state.autoSpinStopRequested = false;
-    clearAutoCloseTimer();
-    updateAutoSpinButton();
+    if (el.autoSpinBtn) {
+      el.autoSpinBtn.textContent = "AUTO SPIN";
+      el.autoSpinBtn.classList.remove("is-loading");
+      el.autoSpinBtn.disabled = false;
+    }
     if (el.spinBtn) el.spinBtn.disabled = false;
     if (el.scanBtn) el.scanBtn.disabled = false;
-    refreshAfterSpin().catch(() => {});
   }
 }
 
 function toggleAutoSpin() {
   if (state.autoSpinning) {
     state.autoSpinStopRequested = true;
-    updateAutoSpinButton();
-    showToast("Auto Spin OFF: current spin will finish safely", "normal");
+    state.autoSpinning = false;
+    clearAutoCloseTimer();
+    hideWinnerPopup();
+    if (el.autoSpinBtn) {
+      el.autoSpinBtn.textContent = "AUTO SPIN";
+      el.autoSpinBtn.classList.remove("is-loading");
+      el.autoSpinBtn.disabled = false;
+    }
+    showToast("Auto Spin stopped", "normal");
     return;
   }
-  showToast("Auto Spin ON", "success");
   runAutoSpin();
 }
 
@@ -1230,16 +1221,16 @@ async function handleSavePrize() {
 
 async function handleRestart() {
   if (state.spinning || state.autoSpinning) {
-    showToast("Spin/Auto Spin ရပ်ပြီးမှ restart လုပ်ပါ", "error");
+    showToast("Spin/Auto Spin áááºáá¼á®á¸áá¾ restart áá¯ááºáá«", "error");
     return;
   }
 
   const choice = window.prompt(
-    "Restart mode ရွေးပါ:\n" +
+    "Restart mode áá½á±á¸áá«:\n" +
       "1 = Safe Restart (winners/history clear, members keep, pool rebuild, prizes reload)\n" +
-      "2 = Prize Reload Only (members/winners/history/pool မထိ)\n" +
+      "2 = Prize Reload Only (members/winners/history/pool ááá­)\n" +
       "3 = Full Reset (old behavior: winners/history clear, pool empty until scan)\n\n" +
-      "1, 2, 3 ထဲကတစ်ခုရိုက်ပါ",
+      "1, 2, 3 áá²ááááºáá¯áá­á¯ááºáá«",
     "1"
   );
   if (!choice) return;
@@ -1250,8 +1241,13 @@ async function handleRestart() {
     return;
   }
   const label = mode === "safe_restart" ? "Safe Restart" : mode === "prize_reload" ? "Prize Reload Only" : "Full Reset";
-  const ok = window.confirm(`${label} လုပ်မှာသေချာလား?`);
-  if (!ok) return;
+  if (mode === "full_reset") {
+    const typed = window.prompt("Full Reset á pool áá­á¯ scan ááá¯ááºááá»ááºá¸ empty áá¬á¸áá«áááºá áááºáá¯ááºáááº FULL RESET áá­á¯á·áá­á¯ááºáá«á", "");
+    if (typed !== "FULL RESET") return;
+  } else {
+    const ok = window.confirm(`${label} áá¯ááºáá¾á¬áá±áá»á¬áá¬á¸?`);
+    if (!ok) return;
+  }
 
   try {
     if (el.restartBtn) {
@@ -1393,6 +1389,59 @@ function bindSectionMenu() {
       closeQuickMenu();
     });
   });
+}
+
+async function handleSaveEventSettings() {
+  try {
+    if (el.saveEventBtn) el.saveEventBtn.disabled = true;
+    const body = {
+      open: !!el.eventOpenToggle?.checked,
+      name: el.eventNameInput?.value?.trim() || "Lucky77 Event",
+      limit: Number(el.eventLimitInput?.value || 0) || 0,
+    };
+    const data = await api("/event/settings", { method: "POST", body: JSON.stringify(body) });
+    state.event = { ...state.event, ...data.event, active_register_count: Number(data.active_register_count || 0) };
+    renderEventControl();
+    showToast("Event settings saved", "success");
+  } catch (err) {
+    showToast(err.message || "Event save failed", "error");
+  } finally {
+    if (el.saveEventBtn) el.saveEventBtn.disabled = false;
+  }
+}
+
+async function handleBackupExport() {
+  try {
+    const data = await api("/backup/export");
+    const blob = new Blob([JSON.stringify(data.backup, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `lucky77-backup-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast("Backup exported", "success");
+  } catch (err) {
+    showToast(err.message || "Backup failed", "error");
+  }
+}
+
+async function handleBackupRestore() {
+  const file = el.backupRestoreInput?.files?.[0];
+  if (!file) return showToast("Backup JSON file áá½á±á¸áá«", "error");
+  const confirmText = window.prompt("Restore áá¯ááºáááº current event data áá­á¯ backup data áá²á·á¡áá¬á¸áá­á¯á¸áá«áááºá RESTORE áá­á¯á·áá­á¯ááºáá«á", "");
+  if (confirmText !== "RESTORE") return;
+  try {
+    const text = await file.text();
+    const backup = JSON.parse(text);
+    await api("/backup/restore", { method: "POST", body: JSON.stringify({ backup }) });
+    await refreshAllData();
+    showToast("Backup restored", "success");
+  } catch (err) {
+    showToast(err.message || "Restore failed", "error");
+  }
 }
 
 function bindEvents() {
@@ -1545,6 +1594,10 @@ function bindEvents() {
     exportHistoryCsv();
     showToast("History exported", "success");
   });
+
+  el.saveEventBtn?.addEventListener("click", handleSaveEventSettings);
+  el.backupExportBtn?.addEventListener("click", handleBackupExport);
+  el.backupRestoreBtn?.addEventListener("click", handleBackupRestore);
 
   el.winnerPopupBackdrop?.addEventListener("click", hideWinnerPopup);
   el.winnerPopupCloseBtn?.addEventListener("click", hideWinnerPopup);
