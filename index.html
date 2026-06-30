@@ -87,6 +87,26 @@
 
           <button id="scanBtn" class="primary-btn">Scan Channel Member</button>
         </div>
+
+        <div class="event-control-box">
+          <div class="event-control-head">
+            <div>
+              <div class="eyebrow">Event Control</div>
+              <h3>Register Gate & Limit</h3>
+              <div id="eventStatusText" class="scan-summary">Loading event settings...</div>
+            </div>
+            <label class="toggle-wrap event-toggle">
+              <input id="eventOpenToggle" type="checkbox" checked />
+              <span>Register Open</span>
+            </label>
+          </div>
+
+          <div class="event-grid">
+            <input id="eventNameInput" class="text-input" type="text" placeholder="Event name" />
+            <input id="eventLimitInput" class="text-input" type="number" min="0" placeholder="Register limit (0 = off)" />
+            <button id="saveEventBtn" class="primary-btn" type="button">Save Event</button>
+          </div>
+        </div>
       </section>
 
       <!-- WHEEL / HOME -->
@@ -289,6 +309,14 @@
       <div class="drawer-section">
         <div class="section-title">History Export</div>
         <button id="exportHistoryBtn" class="secondary-btn" type="button">Export CSV</button>
+      </div>
+
+      <div class="drawer-section danger-zone">
+        <div class="section-title">Data Safety Backup</div>
+        <button id="backupExportBtn" class="secondary-btn" type="button">Export Full Backup JSON</button>
+        <input id="backupRestoreInput" class="file-input" type="file" accept="application/json,.json" />
+        <button id="backupRestoreBtn" class="secondary-btn danger-outline" type="button">Restore Backup</button>
+        <p class="mini-help">Member memory မဖျက်ချင်ရင် update မလုပ်ခင် backup ထုတ်ထားပါ။</p>
       </div>
 
       <div class="drawer-actions">
