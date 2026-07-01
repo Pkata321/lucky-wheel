@@ -570,7 +570,27 @@
 </head>
 
 <body>
-  <main class="cs-shell">
+  <!-- ADMIN LOGIN SCREEN -->
+  <div id="adminLoginScreen" class="admin-login-screen">
+    <div class="admin-login-card">
+      <div class="admin-login-logo">77</div>
+      <h1>Admin Only</h1>
+      <p>CS Dashboard ဝင်ရန် Admin Only Api Code ထည့်ပါ</p>
+
+      <input
+        id="adminApiInput"
+        type="password"
+        placeholder="Admin Only Api Code"
+        autocomplete="current-password"
+      />
+
+      <button id="adminLoginBtn" type="button">Login</button>
+
+      <div id="adminLoginError" class="admin-login-error"></div>
+    </div>
+  </div>
+
+  <main id="adminApp" class="cs-shell hidden">
     <section class="cs-topbar">
       <div class="cs-title-wrap">
         <h1>Lucky77 CS Winners</h1>
@@ -578,8 +598,17 @@
       </div>
 
       <div class="cs-actions">
-        <button class="cs-btn secondary" id="refreshBtn">Refresh</button>
-        <button class="cs-btn secondary" id="exportBtn">Export CSV</button>
+        <a
+          href="./index.html"
+          class="cs-link-btn secondary"
+          style="text-decoration:none;"
+        >
+          Spin Dashboard
+        </a>
+
+        <button class="cs-btn secondary" id="refreshBtn" type="button">Refresh</button>
+        <button class="cs-btn secondary" id="exportBtn" type="button">Export CSV</button>
+        <button class="cs-btn secondary" id="logoutBtn" type="button">Logout</button>
       </div>
     </section>
 
@@ -628,7 +657,7 @@
       </div>
 
       <div style="margin-top: 14px; text-align: center;">
-        <button class="cs-btn secondary hidden" id="loadMoreBtn">Load More</button>
+        <button class="cs-btn secondary hidden" id="loadMoreBtn" type="button">Load More</button>
       </div>
 
       <div class="cs-footer-note" id="footerText">—</div>
@@ -645,12 +674,12 @@
         <div class="reply-title" id="replyModalTitle">Customer Reply</div>
         <div class="reply-sub" id="replyModalSub">—</div>
       </div>
-      <button class="reply-close" id="replyModalClose">×</button>
+      <button class="reply-close" id="replyModalClose" type="button">×</button>
     </div>
 
     <div class="reply-body" id="replyModalBody"></div>
   </section>
 
-  <script src="winners.js?v=clean-role-view-v1"></script>
+  <script src="winners.js?v=admin-login-clean-role-v1"></script>
 </body>
 </html>
