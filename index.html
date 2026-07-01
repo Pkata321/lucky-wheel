@@ -9,10 +9,32 @@
   <title>Lucky77 Premium Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
+  <!-- ADMIN LOGIN SCREEN -->
+  <div id="adminLoginScreen" class="admin-login-screen">
+    <div class="admin-login-card">
+      <div class="admin-login-logo">77</div>
+      <h1>Admin Only</h1>
+      <p>Dashboard ဝင်ရန် Admin Only Api Code ထည့်ပါ</p>
+
+      <input
+        id="adminApiInput"
+        type="password"
+        placeholder="Admin Only Api Code"
+        autocomplete="current-password"
+      />
+
+      <button id="adminLoginBtn" type="button">Login</button>
+
+      <div id="adminLoginError" class="admin-login-error"></div>
+    </div>
+  </div>
+
   <div class="bg-layer"></div>
 
-  <div class="app-shell">
+  <!-- ADMIN APP: login မအောင်မချင်း hidden -->
+  <div id="adminApp" class="app-shell hidden">
     <header class="topbar glass">
       <div class="topbar-left">
         <button id="quickMenuBtn" class="icon-btn menu-btn" aria-label="Open menu">☰</button>
@@ -30,16 +52,21 @@
         </div>
       </div>
 
-    <div class="topbar-actions">
-  <div id="healthBadge" class="pill neutral">Live</div>
+      <div class="topbar-actions">
+        <div id="healthBadge" class="pill neutral">Live</div>
 
-<a href="./winners.html" class="primary-btn" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">
-  CS Winners
-</a>
+        <a
+          href="./winners.html"
+          class="primary-btn"
+          style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;"
+        >
+          CS Winners
+        </a>
 
-  <button id="refreshBtn" class="icon-btn" aria-label="Refresh">↻</button>
-  <button id="settingsBtn" class="icon-btn" aria-label="Settings">⚙</button>
-</div>
+        <button id="refreshBtn" class="icon-btn" aria-label="Refresh">↻</button>
+        <button id="settingsBtn" class="icon-btn" aria-label="Settings">⚙</button>
+        <button id="logoutBtn" class="icon-btn" aria-label="Logout">⎋</button>
+      </div>
     </header>
 
     <section class="banner glass" id="bannerCard">
@@ -64,14 +91,17 @@
             <span>Members</span>
             <strong id="statMembers">0</strong>
           </div>
+
           <div class="stat-card">
             <span>Pool</span>
             <strong id="statPool">0</strong>
           </div>
+
           <div class="stat-card">
             <span>Winners</span>
             <strong id="statWinners">0</strong>
           </div>
+
           <div class="stat-card">
             <span>Prizes Left</span>
             <strong id="statPrizes">0</strong>
@@ -87,26 +117,6 @@
 
           <button id="scanBtn" class="primary-btn">Scan Channel Member</button>
         </div>
-
-        <div class="event-control-box">
-          <div class="event-control-head">
-            <div>
-              <div class="eyebrow">Event Control</div>
-              <h3>Register Gate & Limit</h3>
-              <div id="eventStatusText" class="scan-summary">Loading event settings...</div>
-            </div>
-            <label class="toggle-wrap event-toggle">
-              <input id="eventOpenToggle" type="checkbox" checked />
-              <span>Register Open</span>
-            </label>
-          </div>
-
-          <div class="event-grid">
-            <input id="eventNameInput" class="text-input" type="text" placeholder="Event name" />
-            <input id="eventLimitInput" class="text-input" type="number" min="0" placeholder="Register limit (0 = off)" />
-            <button id="saveEventBtn" class="primary-btn" type="button">Save Event</button>
-          </div>
-        </div>
       </section>
 
       <!-- WHEEL / HOME -->
@@ -119,7 +129,7 @@
         </div>
 
         <div id="poolEmptyText" class="empty-banner hidden">
-          All spins completed - No members left in pool
+          All spins completed · No members left in pool
         </div>
 
         <div class="wheel-wrap">
@@ -130,6 +140,7 @@
 
             <div class="wheel-center" id="wheelCenterBox">
               <img id="wheelCenterLogoImg" class="hidden" alt="Wheel Logo" />
+
               <div id="wheelCenterFallback">
                 <span class="wheel-center-top">LUCKY</span>
                 <span class="wheel-center-main">77</span>
@@ -158,6 +169,7 @@
             <div class="eyebrow">Prize Config</div>
             <h2>Prize Builder</h2>
           </div>
+
           <button id="savePrizeBtn" class="secondary-btn">Save Prize</button>
         </div>
 
@@ -195,6 +207,7 @@
             <div class="list-title">Member List</div>
             <div id="membersCountText" class="list-count">0 users</div>
           </div>
+
           <div id="memberList" class="list-body"></div>
         </div>
 
@@ -203,6 +216,7 @@
             <div class="list-title">Winner List</div>
             <div id="winnersCountText" class="list-count">0 winners</div>
           </div>
+
           <div id="winnerList" class="list-body"></div>
         </div>
 
@@ -211,6 +225,7 @@
             <div class="list-title">Event History</div>
             <div id="historyCountText" class="list-count">0 logs</div>
           </div>
+
           <div id="historyList" class="list-body"></div>
         </div>
       </section>
@@ -220,6 +235,7 @@
   <!-- QUICK MENU -->
   <aside id="quickMenuDrawer" class="drawer quick-menu-drawer">
     <div class="drawer-backdrop" id="quickMenuBackdrop"></div>
+
     <div class="drawer-panel quick-menu-panel">
       <div class="drawer-head">
         <h3>Quick Menu</h3>
@@ -239,6 +255,7 @@
   <!-- SETTINGS -->
   <aside id="settingsDrawer" class="drawer">
     <div class="drawer-backdrop" id="settingsBackdrop"></div>
+
     <div class="drawer-panel">
       <div class="drawer-head">
         <h3>Settings</h3>
@@ -247,6 +264,7 @@
 
       <div class="drawer-section">
         <div class="section-title">Theme</div>
+
         <select id="themeSelect" class="select-input">
           <option value="white">Default White</option>
           <option value="dark">Dark</option>
@@ -257,23 +275,28 @@
 
       <div class="drawer-section">
         <div class="section-title">Custom Colors</div>
+
         <div class="color-grid">
           <label class="color-field">
             <span>Background</span>
             <input id="bgColorInput" type="color" value="#f6f7fb" />
           </label>
+
           <label class="color-field">
             <span>Card</span>
             <input id="cardColorInput" type="color" value="#ffffff" />
           </label>
+
           <label class="color-field">
             <span>Accent 1</span>
             <input id="accent1Input" type="color" value="#7b5cff" />
           </label>
+
           <label class="color-field">
             <span>Accent 2</span>
             <input id="accent2Input" type="color" value="#18d2ff" />
           </label>
+
           <label class="color-field">
             <span>Spin Arrow</span>
             <input id="arrowColorInput" type="color" value="#ffe6a8" />
@@ -286,24 +309,6 @@
         <input id="bannerTitleInput" class="text-input" type="text" placeholder="Banner title" />
         <input id="bannerSubInput" class="text-input" type="text" placeholder="Banner subtitle" />
       </div>
-      <div class="drawer-section">
-        <div class="section-title">Spin Round Timer</div>
-        <label class="field-label">One winner total seconds (start → stop → popup)</label>
-        <input id="spinRoundSecondsInput" class="text-input" type="number" min="3" max="20" step="0.1" value="6" />
-        <p class="mini-help">ဥပမာ 6 ထားရင် Wheel စလည်တာကနေ winner popup ပေါ်တဲ့အထိ 6 seconds အတွင်းပြီးအောင်ချိန်ပေးထားပါတယ်။ Network/API နှေးလျှင် final stop animation ကိုအတိုလုပ်ပါမယ်။</p>
-
-        <label class="field-label field-label-gap">Auto next delay seconds</label>
-        <input id="autoNextDelaySecondsInput" class="text-input" type="number" min="0" max="10" step="0.1" value="0.9" />
-
-        <label class="field-label field-label-gap">Auto popup close seconds</label>
-        <input id="winnerPopupCloseSecondsInput" class="text-input" type="number" min="0.5" max="15" step="0.1" value="0.7" />
-
-        <label class="toggle-wrap field-label-gap">
-          <input id="autoNoticeEnabledInput" type="checkbox" checked />
-          <span>Auto notice winner by DM after each spin</span>
-        </label>
-      </div>
-
 
       <div class="drawer-section">
         <div class="section-title">Top Logo</div>
@@ -318,6 +323,7 @@
       <div class="drawer-section">
         <div class="section-title">Music</div>
         <input id="musicFileInput" class="file-input" type="file" accept=".mp3,audio/*" />
+
         <div class="music-actions">
           <button id="musicOnBtn" class="secondary-btn" type="button">Music ON</button>
           <button id="musicOffBtn" class="secondary-btn" type="button">Music OFF</button>
@@ -329,14 +335,6 @@
         <button id="exportHistoryBtn" class="secondary-btn" type="button">Export CSV</button>
       </div>
 
-      <div class="drawer-section danger-zone">
-        <div class="section-title">Data Safety Backup</div>
-        <button id="backupExportBtn" class="secondary-btn" type="button">Export Full Backup JSON</button>
-        <input id="backupRestoreInput" class="file-input" type="file" accept="application/json,.json" />
-        <button id="backupRestoreBtn" class="secondary-btn danger-outline" type="button">Restore Backup</button>
-        <p class="mini-help">Member memory မဖျက်ချင်ရင် update မလုပ်ခင် backup ထုတ်ထားပါ။</p>
-      </div>
-
       <div class="drawer-actions">
         <button id="saveSettingsBtn" class="primary-btn" type="button">Save Settings</button>
       </div>
@@ -346,6 +344,7 @@
   <!-- WINNER POPUP -->
   <div id="winnerPopup" class="winner-popup hidden">
     <div class="winner-popup-backdrop" id="winnerPopupBackdrop"></div>
+
     <div class="winner-popup-card">
       <div class="winner-popup-emoji">🎉 CONGRATULATIONS 🎉</div>
       <div id="winnerPopupName" class="winner-popup-name">Mg Mg</div>
@@ -353,12 +352,13 @@
       <div id="winnerPopupPrize" class="winner-popup-prize">10000Ks</div>
       <button id="winnerPopupCloseBtn" class="primary-btn winner-close-btn" type="button">Close</button>
     </div>
+
     <div id="confettiLayer" class="confetti-layer"></div>
   </div>
 
   <audio id="bgMusicPlayer" preload="auto"></audio>
   <div id="toast" class="toast hidden">Ready</div>
 
-  <script src="script.js?v=premium-v4-urgent-speed-notice-fix"></script>
+  <script src="script.js?v=admin-login-v1"></script>
 </body>
 </html>
