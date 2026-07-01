@@ -2,7 +2,7 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "premium-v4-round-timer-fix",
+  CACHE_BUSTER: "premium-v4-urgent-speed-notice-fix",
 };
 
 const SETTINGS_KEY = "lucky77_premium_settings_full_v1";
@@ -23,8 +23,9 @@ const defaultSettings = {
   // Total time from wheel start to winner popup. Default: 6 seconds per person.
   spinRoundMs: 6000,
   spinDurationMs: 5600, // legacy fallback
-  autoNextDelayMs: 900,
-  winnerPopupAutoCloseMs: 1200,
+  autoNextDelayMs: 0,
+  winnerPopupAutoCloseMs: 700,
+  autoNoticeEnabled: true,
 };
 
 const state = {
@@ -103,6 +104,7 @@ const el = {
   spinRoundSecondsInput: document.getElementById("spinRoundSecondsInput"),
   autoNextDelaySecondsInput: document.getElementById("autoNextDelaySecondsInput"),
   winnerPopupCloseSecondsInput: document.getElementById("winnerPopupCloseSecondsInput"),
+  autoNoticeEnabledInput: document.getElementById("autoNoticeEnabledInput"),
 
   bannerTitleInput: document.getElementById("bannerTitleInput"),
   bannerSubInput: document.getElementById("bannerSubInput"),
@@ -209,7 +211,7 @@ function showToast(message, type = "normal") {
 function getApiKey() {
   let key = sessionStorage.getItem("lucky77_admin_api_key") || "";
   if (!key) {
-    key = window.prompt("Admin API key ááá·áºáá«") || "";
+    key = window.prompt("Admin API key") || "";
     key = key.trim();
     if (key) sessionStorage.setItem("lucky77_admin_api_key", key);
   }
@@ -247,7 +249,7 @@ async function api(path, options = {}) {
 
     if (response.status === 401) {
       forgetApiKey();
-      throw new Error("Unauthorized: API key áá¼ááºááá·áºáá«");
+      throw new Error("Unauthorized: Enter API key again");
     }
 
     if (!response.ok || data.ok === false) {
@@ -504,7 +506,7 @@ function renderEventControl() {
   if (el.eventStatusText) {
     const count = Number(e.active_register_count || 0);
     const limit = Number(e.limit || 0);
-    el.eventStatusText.textContent = `${e.open !== false ? "OPEN" : "CLOSED"} Â· Registered ${count}${limit ? ` / ${limit}` : ""} Â· Memory kept after event restart`;
+    el.eventStatusText.textContent = `${e.open !== false ? "OPEN" : "CLOSED"} - Registered ${count}${limit ? ` / ${limit}` : ""} - Memory kept after event restart`;
   }
 }
 
@@ -520,7 +522,7 @@ function renderScan() {
   if (!el.scanSummaryText) return;
   if (summary) {
     el.scanSummaryText.textContent =
-      `Active ${summary.active ?? 0} Â· Left ${summary.left ?? 0} Â· Needs Register ${summary.needs_register ?? 0} Â· Pool ${summary.pool ?? 0}`;
+      `Active ${summary.active ?? 0} - Left ${summary.left ?? 0} - Needs Register ${summary.needs_register ?? 0} - Pool ${summary.pool ?? 0}`;
   } else if (s.last_scan_at) {
     el.scanSummaryText.textContent = `Last scan ${formatTime(s.last_scan_at)}`;
   } else {
@@ -599,7 +601,7 @@ function renderMembers() {
           <div>
             <div class="item-title">${escapeHtml(m.display || m.id)}</div>
             <div class="item-sub">
-              ID: ${escapeHtml(m.id)} Â· ${m.username ? "@" + escapeHtml(m.username) : "no username"}
+              ID: ${escapeHtml(m.id)} - ${m.username ? "@" + escapeHtml(m.username) : "no username"}
             </div>
           </div>
           <div class="badge ${statusClass}">${escapeHtml(statusText)}</div>
@@ -645,9 +647,9 @@ function renderWinners() {
       <div class="item-card">
         <div class="item-top">
           <div>
-            <div class="item-title">#${escapeHtml(w.turn)} Â· ${escapeHtml(w.display || w.user_id)}</div>
+            <div class="item-title">#${escapeHtml(w.turn)} - ${escapeHtml(w.display || w.user_id)}</div>
             <div class="item-sub">
-              Prize: ${escapeHtml(w.prize || "-")} Â· ${escapeHtml(formatTime(w.at))}
+              Prize: ${escapeHtml(w.prize || "-")} - ${escapeHtml(formatTime(w.at))}
             </div>
           </div>
           <div class="badge ${w.done ? "active" : "left"}">${w.done ? "done" : "pending"}</div>
@@ -707,9 +709,9 @@ function renderHistory() {
       <div class="item-card">
         <div class="item-top">
           <div>
-            <div class="item-title">#${escapeHtml(h.turn || "-")} Â· ${escapeHtml(winnerDisplay)}</div>
+            <div class="item-title">#${escapeHtml(h.turn || "-")} - ${escapeHtml(winnerDisplay)}</div>
             <div class="item-sub">
-              Prize: ${escapeHtml(h.prize || "-")} Â· ${escapeHtml(formatTime(h.at))}
+              Prize: ${escapeHtml(h.prize || "-")} - ${escapeHtml(formatTime(h.at))}
             </div>
           </div>
           <div class="badge">history</div>
@@ -827,6 +829,7 @@ function applySettingsToUI() {
   if (el.spinRoundSecondsInput) el.spinRoundSecondsInput.value = secondsFromMs(getSpinRoundMs());
   if (el.autoNextDelaySecondsInput) el.autoNextDelaySecondsInput.value = secondsFromMs(getAutoNextDelayMs());
   if (el.winnerPopupCloseSecondsInput) el.winnerPopupCloseSecondsInput.value = secondsFromMs(getWinnerPopupAutoCloseMs());
+  if (el.autoNoticeEnabledInput) el.autoNoticeEnabledInput.checked = settings.autoNoticeEnabled !== false;
 
   if (settings.topLogo && el.brandLogoImg && el.brandLogoFallback) {
     el.brandLogoImg.src = settings.topLogo;
@@ -1022,6 +1025,27 @@ async function handleScan() {
   }
 }
 
+
+function queueAutoNotice(userId, prize) {
+  if (!userId || settings.autoNoticeEnabled === false) return;
+  // Fire-and-forget: do not slow down the next spin.
+  api("/notice", {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId, prize }),
+  })
+    .then((data) => {
+      const row = (state.winners || []).find((x) => String(x.user_id) === String(userId));
+      if (row && data && data.dm_ok !== false) {
+        row.notice_sent = true;
+        row.notice_at = new Date().toISOString();
+        renderWinners();
+      }
+    })
+    .catch((err) => {
+      console.warn("Auto notice failed", err);
+    });
+}
+
 async function handleSpin(options = {}) {
   const autoMode = !!options.auto;
   if (state.spinning) return false;
@@ -1097,6 +1121,11 @@ Last Scan: ${state.scan?.last_scan_at ? formatTime(state.scan.last_scan_at) : "N
     ];
 
     state.pool.count = Math.max(0, Number(state.pool?.count || 0) - 1);
+    if (state.health) {
+      state.health.pool = state.pool.count;
+      state.health.winners = Number(state.health.winners || 0) + 1;
+      state.health.remaining_prizes = Math.max(0, Number(state.health.remaining_prizes || 0) - 1);
+    }
     renderAll();
 
     stopWheelLoop();
@@ -1134,8 +1163,10 @@ Last Scan: ${state.scan?.last_scan_at ? formatTime(state.scan.last_scan_at) : "N
     if (el.winnerFlashPrize) el.winnerFlashPrize.textContent = prize;
 
     showWinnerPopup(winnerName, prize);
-    await refreshAfterSpin();
-    showToast(`Winner: ${winnerName}`, "success");
+    queueAutoNotice(result?.winner?.id, prize);
+    // Do not wait for data refresh before allowing the next auto spin.
+    refreshAfterSpin().catch(() => {});
+    if (!autoMode) showToast(`Winner: ${winnerName}`, "success");
     stopTickSound();
   } catch (err) {
     stopWheelLoop();
@@ -1173,7 +1204,7 @@ function setAutoSpinButton(running, stopping = false) {
   if (!el.autoSpinBtn) return;
   el.autoSpinBtn.disabled = false;
   el.autoSpinBtn.classList.toggle("auto-running", !!running);
-  el.autoSpinBtn.classList.toggle("is-loading", !!running);
+  el.autoSpinBtn.classList.remove("is-loading");
   el.autoSpinBtn.textContent = running
     ? (stopping ? "STOPPING..." : "STOP AUTO")
     : "AUTO SPIN";
@@ -1570,6 +1601,7 @@ function bindEvents() {
 
     const popupCloseSeconds = clampNumber(el.winnerPopupCloseSecondsInput?.value, 0.5, 15, defaultSettings.winnerPopupAutoCloseMs / 1000);
     settings.winnerPopupAutoCloseMs = Math.round(popupCloseSeconds * 1000);
+    settings.autoNoticeEnabled = el.autoNoticeEnabledInput ? !!el.autoNoticeEnabledInput.checked : settings.autoNoticeEnabled !== false;
 
     persistSettings();
     applySettingsToUI();
