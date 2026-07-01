@@ -134,15 +134,18 @@ function showAdminApp() {
 
 async function testAdminApiKey(key) {
   const cleanKey = String(key || "").trim();
+
   if (!cleanKey) return false;
 
   const health = await fetch(`${CONFIG.BASE_URL}/health?_=${Date.now()}`, {
     cache: "no-store",
   });
 
-  if (!health.ok) throw new Error("Backend connection failed");
+  if (!health.ok) {
+    throw new Error("Backend connection failed");
+  }
 
-  const check = await fetch(`${CONFIG.BASE_URL}/config?_=${Date.now()}`, {
+  const check = await fetch(`${CONFIG.BASE_URL}/winners/cs?_=${Date.now()}`, {
     cache: "no-store",
     headers: {
       "x-api-key": cleanKey,
@@ -152,9 +155,13 @@ async function testAdminApiKey(key) {
   });
 
   if (check.status === 401) return false;
-  if (!check.ok) throw new Error("Login check failed");
+
+  if (!check.ok) {
+    throw new Error("Login check failed");
+  }
 
   const data = await check.json().catch(() => ({}));
+
   return data.ok !== false;
 }
 
