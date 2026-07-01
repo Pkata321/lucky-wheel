@@ -63,7 +63,7 @@ function showToast(message, type = "normal") {
 function getApiKey() {
   let key = sessionStorage.getItem("lucky77_admin_api_key") || "";
   if (!key) {
-    key = window.prompt("Admin API key ááá·áºáá«") || "";
+    key = window.prompt("Admin API key") || "";
     key = key.trim();
     if (key) sessionStorage.setItem("lucky77_admin_api_key", key);
   }
@@ -101,7 +101,7 @@ async function api(path, options = {}) {
 
     if (response.status === 401) {
       forgetApiKey();
-      throw new Error("Unauthorized: API key áá¼ááºááá·áºáá«");
+      throw new Error("Unauthorized: Enter API key again");
     }
 
     if (!response.ok || data.ok === false) {
@@ -319,7 +319,7 @@ function buildWinnerCard(w) {
     <div class="cs-item">
       <div class="cs-item-top">
         <div>
-          <div class="cs-item-title">#${escapeHtml(w.turn)} Â· ${escapeHtml(w.display || w.user_id || "-")}</div>
+          <div class="cs-item-title">#${escapeHtml(w.turn)} - ${escapeHtml(w.display || w.user_id || "-")}</div>
           <div class="cs-item-sub">
             Prize: <strong>${escapeHtml(w.prize || "-")}</strong><br>
             User ID: ${escapeHtml(w.user_id || "-")}<br>
