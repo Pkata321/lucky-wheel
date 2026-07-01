@@ -2,7 +2,7 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "cs-chat-v1",
+  CACHE_BUSTER: "cs-note-done-amount-v1",
   PAGE_SIZE: 40,
 };
 
@@ -18,6 +18,9 @@ const el = {
   totalWinners: document.getElementById("totalWinners"),
   doneCount: document.getElementById("doneCount"),
   pendingCount: document.getElementById("pendingCount"),
+  doneWinnerCount: document.getElementById("doneWinnerCount"),
+  doneAmount: document.getElementById("doneAmount"),
+
   winnerList: document.getElementById("winnerList"),
   searchInput: document.getElementById("searchInput"),
   refreshBtn: document.getElementById("refreshBtn"),
@@ -25,6 +28,7 @@ const el = {
   footerText: document.getElementById("footerText"),
   toast: document.getElementById("toast"),
   loadMoreBtn: document.getElementById("loadMoreBtn"),
+  filterRow: document.getElementById("filterRow"),
 
   chatModal: document.getElementById("chatModal"),
   chatModalBackdrop: document.getElementById("chatModalBackdrop"),
@@ -43,15 +47,7 @@ function escapeHtml(value) {
 }
 
 function escapeAttr(value) {
-  return escapeHtml(value).replace(/'/g, "&#39;");
-}
-
-function safeCssValue(value) {
-  const raw = String(value || "");
-  if (window.CSS && typeof window.CSS.escape === "function") {
-    return CSS.escape(raw);
-  }
-  return raw.replace(/["\\]/g, "\\$&");
+  return escapeHtml(value).replace(/'/g, "&#039;");
 }
 
 function formatTime(value) {
@@ -61,6 +57,17 @@ function formatTime(value) {
   return d.toLocaleString();
 }
 
+function parsePrizeAmount(prize) {
+  const text = String(prize || "");
+  const nums = text.match(/\d+/g);
+  if (!nums || !nums.length) return 0;
+  return Number(nums.join("")) || 0;
+}
+
+function formatMoney(amount) {
+  return `${Number(amount || 0).toLocaleString()} Ks`;
+}
+
 function showToast(message, type = "normal") {
   if (!el.toast) return;
 
@@ -68,32 +75,22 @@ function showToast(message, type = "normal") {
   el.toast.classList.remove("hidden");
 
   if (type === "error") {
-    el.toast.style.borderColor = "rgba(224,79,106,0.35)";
+    el.toast.style.background = "#991b1b";
   } else if (type === "success") {
-    el.toast.style.borderColor = "rgba(27,179,107,0.35)";
+    el.toast.style.background = "#065f46";
   } else {
-    el.toast.style.borderColor = "rgba(0,0,0,0.08)";
+    el.toast.style.background = "#111827";
   }
 
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => {
     el.toast.classList.add("hidden");
-  }, 2200);
-}
-
-function buildAccountRequestText(prize) {
-  const pz = String(prize || "").trim();
-
-  return (
-    `မဲပေါက်သည့်ယူနစ် ${pz || "—"} ထည့်သွင်းရန် ဂိမ်းအကောင့်လေးပေးပါရှင့်\n\n` +
-    `ပြန်ပို့ပေးရမည့်ပုံစံအား Copy ကူးရန်\n\n` +
-    `Account Name -\n` +
-    `Telegram Number -\n\n` +
-    `ဒီနှစ်ခုကို Copy ကူးပြီး ဂိမ်းအကောင့်လေးနဲ့ ဖုန်းနံပါတ်လေးထည့်ပြီး ပြန်ပို့ပေးထားတာနဲ့ ဆုကြေးငွေလေးထည့်ပေးသွားမှာပါနော်`
-  );
+  }, 2400);
 }
 
 function getApiKey() {
+  if (CONFIG.API_KEY) return CONFIG.API_KEY;
+
   let key = sessionStorage.getItem("lucky77_admin_api_key") || "";
 
   if (!key) {
@@ -148,44 +145,59 @@ async function api(path, options = {}) {
 
     return data;
   } catch (err) {
-    if (err?.name === "AbortError") {
-      throw new Error("Request timeout");
-    }
-
+    if (err?.name === "AbortError") throw new Error("Request timeout");
     throw err;
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
+function buildAccountRequestText(prize) {
+  const pz = String(prize || "").trim();
+
+  return (
+    `မဲပေါက်သည့်ယူနစ် ${pz || "—"} ထည့်သွင်းရန် ဂိမ်းအကောင့်လေးပေးပါရှင့်\n\n` +
+    `ပြန်ပို့ပေးရမည့်ပုံစံအား Copy ကူးရန်\n\n` +
+    `Account Name -\n` +
+    `Telegram Number -\n\n` +
+    `ဒီနှစ်ခုကို Copy ကူးပြီး ဂိမ်းအကောင့်လေးနဲ့ ဖုန်းနံပါတ်လေးထည့်ပြီး ပြန်ပို့ပေးထားတာနဲ့ ဆုကြေးငွေလေးထည့်ပေးသွားမှာပါနော်။`
+  );
+}
+
 async function loadWinners() {
   const data = await api("/winners/cs");
-  state.winners = Array.isArray(data.winners) ? data.winners : [];
+
+  state.winners = Array.isArray(data.winners)
+    ? data.winners.map((w) => ({
+        ...w,
+        game_account: String(w.game_account || ""),
+        game_phone: String(w.game_phone || ""),
+        cs_note: String(w.cs_note || ""),
+        cs_status: String(w.cs_status || ""),
+        last_reply_text: String(w.last_reply_text || ""),
+        last_reply_at: String(w.last_reply_at || ""),
+        last_outbound_text: String(w.last_outbound_text || ""),
+        last_outbound_at: String(w.last_outbound_at || ""),
+      }))
+    : [];
+
   applyFilter();
 }
 
-function winnerStatusText(w) {
-  const csStatus = String(w.cs_status || "").trim();
-
-  if (w.done) return "done";
-  if (csStatus) return csStatus;
-  if (w.notice_sent) return "notice_sent";
-  return "pending";
+function filterMatch(w) {
+  if (state.activeFilter === "pending") return !w.done;
+  if (state.activeFilter === "done") return !!w.done;
+  if (state.activeFilter === "notice_pending") return !w.notice_sent;
+  if (state.activeFilter === "notice_sent") return !!w.notice_sent;
+  if (state.activeFilter === "replied") return !!String(w.last_reply_text || "").trim();
+  return true;
 }
 
 function applyFilter() {
   const q = (el.searchInput?.value || "").trim().toLowerCase();
-  const filter = String(state.activeFilter || "all");
 
   state.filtered = (state.winners || []).filter((w) => {
-    const status = winnerStatusText(w);
-    const hasReply = !!String(w.last_reply_text || "").trim();
-
-    if (filter === "pending" && w.done) return false;
-    if (filter === "done" && !w.done) return false;
-    if (filter === "notice_pending" && w.notice_sent) return false;
-    if (filter === "notice_sent" && !w.notice_sent) return false;
-    if (filter === "user_replied" && !hasReply && status !== "user_replied") return false;
+    if (!filterMatch(w)) return false;
 
     if (!q) return true;
 
@@ -198,13 +210,12 @@ function applyFilter() {
       w.prize,
       w.done ? "done" : "pending",
       w.notice_sent ? "notice sent" : "notice pending",
-      w.cs_status,
-      w.cs_note,
       w.game_account,
       w.game_phone,
+      w.cs_note,
+      w.cs_status,
       w.last_reply_text,
       w.last_outbound_text,
-      status,
     ]
       .join(" ")
       .toLowerCase();
@@ -220,13 +231,47 @@ function renderStats() {
   const done = all.filter((x) => x.done).length;
   const pending = all.filter((x) => !x.done).length;
 
+  const doneAmount = all
+    .filter((x) => x.done)
+    .reduce((sum, x) => sum + parsePrizeAmount(x.prize), 0);
+
   if (el.totalWinners) el.totalWinners.textContent = String(all.length);
   if (el.doneCount) el.doneCount.textContent = String(done);
   if (el.pendingCount) el.pendingCount.textContent = String(pending);
+  if (el.doneWinnerCount) el.doneWinnerCount.textContent = String(done);
+  if (el.doneAmount) el.doneAmount.textContent = formatMoney(doneAmount);
 
   if (el.footerText) {
     el.footerText.textContent = `${Math.min(state.visibleCount, state.filtered.length)} / ${state.filtered.length} item(s) shown`;
   }
+}
+
+function renderFilterButtons() {
+  if (!el.filterRow) return;
+
+  const filters = [
+    ["all", "All"],
+    ["pending", "Pending"],
+    ["done", "Done"],
+    ["notice_pending", "Notice Pending"],
+    ["notice_sent", "Notice Sent"],
+    ["replied", "User Replied"],
+  ];
+
+  el.filterRow.innerHTML = filters
+    .map(([key, label]) => {
+      const active = state.activeFilter === key ? "active" : "";
+      return `<button class="filter-btn ${active}" data-filter="${escapeAttr(key)}">${escapeHtml(label)}</button>`;
+    })
+    .join("");
+
+  el.filterRow.querySelectorAll("[data-filter]").forEach((btn) => {
+    btn.onclick = () => {
+      state.activeFilter = btn.getAttribute("data-filter") || "all";
+      applyFilter();
+      renderWinners();
+    };
+  });
 }
 
 function renderLoadMore() {
@@ -241,10 +286,205 @@ function renderLoadMore() {
   }
 }
 
-function renderFilterButtons() {
-  document.querySelectorAll("[data-filter]").forEach((btn) => {
-    btn.classList.toggle("active", btn.getAttribute("data-filter") === state.activeFilter);
-  });
+function statusBadgeHtml(w) {
+  const doneClass = w.done ? "done" : "pending";
+  const doneText = w.done ? "Done" : "Pending";
+  const noticeText = w.notice_sent ? "Notice Sent" : "Notice Pending";
+  const noticeClass = w.notice_sent ? "done" : "pending";
+  const reply = String(w.last_reply_text || "").trim();
+
+  return `
+    <div class="cs-badges">
+      <span class="cs-badge ${doneClass}">${doneText}</span>
+      <span class="cs-badge ${noticeClass}">${noticeText}</span>
+      ${reply ? `<span class="cs-badge reply">User Replied</span>` : ""}
+    </div>
+  `;
+}
+
+function savedPreviewHtml(w) {
+  const account = String(w.game_account || "").trim();
+  const phone = String(w.game_phone || "").trim();
+  const note = String(w.cs_note || "").trim();
+
+  if (!account && !phone && !note) {
+    return `<div class="saved-preview">Saved Info: မရှိသေးပါ</div>`;
+  }
+
+  return `
+    <div class="saved-preview">
+Account Name - ${escapeHtml(account || "-")}
+Telegram Number - ${escapeHtml(phone || "-")}
+CS Note - ${escapeHtml(note || "-")}
+    </div>
+  `;
+}
+
+function buildWinnerCard(w) {
+  const display = w.display || w.name || (w.username ? `@${w.username}` : w.user_id);
+  const tgLink = w.username ? `https://t.me/${String(w.username).replace(/^@+/, "")}` : "";
+  const replyText = String(w.last_reply_text || "").trim();
+  const outboundText = String(w.last_outbound_text || "").trim();
+
+  const accountTemplate = buildAccountRequestText(w.prize);
+
+  return `
+    <article class="cs-item ${w.done ? "done-card" : ""}">
+      <div class="cs-item-top">
+        <div>
+          <div class="cs-item-title">
+            #${escapeHtml(w.turn || "-")} • ${escapeHtml(display)}
+          </div>
+
+          <div class="cs-item-sub">
+            Prize: <b>${escapeHtml(w.prize || "-")}</b><br />
+            User ID: <b>${escapeHtml(w.user_id || "-")}</b><br />
+            Username: <b>${w.username ? "@" + escapeHtml(w.username) : "-"}</b><br />
+            Win Time: ${escapeHtml(formatTime(w.at))}
+          </div>
+
+          ${statusBadgeHtml(w)}
+        </div>
+      </div>
+
+      <div class="winner-info-box">
+        <div class="winner-info-title">Winner Game Acc Information</div>
+
+        <div class="input-grid">
+          <div class="field">
+            <label>Account Name / Game Account</label>
+            <input
+              data-game-account-user="${escapeAttr(w.user_id)}"
+              value="${escapeAttr(w.game_account || "")}"
+              placeholder="Account Name -"
+            />
+          </div>
+
+          <div class="field">
+            <label>Telegram Number</label>
+            <input
+              data-game-phone-user="${escapeAttr(w.user_id)}"
+              value="${escapeAttr(w.game_phone || "")}"
+              placeholder="Telegram Number -"
+            />
+          </div>
+
+          <div class="field full">
+            <label>CS Note</label>
+            <textarea
+              data-note-user="${escapeAttr(w.user_id)}"
+              placeholder="Winner account info / payment note / CS remark..."
+            >${escapeHtml(w.cs_note || "")}</textarea>
+          </div>
+        </div>
+
+        ${savedPreviewHtml(w)}
+
+        <div class="cs-item-actions">
+          <button class="cs-btn green" data-save-info-user="${escapeAttr(w.user_id)}">
+            Save Game Acc Info
+          </button>
+
+          <button class="cs-btn secondary" data-copy-template-user="${escapeAttr(w.user_id)}">
+            Copy Account Template
+          </button>
+        </div>
+      </div>
+
+      <div class="message-box">
+        <div class="message-box-title">Send Message To Customer</div>
+
+        <textarea
+          data-message-text-user="${escapeAttr(w.user_id)}"
+          placeholder="CS message ရေးပြီး Send To Customer နှိပ်ပါ..."
+        ></textarea>
+
+        <div class="cs-item-actions">
+          <button class="cs-btn orange" data-fill-template-user="${escapeAttr(w.user_id)}">
+            Fill Account Template
+          </button>
+
+          <button
+            class="cs-btn primary"
+            data-send-template-user="${escapeAttr(w.user_id)}"
+            data-prize="${escapeAttr(w.prize || "")}"
+          >
+            Send Account Request
+          </button>
+
+          <button
+            class="cs-btn dark"
+            data-message-user="${escapeAttr(w.user_id)}"
+            data-prize="${escapeAttr(w.prize || "")}"
+          >
+            Send To Customer
+          </button>
+        </div>
+      </div>
+
+      ${
+        outboundText
+          ? `<div class="saved-preview">Last Sent: ${escapeHtml(outboundText)}\nAt: ${escapeHtml(formatTime(w.last_outbound_at))}</div>`
+          : ""
+      }
+
+      ${
+        replyText
+          ? `<div class="saved-preview">Last Reply: ${escapeHtml(replyText)}\nAt: ${escapeHtml(formatTime(w.last_reply_at))}</div>`
+          : ""
+      }
+
+      <div class="cs-item-actions">
+        <button class="cs-btn secondary" data-open-chat-user="${escapeAttr(w.user_id)}">
+          Customer Reply
+        </button>
+
+        <button class="cs-btn secondary" data-copy-id="${escapeAttr(w.user_id)}">
+          Copy User ID
+        </button>
+
+        ${
+          tgLink
+            ? `<a class="cs-link-btn secondary" href="${escapeAttr(tgLink)}" target="_blank" rel="noopener">Open Telegram</a>`
+            : ""
+        }
+
+        <button
+          class="cs-btn secondary"
+          data-notice-user="${escapeAttr(w.user_id)}"
+          data-prize="${escapeAttr(w.prize || "")}"
+        >
+          Notice
+        </button>
+
+        <button class="cs-btn ${w.done ? "danger" : "green"}" data-done-user="${escapeAttr(w.user_id)}">
+          ${w.done ? "Undo Done" : "Mark Done"}
+        </button>
+      </div>
+
+      <script type="application/json" data-template-json="${escapeAttr(w.user_id)}">${JSON.stringify(accountTemplate)}</script>
+    </article>
+  `;
+}
+
+function renderWinners() {
+  renderStats();
+  renderFilterButtons();
+
+  if (!el.winnerList) return;
+
+  const rows = state.filtered.slice(0, state.visibleCount);
+
+  if (!rows.length) {
+    el.winnerList.innerHTML = `<div class="cs-empty">Winner မရှိသေးပါ</div>`;
+    renderLoadMore();
+    return;
+  }
+
+  el.winnerList.innerHTML = rows.map(buildWinnerCard).join("");
+
+  bindActionButtons();
+  renderLoadMore();
 }
 
 async function toggleDone(userId, button) {
@@ -255,12 +495,15 @@ async function toggleDone(userId, button) {
 
     if (button) {
       button.disabled = true;
-      button.classList.add("is-loading");
+      button.textContent = "Updating...";
     }
 
     await api("/winner/done", {
       method: "POST",
-      body: JSON.stringify({ user_id: userId, toggle: true }),
+      body: JSON.stringify({
+        user_id: userId,
+        toggle: true,
+      }),
     });
 
     const row = state.winners.find((x) => String(x.user_id) === String(userId));
@@ -268,27 +511,67 @@ async function toggleDone(userId, button) {
     if (row) {
       row.done = !row.done;
       row.done_at = new Date().toISOString();
-
-      if (row.done) {
-        row.cs_status = "done";
-      } else if (row.notice_sent) {
-        row.cs_status = "notice_sent";
-      } else {
-        row.cs_status = "pending";
-      }
+      row.cs_status = row.done ? "done" : "pending";
     }
 
     applyFilter();
     renderWinners();
-    showToast("Done updated", "success");
+    showToast("Done updated ✅", "success");
   } catch (err) {
     showToast(err.message || "Done update failed", "error");
   } finally {
     state.loading = false;
+  }
+}
 
+async function saveWinnerInfo(userId, button) {
+  const uid = String(userId || "");
+
+  const accountInput = document.querySelector(`[data-game-account-user="${CSS.escape(uid)}"]`);
+  const phoneInput = document.querySelector(`[data-game-phone-user="${CSS.escape(uid)}"]`);
+  const noteInput = document.querySelector(`[data-note-user="${CSS.escape(uid)}"]`);
+
+  const game_account = accountInput ? accountInput.value.trim() : "";
+  const game_phone = phoneInput ? phoneInput.value.trim() : "";
+  const cs_note = noteInput ? noteInput.value.trim() : "";
+
+  const oldText = button ? button.textContent : "";
+
+  try {
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Saving...";
+    }
+
+    const data = await api("/winner/update", {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: uid,
+        game_account,
+        game_phone,
+        cs_note,
+      }),
+    });
+
+    if (!data.ok) throw new Error(data.error || "Save failed");
+
+    const w = state.winners.find((x) => String(x.user_id) === uid);
+
+    if (w) {
+      w.game_account = game_account;
+      w.game_phone = game_phone;
+      w.cs_note = cs_note;
+    }
+
+    applyFilter();
+    renderWinners();
+    showToast("Game account info saved ✅", "success");
+  } catch (err) {
+    showToast(err.message || "Save failed", "error");
+  } finally {
     if (button) {
       button.disabled = false;
-      button.classList.remove("is-loading");
+      button.textContent = oldText || "Save Game Acc Info";
     }
   }
 }
@@ -301,12 +584,15 @@ async function sendNotice(userId, prize, button) {
 
     if (button) {
       button.disabled = true;
-      button.classList.add("is-loading");
+      button.textContent = "Sending...";
     }
 
     const data = await api("/notice", {
       method: "POST",
-      body: JSON.stringify({ user_id: userId, prize }),
+      body: JSON.stringify({
+        user_id: userId,
+        prize,
+      }),
     });
 
     const row = state.winners.find((x) => String(x.user_id) === String(userId));
@@ -321,47 +607,40 @@ async function sendNotice(userId, prize, button) {
     renderWinners();
 
     if (data.dm_ok === false) {
-      showToast("DM failed", "error");
+      showToast(data.dm_error || "DM failed", "error");
       return;
     }
 
-    showToast("Notice sent", "success");
+    showToast("Notice sent ✅", "success");
   } catch (err) {
     showToast(err.message || "Notice failed", "error");
   } finally {
     state.loading = false;
-
-    if (button) {
-      button.disabled = false;
-      button.classList.remove("is-loading");
-    }
   }
 }
 
 async function sendCustomerMessage(userId, prize, button) {
-  if (!userId || state.loading) return;
-
-  const selector = `[data-message-input="${safeCssValue(userId)}"]`;
-  const textarea = document.querySelector(selector);
-  const text = String(textarea?.value || "").trim();
+  const uid = String(userId || "");
+  const box = document.querySelector(`[data-message-text-user="${CSS.escape(uid)}"]`);
+  const text = box ? box.value.trim() : "";
 
   if (!text) {
-    showToast("Message text required", "error");
+    showToast("Message ရေးပြီးမှ Send လုပ်ပါ", "error");
     return;
   }
 
-  try {
-    state.loading = true;
+  const oldText = button ? button.textContent : "";
 
+  try {
     if (button) {
       button.disabled = true;
-      button.classList.add("is-loading");
+      button.textContent = "Sending...";
     }
 
     const data = await api("/winner/message", {
       method: "POST",
       body: JSON.stringify({
-        user_id: userId,
+        user_id: uid,
         prize,
         text,
         mode: "custom",
@@ -369,213 +648,193 @@ async function sendCustomerMessage(userId, prize, button) {
     });
 
     if (data.dm_ok === false) {
-      showToast("DM failed", "error");
+      showToast(data.dm_error || "DM failed", "error");
       return;
     }
 
-    if (textarea) textarea.value = "";
+    const w = state.winners.find((x) => String(x.user_id) === uid);
 
-    const row = state.winners.find((x) => String(x.user_id) === String(userId));
-
-    if (row) {
-      row.notice_sent = true;
-      row.notice_at = new Date().toISOString();
-      row.last_outbound_text = text;
-      row.last_outbound_at = new Date().toISOString();
-
-      if (!row.done) {
-        row.cs_status = "notice_sent";
-      }
+    if (w) {
+      w.notice_sent = true;
+      w.last_outbound_text = text;
+      w.last_outbound_at = new Date().toISOString();
     }
+
+    if (box) box.value = "";
 
     applyFilter();
     renderWinners();
-    showToast("Message sent", "success");
+    showToast("Customer ဆီ message ပို့ပြီးပါပြီ ✅", "success");
   } catch (err) {
-    showToast(err.message || "Message failed", "error");
+    showToast(err.message || "Send failed", "error");
   } finally {
-    state.loading = false;
-
     if (button) {
       button.disabled = false;
-      button.classList.remove("is-loading");
+      button.textContent = oldText || "Send To Customer";
     }
   }
 }
 
-function fillAccountRequest(userId, prize) {
-  const selector = `[data-message-input="${safeCssValue(userId)}"]`;
-  const textarea = document.querySelector(selector);
-
-  if (!textarea) return;
-
-  textarea.value = buildAccountRequestText(prize);
-  textarea.focus();
-}
-
 async function sendAccountRequest(userId, prize, button) {
-  if (!userId || state.loading) return;
+  const uid = String(userId || "");
+  const oldText = button ? button.textContent : "";
 
   try {
-    state.loading = true;
-
     if (button) {
       button.disabled = true;
-      button.classList.add("is-loading");
+      button.textContent = "Sending...";
     }
 
     const data = await api("/winner/message", {
       method: "POST",
       body: JSON.stringify({
-        user_id: userId,
+        user_id: uid,
         prize,
         mode: "account_request",
       }),
     });
 
     if (data.dm_ok === false) {
-      showToast("DM failed", "error");
+      showToast(data.dm_error || "DM failed", "error");
       return;
     }
 
-    const row = state.winners.find((x) => String(x.user_id) === String(userId));
+    const text = buildAccountRequestText(prize);
+    const w = state.winners.find((x) => String(x.user_id) === uid);
 
-    if (row) {
-      row.notice_sent = true;
-      row.notice_at = new Date().toISOString();
-      row.last_outbound_text = buildAccountRequestText(prize);
-      row.last_outbound_at = new Date().toISOString();
-
-      if (!row.done) {
-        row.cs_status = "notice_sent";
-      }
+    if (w) {
+      w.notice_sent = true;
+      w.notice_at = new Date().toISOString();
+      w.cs_status = "notice_sent";
+      w.last_outbound_text = text;
+      w.last_outbound_at = new Date().toISOString();
     }
 
     applyFilter();
     renderWinners();
-    showToast("Account request sent", "success");
+    showToast("Account request ပို့ပြီးပါပြီ ✅", "success");
   } catch (err) {
-    showToast(err.message || "Account request failed", "error");
+    showToast(err.message || "Send failed", "error");
   } finally {
-    state.loading = false;
-
     if (button) {
       button.disabled = false;
-      button.classList.remove("is-loading");
+      button.textContent = oldText || "Send Account Request";
     }
   }
 }
 
-async function openCustomerReply(userId, display) {
-  if (!userId) return;
+function fillAccountTemplate(userId) {
+  const uid = String(userId || "");
+  const w = state.winners.find((x) => String(x.user_id) === uid);
+  const box = document.querySelector(`[data-message-text-user="${CSS.escape(uid)}"]`);
+
+  if (!box || !w) return;
+
+  box.value = buildAccountRequestText(w.prize);
+  box.focus();
+  showToast("Template ဖြည့်ပြီးပါပြီ ✅", "success");
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(String(text || ""));
+    showToast("Copied ✅", "success");
+  } catch (_) {
+    const ta = document.createElement("textarea");
+    ta.value = String(text || "");
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+    showToast("Copied ✅", "success");
+  }
+}
+
+function copyAccountTemplate(userId) {
+  const uid = String(userId || "");
+  const w = state.winners.find((x) => String(x.user_id) === uid);
+  if (!w) return;
+  copyText(buildAccountRequestText(w.prize));
+}
+
+async function openCustomerReply(userId) {
+  const uid = String(userId || "");
+  const w = state.winners.find((x) => String(x.user_id) === uid);
+
+  if (!el.chatModal || !el.chatMessages) return;
+
+  el.chatModal.classList.remove("hidden");
+  el.chatModalBackdrop?.classList.remove("hidden");
 
   if (el.chatModalTitle) {
-    el.chatModalTitle.textContent = display || "Customer Reply";
+    el.chatModalTitle.textContent = `Customer Reply - ${w?.display || uid}`;
   }
 
   if (el.chatModalSub) {
-    el.chatModalSub.textContent = `User ID: ${userId}`;
+    el.chatModalSub.textContent = `User ID: ${uid} • Prize: ${w?.prize || "-"}`;
   }
 
-  if (el.chatMessages) {
-    el.chatMessages.innerHTML = `<div class="cs-empty">Loading messages...</div>`;
-  }
-
-  if (el.chatModal) {
-    el.chatModal.classList.remove("hidden");
-  }
+  el.chatMessages.innerHTML = `<div class="cs-empty">Loading messages...</div>`;
 
   try {
-    const data = await api(`/winner/messages?user_id=${encodeURIComponent(userId)}`);
+    const data = await api(`/winner/messages?user_id=${encodeURIComponent(uid)}`);
     const messages = Array.isArray(data.messages) ? data.messages : [];
 
     if (!messages.length) {
-      if (el.chatMessages) {
-        el.chatMessages.innerHTML = `<div class="cs-empty">No messages yet</div>`;
-      }
+      el.chatMessages.innerHTML = `<div class="cs-empty">Reply / message history မရှိသေးပါ</div>`;
       return;
     }
 
-    if (el.chatMessages) {
-      el.chatMessages.innerHTML = messages
-        .map((m) => {
-          const direction = m.direction === "outbound" ? "outbound" : "inbound";
-          const label = direction === "outbound" ? "Bot / CS Sent" : "Customer Reply";
+    el.chatMessages.innerHTML = messages
+      .map((m) => {
+        const direction = String(m.direction || "inbound");
+        const source = String(m.source || "");
+        const ok = m.ok === false ? "Failed" : "OK";
 
-          return `
-            <div class="cs-chat-row ${direction}">
-              <span class="cs-chat-meta">${escapeHtml(label)} · ${escapeHtml(formatTime(m.at))}</span>
-              ${escapeHtml(m.text || "-")}
-              ${m.ok === false ? `<span class="cs-chat-failed">Failed: ${escapeHtml(m.error || "")}</span>` : ""}
+        return `
+          <div class="chat-row ${escapeAttr(direction)}">
+            <div class="chat-bubble">
+              ${escapeHtml(m.text || "")}
+              <div class="chat-meta">
+                ${escapeHtml(direction)} • ${escapeHtml(source || "-")} • ${escapeHtml(formatTime(m.at))} • ${escapeHtml(ok)}
+              </div>
             </div>
-          `;
-        })
-        .join("");
+          </div>
+        `;
+      })
+      .join("");
 
-      el.chatMessages.scrollTop = el.chatMessages.scrollHeight;
-    }
+    el.chatMessages.scrollTop = el.chatMessages.scrollHeight;
   } catch (err) {
-    if (el.chatMessages) {
-      el.chatMessages.innerHTML = `<div class="cs-empty">Failed to load messages</div>`;
-    }
-
-    showToast(err.message || "Message load failed", "error");
+    el.chatMessages.innerHTML = `<div class="cs-empty">${escapeHtml(err.message || "Load failed")}</div>`;
   }
 }
 
 function closeCustomerReply() {
   el.chatModal?.classList.add("hidden");
-}
-
-function copyText(text) {
-  const value = String(text || "");
-
-  if (!value) {
-    showToast("Nothing to copy", "error");
-    return;
-  }
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(value)
-      .then(() => showToast("Copied", "success"))
-      .catch(() => fallbackCopyText(value));
-    return;
-  }
-
-  fallbackCopyText(value);
-}
-
-function fallbackCopyText(text) {
-  const node = document.createElement("textarea");
-  node.value = String(text || "");
-  node.style.position = "fixed";
-  node.style.opacity = "0";
-  document.body.appendChild(node);
-  node.select();
-
-  try {
-    document.execCommand("copy");
-    showToast("Copied", "success");
-  } catch (_) {
-    showToast("Copy failed", "error");
-  }
-
-  node.remove();
+  el.chatModalBackdrop?.classList.add("hidden");
 }
 
 function bindActionButtons() {
   document.querySelectorAll("[data-done-user]").forEach((btn) => {
     btn.onclick = () => {
-      const userId = btn.getAttribute("data-done-user");
-      toggleDone(userId, btn);
+      toggleDone(btn.getAttribute("data-done-user"), btn);
+    };
+  });
+
+  document.querySelectorAll("[data-save-info-user]").forEach((btn) => {
+    btn.onclick = () => {
+      saveWinnerInfo(btn.getAttribute("data-save-info-user"), btn);
     };
   });
 
   document.querySelectorAll("[data-notice-user]").forEach((btn) => {
     btn.onclick = () => {
-      const userId = btn.getAttribute("data-notice-user");
-      const prize = btn.getAttribute("data-notice-prize") || "";
-      sendNotice(userId, prize, btn);
+      sendNotice(
+        btn.getAttribute("data-notice-user"),
+        btn.getAttribute("data-prize") || "",
+        btn
+      );
     };
   });
 
@@ -583,17 +842,8 @@ function bindActionButtons() {
     btn.onclick = () => {
       sendCustomerMessage(
         btn.getAttribute("data-message-user"),
-        btn.getAttribute("data-message-prize") || "",
+        btn.getAttribute("data-prize") || "",
         btn
-      );
-    };
-  });
-
-  document.querySelectorAll("[data-template-user]").forEach((btn) => {
-    btn.onclick = () => {
-      fillAccountRequest(
-        btn.getAttribute("data-template-user"),
-        btn.getAttribute("data-template-prize") || ""
       );
     };
   });
@@ -602,332 +852,145 @@ function bindActionButtons() {
     btn.onclick = () => {
       sendAccountRequest(
         btn.getAttribute("data-send-template-user"),
-        btn.getAttribute("data-send-template-prize") || "",
+        btn.getAttribute("data-prize") || "",
         btn
       );
     };
   });
 
+  document.querySelectorAll("[data-fill-template-user]").forEach((btn) => {
+    btn.onclick = () => {
+      fillAccountTemplate(btn.getAttribute("data-fill-template-user"));
+    };
+  });
+
+  document.querySelectorAll("[data-copy-template-user]").forEach((btn) => {
+    btn.onclick = () => {
+      copyAccountTemplate(btn.getAttribute("data-copy-template-user"));
+    };
+  });
+
   document.querySelectorAll("[data-open-chat-user]").forEach((btn) => {
     btn.onclick = () => {
-      openCustomerReply(
-        btn.getAttribute("data-open-chat-user"),
-        btn.getAttribute("data-open-chat-display") || ""
-      );
+      openCustomerReply(btn.getAttribute("data-open-chat-user"));
     };
   });
 
-  document.querySelectorAll("[data-copy-user]").forEach((btn) => {
+  document.querySelectorAll("[data-copy-id]").forEach((btn) => {
     btn.onclick = () => {
-      const userId = btn.getAttribute("data-copy-user") || "";
-      copyText(userId);
+      copyText(btn.getAttribute("data-copy-id") || "");
     };
   });
-}
-
-function statusBadgeHtml(w) {
-  const status = winnerStatusText(w);
-
-  if (w.done) {
-    return `<div class="cs-badge done">DONE</div>`;
-  }
-
-  if (status === "user_replied") {
-    return `<div class="cs-badge reply">USER REPLIED</div>`;
-  }
-
-  if (w.notice_sent) {
-    return `<div class="cs-badge done">NOTICE SENT</div>`;
-  }
-
-  return `<div class="cs-badge pending">PENDING</div>`;
-}
-
-function buildWinnerCard(w) {
-  const username = String(w.username || "").replace(/^@+/, "");
-  const display = String(w.display || w.user_id || "-");
-  const lastReply = String(w.last_reply_text || "").trim();
-  const lastReplyAt = String(w.last_reply_at || "").trim();
-  const lastOutbound = String(w.last_outbound_text || "").trim();
-  const lastOutboundAt = String(w.last_outbound_at || "").trim();
-  const csStatus = winnerStatusText(w);
-
-  return `
-    <div class="cs-item">
-      <div class="cs-item-top">
-        <div>
-          <div class="cs-item-title">#${escapeHtml(w.turn)} · ${escapeHtml(display)}</div>
-          <div class="cs-item-sub">
-            Prize: <strong>${escapeHtml(w.prize || "-")}</strong><br>
-            User ID: ${escapeHtml(w.user_id || "-")}<br>
-            Username: ${username ? "@" + escapeHtml(username) : "-"}<br>
-            Time: ${escapeHtml(formatTime(w.at))}
-          </div>
-        </div>
-
-        ${statusBadgeHtml(w)}
-      </div>
-
-      <div class="cs-badges">
-        <span class="cs-badge ${w.notice_sent ? "done" : "pending"}">
-          ${w.notice_sent ? "NOTICE SENT" : "NOTICE PENDING"}
-        </span>
-
-        ${csStatus ? `<span class="cs-badge">${escapeHtml(csStatus.replace(/_/g, " ").toUpperCase())}</span>` : ""}
-        ${lastReply ? `<span class="cs-badge reply">HAS REPLY</span>` : ""}
-        ${w.done_at ? `<span class="cs-badge">Done At: ${escapeHtml(formatTime(w.done_at))}</span>` : ""}
-        ${w.notice_at ? `<span class="cs-badge">Notice At: ${escapeHtml(formatTime(w.notice_at))}</span>` : ""}
-      </div>
-
-      ${lastReply ? `
-        <div class="cs-last-line">
-          <strong>Latest Customer Reply:</strong>
-          ${escapeHtml(lastReply.slice(0, 160))}${lastReply.length > 160 ? "..." : ""}
-          ${lastReplyAt ? `<br><span>${escapeHtml(formatTime(lastReplyAt))}</span>` : ""}
-        </div>
-      ` : ""}
-
-      ${lastOutbound ? `
-        <div class="cs-last-line">
-          <strong>Latest Bot / CS Sent:</strong>
-          ${escapeHtml(lastOutbound.slice(0, 160))}${lastOutbound.length > 160 ? "..." : ""}
-          ${lastOutboundAt ? `<br><span>${escapeHtml(formatTime(lastOutboundAt))}</span>` : ""}
-        </div>
-      ` : ""}
-
-      <div class="cs-message-box">
-        <div class="cs-message-title">Send Message To Customer</div>
-
-        <textarea
-          class="cs-message-textarea"
-          data-message-input="${escapeAttr(w.user_id)}"
-          placeholder="Customer ဆီ Bot နဲ့ပို့မယ့်စာရေးရန်..."
-        ></textarea>
-
-        <div class="cs-item-actions">
-          <button
-            class="cs-link-btn secondary"
-            data-template-user="${escapeAttr(w.user_id)}"
-            data-template-prize="${escapeAttr(w.prize || "")}"
-            type="button"
-          >
-            Fill Account Template
-          </button>
-
-          <button
-            class="cs-link-btn notice"
-            data-send-template-user="${escapeAttr(w.user_id)}"
-            data-send-template-prize="${escapeAttr(w.prize || "")}"
-            type="button"
-          >
-            Send Account Request
-          </button>
-
-          <button
-            class="cs-link-btn primary"
-            data-message-user="${escapeAttr(w.user_id)}"
-            data-message-prize="${escapeAttr(w.prize || "")}"
-            type="button"
-          >
-            Send to Customer
-          </button>
-
-          <button
-            class="cs-link-btn secondary"
-            data-open-chat-user="${escapeAttr(w.user_id)}"
-            data-open-chat-display="${escapeAttr(display)}"
-            type="button"
-          >
-            Customer Reply
-          </button>
-        </div>
-      </div>
-
-      <div class="cs-item-actions">
-        ${username ? `<a class="cs-link-btn secondary" href="https://t.me/${encodeURIComponent(username)}" target="_blank">Telegram</a>` : ""}
-
-        <button
-          class="cs-link-btn secondary"
-          data-copy-user="${escapeAttr(w.user_id)}"
-          type="button"
-        >
-          Copy ID
-        </button>
-
-        <button
-          class="cs-link-btn notice"
-          data-notice-user="${escapeAttr(w.user_id)}"
-          data-notice-prize="${escapeAttr(w.prize || "")}"
-          type="button"
-        >
-          Notice
-        </button>
-
-        <button
-          class="cs-link-btn ${w.done ? "secondary" : "primary"}"
-          data-done-user="${escapeAttr(w.user_id)}"
-          type="button"
-        >
-          ${w.done ? "Undo Done" : "Done"}
-        </button>
-      </div>
-    </div>
-  `;
-}
-
-function renderWinners() {
-  if (!el.winnerList) return;
-
-  renderStats();
-  renderFilterButtons();
-
-  if (!state.filtered.length) {
-    el.winnerList.innerHTML = `<div class="cs-empty">No winners found</div>`;
-    renderLoadMore();
-    return;
-  }
-
-  const visibleItems = state.filtered.slice(0, state.visibleCount);
-  el.winnerList.innerHTML = visibleItems.map(buildWinnerCard).join("");
-
-  bindActionButtons();
-  renderLoadMore();
 }
 
 function exportCsv() {
-  const rows = [[
+  const headers = [
     "Turn",
-    "At",
     "Prize",
     "User ID",
+    "Display",
     "Name",
     "Username",
-    "Display",
-    "CS Status",
     "Done",
-    "Done At",
     "Notice Sent",
-    "Notice At",
+    "Game Account",
+    "Telegram Number",
+    "CS Note",
     "Last Reply",
     "Last Reply At",
-    "Last Outbound",
-    "Last Outbound At",
-    "CS Note",
-    "Game Account",
-    "Game Phone"
-  ]];
+    "Last Sent",
+    "Last Sent At",
+    "Win Time",
+  ];
 
-  (state.winners || []).forEach((w) => {
-    rows.push([
-      String(w.turn || ""),
-      String(w.at || ""),
-      String(w.prize || ""),
-      String(w.user_id || ""),
-      String(w.name || ""),
-      String(w.username || ""),
-      String(w.display || ""),
-      String(w.cs_status || ""),
-      String(w.done ? "YES" : "NO"),
-      String(w.done_at || ""),
-      String(w.notice_sent ? "YES" : "NO"),
-      String(w.notice_at || ""),
-      String(w.last_reply_text || ""),
-      String(w.last_reply_at || ""),
-      String(w.last_outbound_text || ""),
-      String(w.last_outbound_at || ""),
-      String(w.cs_note || ""),
-      String(w.game_account || ""),
-      String(w.game_phone || ""),
-    ]);
-  });
+  const rows = (state.winners || []).map((w) => [
+    w.turn || "",
+    w.prize || "",
+    w.user_id || "",
+    w.display || "",
+    w.name || "",
+    w.username || "",
+    w.done ? "YES" : "NO",
+    w.notice_sent ? "YES" : "NO",
+    w.game_account || "",
+    w.game_phone || "",
+    w.cs_note || "",
+    w.last_reply_text || "",
+    w.last_reply_at || "",
+    w.last_outbound_text || "",
+    w.last_outbound_at || "",
+    w.at || "",
+  ]);
 
-  const csv = rows
-    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+  const csv = [headers, ...rows]
+    .map((row) =>
+      row
+        .map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`)
+        .join(",")
+    )
     .join("\n");
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
+  const blob = new Blob(["\uFEFF" + csv], {
+    type: "text/csv;charset=utf-8;",
+  });
 
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
+
   a.href = url;
-  a.download = "lucky77-cs-winners.csv";
+  a.download = `lucky77-cs-winners-${Date.now()}.csv`;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
 
-  showToast("CSV exported", "success");
+  URL.revokeObjectURL(url);
 }
 
 async function refreshPage() {
   try {
-    if (el.refreshBtn) el.refreshBtn.disabled = true;
+    if (el.refreshBtn) {
+      el.refreshBtn.disabled = true;
+      el.refreshBtn.textContent = "Loading...";
+    }
 
     await loadWinners();
     renderWinners();
-
-    showToast("Refreshed", "success");
+    showToast("Refreshed ✅", "success");
   } catch (err) {
     showToast(err.message || "Load failed", "error");
+
+    if (el.winnerList) {
+      el.winnerList.innerHTML = `<div class="cs-empty">${escapeHtml(err.message || "Load failed")}</div>`;
+    }
   } finally {
-    if (el.refreshBtn) el.refreshBtn.disabled = false;
+    if (el.refreshBtn) {
+      el.refreshBtn.disabled = false;
+      el.refreshBtn.textContent = "Refresh";
+    }
   }
 }
 
-function handleLoadMore() {
-  state.visibleCount += CONFIG.PAGE_SIZE;
-  renderWinners();
-}
-
 function bindEvents() {
+  el.refreshBtn?.addEventListener("click", refreshPage);
+  el.exportBtn?.addEventListener("click", exportCsv);
+
   el.searchInput?.addEventListener("input", () => {
     applyFilter();
     renderWinners();
   });
 
-  el.refreshBtn?.addEventListener("click", refreshPage);
-  el.exportBtn?.addEventListener("click", exportCsv);
-  el.loadMoreBtn?.addEventListener("click", handleLoadMore);
+  el.loadMoreBtn?.addEventListener("click", () => {
+    state.visibleCount += CONFIG.PAGE_SIZE;
+    renderWinners();
+  });
 
   el.chatModalClose?.addEventListener("click", closeCustomerReply);
   el.chatModalBackdrop?.addEventListener("click", closeCustomerReply);
 
-  document.querySelectorAll("[data-filter]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.activeFilter = btn.getAttribute("data-filter") || "all";
-      applyFilter();
-      renderWinners();
-    });
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeCustomerReply();
-    }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeCustomerReply();
   });
 }
 
-(async function init() {
-  bindEvents();
-
-  try {
-    if (el.winnerList) {
-      el.winnerList.innerHTML = `<div class="cs-empty">Loading winners...</div>`;
-    }
-
-    await loadWinners();
-    renderWinners();
-
-    showToast("CS winners loaded", "success");
-  } catch (err) {
-    showToast(err.message || "Initial load failed", "error");
-
-    if (el.winnerList) {
-      el.winnerList.innerHTML = `<div class="cs-empty">Failed to load winner list</div>`;
-    }
-
-    if (el.footerText) {
-      el.footerText.textContent = "Load failed";
-    }
-  }
-})();
+bindEvents();
+refreshPage();
