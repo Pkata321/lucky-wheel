@@ -1324,3 +1324,184 @@ async function restartEvent() {
     }
   }
 }
+function exportHistoryCsv() {
+  const headers = [
+    "Turn",
+    "Prize",
+    "Winner ID",
+    "Display",
+    "Name",
+    "Username",
+    "Time",
+  ];
+
+  const rows = (state.history || []).map((h) => {
+    const w = h.winner || {};
+    return [
+      h.turn || "",
+      h.prize || "",
+      w.id || "",
+      w.display || "",
+      w.name || "",
+      w.username || "",
+      h.at || "",
+    ];
+  });
+
+  const csv = [headers, ...rows]
+    .map((row) =>
+      row
+        .map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`)
+        .join(",")
+    )
+    .join("\n");
+
+  const blob = new Blob(["\uFEFF" + csv], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+
+  a.href = url;
+  a.download = `lucky77-spin-history-${Date.now()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  URL.revokeObjectURL(url);
+}
+
+function bindTabs() {
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+
+      document.querySelectorAll(".tab-btn").forEach((x) => {
+        x.classList.remove("active");
+      });
+
+      document.querySelectorAll(".tab-panel").forEach((x) => {
+        x.classList.remove("active");
+      });
+
+      btn.classList.add("active");
+
+      const panel = document.getElementById(`tab-${tab}`);
+      if (panel) panel.classList.add("active");
+    });
+  });
+}
+
+function bindEvents() {
+  el.refreshBtn?.addEventListener("click", async () => {
+    try {
+      el.refreshBtn.disabled = true;
+      await refreshAllData();
+      showToast("Refreshed ✅", "success");
+    } catch (err) {
+      showToast(err.message || "Refresh failed", "error");
+    } finally {
+      el.refreshBtn.disabled = false;
+    }
+  });
+
+  el.logoutBtn?.addEventListener("click", () => {
+    forgetApiKey();
+    location.reload();
+  });
+
+  el.scanBtn?.addEventListener("click", scanMembers);
+  el.spinBtn?.addEventListener("click", spinOnce);
+  el.autoSpinBtn?.addEventListener("click", toggleAutoSpin);
+  el.restartBtn?.addEventListener("click", restartEvent);
+  el.savePrizeBtn?.addEventListener("click", savePrizeConfig);
+
+  el.searchInput?.addEventListener("input", () => {
+    renderMembers();
+    renderWinners();
+    renderHistory();
+  });
+
+  el.showRemovedToggle?.addEventListener("change", async () => {
+    try {
+      await loadMembers();
+      renderMembers();
+    } catch (err) {
+      showToast(err.message || "Load members failed", "error");
+    }
+  });
+
+  el.settingsBtn?.addEventListener("click", openSettings);
+  el.settingsBackdrop?.addEventListener("click", closeSettings);
+  el.settingsCloseBtn?.addEventListener("click", closeSettings);
+  el.saveSettingsBtn?.addEventListener("click", saveSettingsFromUi);
+
+  el.quickMenuBtn?.addEventListener("click", openQuickMenu);
+  el.quickMenuBackdrop?.addEventListener("click", closeQuickMenu);
+  el.quickMenuCloseBtn?.addEventListener("click", closeQuickMenu);
+
+  document.querySelectorAll(".quick-nav-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      showSection(btn.dataset.section || "wheel");
+    });
+  });
+
+  el.topLogoInput?.addEventListener("change", (e) => {
+    handleTopLogoFile(e.target.files?.[0]).catch((err) => {
+      showToast(err.message || "Logo failed", "error");
+    });
+  });
+
+  el.wheelLogoInput?.addEventListener("change", (e) => {
+    handleWheelLogoFile(e.target.files?.[0]).catch((err) => {
+      showToast(err.message || "Wheel logo failed", "error");
+    });
+  });
+
+  el.musicFileInput?.addEventListener("change", (e) => {
+    handleMusicFile(e.target.files?.[0]).catch((err) => {
+      showToast(err.message || "Music failed", "error");
+    });
+  });
+
+  el.musicOnBtn?.addEventListener("click", playMusic);
+  el.musicOffBtn?.addEventListener("click", stopMusic);
+  el.exportHistoryBtn?.addEventListener("click", exportHistoryCsv);
+
+  el.winnerPopupBackdrop?.addEventListener("click", closeWinnerPopup);
+  el.winnerPopupCloseBtn?.addEventListener("click", closeWinnerPopup);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeSettings();
+      closeQuickMenu();
+      closeWinnerPopup();
+    }
+  });
+
+  bindTabs();
+}
+
+function bootUiOnly() {
+  applySettingsToUi();
+  buildWheelPrizeSegments();
+  drawWheel();
+  showSection("wheel");
+
+  if (settings.musicOn && settings.musicDataUrl) {
+    if (el.bgMusicPlayer) {
+      el.bgMusicPlayer.src = settings.musicDataUrl;
+      el.bgMusicPlayer.loop = true;
+    }
+  }
+}
+
+bindEvents();
+bootUiOnly();
+
+requireAdminLoginBeforeLoad().then((ok) => {
+  if (ok) {
+    firstLoad();
+  }
+});
