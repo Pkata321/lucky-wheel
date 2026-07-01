@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="my">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta
@@ -12,144 +12,97 @@
   <style>
     body {
       background: #f6f7fb;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .admin-login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background:
+        radial-gradient(circle at top left, rgba(24, 210, 255, 0.25), transparent 35%),
+        radial-gradient(circle at bottom right, rgba(123, 92, 255, 0.25), transparent 35%),
+        #f6f7fb;
+    }
+
+    .admin-login-card {
+      width: 100%;
+      max-width: 420px;
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 26px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 24px 70px rgba(16, 24, 40, 0.16);
+    }
+
+    .admin-login-card h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 1000;
       color: #111827;
     }
 
-/* =========================================================
-   USER REPLY INBOX UI
-   ========================================================= */
+    .admin-login-card p {
+      margin: 8px 0 18px;
+      color: #64748b;
+      font-size: 14px;
+      line-height: 1.5;
+    }
 
-.inbox-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 7px;
-  margin-left: 6px;
-  border-radius: 999px;
-  background: #ef4444;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 1000;
-  line-height: 1;
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
-}
+    .admin-login-card label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 900;
+      color: #334155;
+    }
 
-.inbox-card {
-  border-color: rgba(59, 130, 246, 0.28);
-  background: linear-gradient(180deg, #ffffff, #f8fbff);
-}
+    .admin-login-card input {
+      width: 100%;
+      height: 48px;
+      border-radius: 14px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      padding: 0 14px;
+      font-size: 15px;
+      outline: none;
+      box-sizing: border-box;
+    }
 
-.inbox-card.unread {
-  border-color: rgba(239, 68, 68, 0.34);
-  background: linear-gradient(180deg, #ffffff, #fff7f7);
-  box-shadow: 0 14px 34px rgba(239, 68, 68, 0.08);
-}
+    .admin-login-card input:focus {
+      border-color: rgba(24, 210, 255, 0.8);
+      box-shadow: 0 0 0 4px rgba(24, 210, 255, 0.12);
+    }
 
-.inbox-preview {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 14px;
-  background: #f8fafc;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
+    .admin-login-card button {
+      width: 100%;
+      height: 48px;
+      margin-top: 14px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #7b5cff, #18d2ff);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 1000;
+      cursor: pointer;
+    }
 
-.inbox-preview-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 7px;
-  flex-wrap: wrap;
-}
+    .admin-login-card button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
 
-.inbox-preview-role {
-  font-size: 12px;
-  font-weight: 1000;
-  color: #1d4ed8;
-}
-
-.inbox-preview-time {
-  font-size: 12px;
-  font-weight: 800;
-  color: #64748b;
-}
-
-.inbox-preview-text {
-  font-size: 14px;
-  color: #111827;
-  line-height: 1.5;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.inbox-meta-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.inbox-meta-box {
-  padding: 10px;
-  border-radius: 14px;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.inbox-meta-box span {
-  display: block;
-  font-size: 11px;
-  font-weight: 900;
-  color: #64748b;
-  margin-bottom: 4px;
-}
-
-.inbox-meta-box strong {
-  display: block;
-  font-size: 13px;
-  font-weight: 1000;
-  color: #111827;
-  word-break: break-word;
-}
-
-.reply-modal-unread {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 24px;
-  padding: 0 9px;
-  border-radius: 999px;
-  background: #ef4444;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 1000;
-  margin-left: 8px;
-}
-
-.role-title-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-@media (max-width: 900px) {
-  .inbox-meta-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 520px) {
-  .inbox-meta-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .inbox-preview-text {
-    white-space: normal;
-  }
-}
+    .admin-login-error {
+      min-height: 20px;
+      margin-top: 12px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #dc2626;
+    }
 
     .cs-shell {
       max-width: 1180px;
@@ -169,7 +122,7 @@
     .cs-title-wrap h1 {
       margin: 0;
       font-size: 28px;
-      font-weight: 900;
+      font-weight: 1000;
       color: #111827;
     }
 
@@ -185,6 +138,14 @@
       flex-wrap: wrap;
     }
 
+    .cs-card {
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
+    }
+
     .cs-stats {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -194,10 +155,10 @@
 
     .cs-stat {
       background: #fff;
-      border: 1px solid rgba(0,0,0,0.08);
+      border: 1px solid rgba(0, 0, 0, 0.08);
       border-radius: 16px;
       padding: 16px;
-      box-shadow: 0 10px 30px rgba(16,24,40,0.05);
+      box-shadow: 0 10px 30px rgba(16, 24, 40, 0.05);
     }
 
     .cs-stat span {
@@ -205,41 +166,27 @@
       font-size: 13px;
       color: #6b7280;
       margin-bottom: 6px;
+      font-weight: 800;
     }
 
     .cs-stat strong {
       font-size: 25px;
-      font-weight: 900;
+      font-weight: 1000;
       color: #111827;
       word-break: break-word;
     }
 
-    .cs-card {
-      background: #fff;
-      border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 10px 30px rgba(16,24,40,0.06);
-    }
-
     .cs-toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      display: grid;
+      grid-template-columns: 1fr;
       gap: 12px;
       margin-bottom: 14px;
-      flex-wrap: wrap;
-    }
-
-    .cs-search {
-      flex: 1;
-      min-width: 220px;
     }
 
     .cs-search input {
       width: 100%;
       height: 46px;
-      border: 1px solid rgba(0,0,0,0.1);
+      border: 1px solid rgba(0, 0, 0, 0.1);
       border-radius: 14px;
       padding: 0 14px;
       font-size: 14px;
@@ -257,14 +204,18 @@
 
     .filter-btn {
       min-height: 38px;
-      padding: 0 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(0,0,0,0.1);
+      border: 1px solid rgba(0, 0, 0, 0.1);
       background: #fff;
       color: #111827;
-      cursor: pointer;
-      font-weight: 800;
+      border-radius: 999px;
+      padding: 0 13px;
+      font-weight: 900;
       font-size: 13px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
 
     .filter-btn.active {
@@ -279,104 +230,110 @@
     }
 
     .winner-card {
-      border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 18px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 16px;
       padding: 16px;
       background: #fff;
-      box-shadow: 0 10px 24px rgba(16,24,40,0.04);
+      box-shadow: 0 8px 22px rgba(16, 24, 40, 0.04);
     }
 
     .winner-card.done-card {
-      border-color: rgba(16,185,129,0.3);
-      background: linear-gradient(180deg, #ffffff, #f0fdf4);
+      opacity: 0.78;
+      background: #f8fafc;
     }
 
     .winner-head {
-      display: grid;
-      grid-template-columns: 1fr auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
       gap: 12px;
-      align-items: start;
+      margin-bottom: 10px;
     }
 
     .winner-title {
       font-size: 18px;
-      font-weight: 900;
+      font-weight: 1000;
       color: #111827;
       margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
     }
 
     .winner-sub {
       color: #6b7280;
       font-size: 14px;
-      line-height: 1.7;
+      line-height: 1.5;
     }
 
     .winner-prize {
+      min-width: 150px;
       text-align: right;
-      background: #f8fafc;
-      border: 1px solid rgba(0,0,0,0.08);
       border-radius: 14px;
+      background: #f8fafc;
+      border: 1px solid rgba(0, 0, 0, 0.06);
       padding: 12px;
-      min-width: 145px;
     }
 
     .winner-prize span {
       display: block;
       font-size: 12px;
       color: #64748b;
-      font-weight: 800;
-      margin-bottom: 5px;
+      font-weight: 900;
+      margin-bottom: 4px;
     }
 
     .winner-prize strong {
-      font-size: 20px;
-      font-weight: 1000;
+      display: block;
+      font-size: 18px;
       color: #111827;
+      font-weight: 1000;
     }
 
     .badge-row {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
-      margin-top: 12px;
+      margin-top: 10px;
     }
 
     .badge {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-height: 30px;
+      min-height: 28px;
       padding: 0 10px;
       border-radius: 999px;
       font-size: 12px;
       font-weight: 900;
-      border: 1px solid rgba(0,0,0,0.08);
+      border: 1px solid rgba(0, 0, 0, 0.08);
       background: #f8fafc;
       color: #334155;
     }
 
     .badge.done {
-      background: rgba(16,185,129,0.12);
+      background: rgba(16, 185, 129, 0.12);
       color: #047857;
-      border-color: rgba(16,185,129,0.22);
+      border-color: rgba(16, 185, 129, 0.2);
     }
 
     .badge.pending {
-      background: rgba(245,158,11,0.12);
+      background: rgba(245, 158, 11, 0.12);
       color: #b45309;
-      border-color: rgba(245,158,11,0.22);
+      border-color: rgba(245, 158, 11, 0.2);
     }
 
     .badge.reply {
-      background: rgba(59,130,246,0.12);
+      background: rgba(59, 130, 246, 0.12);
       color: #1d4ed8;
-      border-color: rgba(59,130,246,0.22);
+      border-color: rgba(59, 130, 246, 0.22);
     }
 
     .badge.info {
-      background: rgba(139,92,246,0.12);
+      background: rgba(139, 92, 246, 0.12);
       color: #6d28d9;
-      border-color: rgba(139,92,246,0.22);
+      border-color: rgba(139, 92, 246, 0.22);
     }
 
     .action-row {
@@ -408,8 +365,15 @@
       color: #fff;
     }
 
+    .cs-btn.secondary,
+    .cs-link-btn.secondary {
+      background: #fff;
+      color: #111827;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
     .cs-btn.green {
-      background: #10b981;
+      background: #059669;
       color: #fff;
     }
 
@@ -423,20 +387,13 @@
       color: #fff;
     }
 
-    .cs-btn.secondary,
-    .cs-link-btn.secondary {
-      background: #fff;
-      color: #111827;
-      border: 1px solid rgba(0,0,0,0.1);
-    }
-
     .cs-btn.danger {
-      background: #ef4444;
+      background: #dc2626;
       color: #fff;
     }
 
     .cs-btn:disabled {
-      opacity: 0.6;
+      opacity: 0.65;
       cursor: not-allowed;
     }
 
@@ -449,130 +406,145 @@
     .cs-footer-note {
       color: #6b7280;
       font-size: 13px;
-      margin-top: 14px;
+      margin-top: 12px;
       text-align: center;
+      font-weight: 700;
     }
 
-    .hidden {
-      display: none !important;
+    .cs-loadmore-wrap {
+      margin-top: 14px;
+      display: flex;
+      justify-content: center;
     }
 
     .toast {
       position: fixed;
-      left: 50%;
-      bottom: 24px;
-      transform: translateX(-50%);
-      z-index: 60;
+      right: 18px;
+      bottom: 18px;
       background: #111827;
       color: #fff;
+      border-radius: 12px;
       padding: 12px 16px;
-      border-radius: 999px;
-      font-weight: 800;
-      box-shadow: 0 14px 40px rgba(0,0,0,0.25);
-      max-width: calc(100vw - 28px);
-      text-align: center;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+      z-index: 9999;
+      font-weight: 900;
+      max-width: 320px;
     }
 
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(15,23,42,0.58);
-      z-index: 80;
+      background: rgba(15, 23, 42, 0.55);
+      z-index: 8000;
     }
 
     .reply-modal {
       position: fixed;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: min(920px, calc(100vw - 24px));
-      max-height: min(820px, calc(100vh - 36px));
+      inset: 20px;
+      max-width: 920px;
+      margin: auto;
       background: #fff;
       border-radius: 22px;
-      z-index: 90;
-      box-shadow: 0 24px 80px rgba(0,0,0,0.34);
+      z-index: 9000;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28);
       display: flex;
       flex-direction: column;
+      max-height: calc(100vh - 40px);
       overflow: hidden;
     }
 
-    .reply-head {
-      padding: 16px;
-      border-bottom: 1px solid rgba(0,0,0,0.08);
+    .reply-modal-head {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
       align-items: flex-start;
+      gap: 12px;
+      padding: 18px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      background: #f8fafc;
     }
 
-    .reply-title {
+    .reply-modal-head h2 {
+      margin: 0;
+      font-size: 20px;
       font-weight: 1000;
-      font-size: 19px;
-      margin-bottom: 5px;
       color: #111827;
     }
 
-    .reply-sub {
+    .reply-modal-head p {
+      margin: 5px 0 0;
       font-size: 13px;
-      color: #6b7280;
-      line-height: 1.5;
+      color: #64748b;
+      font-weight: 800;
     }
 
-    .reply-close {
+    .reply-modal-close {
       width: 38px;
       height: 38px;
-      border-radius: 999px;
-      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 12px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
       background: #fff;
+      font-size: 24px;
+      line-height: 1;
       cursor: pointer;
-      font-weight: 1000;
-      font-size: 20px;
     }
 
     .reply-body {
-      overflow: auto;
-      padding: 16px;
-      background: #f8fafc;
+      padding: 18px;
+      overflow-y: auto;
       display: grid;
       gap: 14px;
     }
 
     .role-section {
-      border: 1px solid rgba(0,0,0,0.08);
-      background: #fff;
+      border: 1px solid rgba(0, 0, 0, 0.08);
       border-radius: 18px;
       padding: 14px;
+      background: #fff;
     }
 
     .role-title {
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
       gap: 10px;
+      margin-bottom: 12px;
       font-size: 15px;
       font-weight: 1000;
       color: #111827;
-      margin-bottom: 12px;
     }
 
     .role-tag {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 1000;
+      color: #1d4ed8;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.18);
       border-radius: 999px;
       padding: 5px 9px;
-      background: #eef2ff;
-      color: #4338ca;
+      white-space: nowrap;
+    }
+
+    .saved-view {
+      white-space: pre-wrap;
+      background: #f8fafc;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #334155;
+      font-weight: 700;
     }
 
     .info-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
     }
 
     .field {
       display: grid;
-      gap: 6px;
+      gap: 7px;
     }
 
     .field.full {
@@ -581,39 +553,25 @@
 
     .field label {
       font-size: 12px;
-      font-weight: 900;
-      color: #4b5563;
+      font-weight: 1000;
+      color: #475569;
     }
 
     .field input,
     .field textarea {
       width: 100%;
-      border: 1px solid rgba(0,0,0,0.12);
-      border-radius: 12px;
-      padding: 11px 12px;
-      background: #fff;
-      outline: none;
-      font-size: 14px;
-      color: #111827;
       box-sizing: border-box;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
     }
 
     .field textarea {
-      min-height: 90px;
+      min-height: 95px;
       resize: vertical;
-      line-height: 1.5;
-    }
-
-    .saved-view {
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: #f8fafc;
-      border: 1px dashed rgba(0,0,0,0.14);
-      color: #374151;
-      font-size: 13px;
-      line-height: 1.6;
-      white-space: pre-wrap;
     }
 
     .chat-list {
@@ -625,61 +583,171 @@
       display: flex;
     }
 
-    .chat-row.outbound {
-      justify-content: flex-end;
-    }
-
     .chat-row.inbound {
       justify-content: flex-start;
     }
 
+    .chat-row.outbound {
+      justify-content: flex-end;
+    }
+
     .chat-bubble {
-      max-width: 82%;
+      max-width: 78%;
       border-radius: 16px;
-      padding: 11px 12px;
-      background: #fff;
-      border: 1px solid rgba(0,0,0,0.08);
-      white-space: pre-wrap;
-      line-height: 1.5;
+      padding: 12px;
       font-size: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      background: #f8fafc;
+      color: #111827;
     }
 
     .chat-row.outbound .chat-bubble {
-      background: #dbeafe;
-      border-color: rgba(59,130,246,0.18);
-    }
-
-    .chat-row.inbound .chat-bubble {
-      background: #dcfce7;
-      border-color: rgba(34,197,94,0.18);
+      background: #111827;
+      color: #fff;
     }
 
     .chat-meta {
-      margin-top: 6px;
+      margin-top: 8px;
       font-size: 11px;
-      color: #64748b;
-      font-weight: 900;
+      opacity: 0.75;
+      font-weight: 800;
     }
 
-    @media (max-width: 900px) {
+    .inbox-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 7px;
+      margin-left: 6px;
+      border-radius: 999px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 1000;
+      line-height: 1;
+      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
+    }
+
+    .inbox-card {
+      border-color: rgba(59, 130, 246, 0.28);
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+    }
+
+    .inbox-card.unread {
+      border-color: rgba(239, 68, 68, 0.34);
+      background: linear-gradient(180deg, #ffffff, #fff7f7);
+      box-shadow: 0 14px 34px rgba(239, 68, 68, 0.08);
+    }
+
+    .inbox-preview {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 14px;
+      background: #f8fafc;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .inbox-preview-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 7px;
+      flex-wrap: wrap;
+    }
+
+    .inbox-preview-role {
+      font-size: 12px;
+      font-weight: 1000;
+      color: #1d4ed8;
+    }
+
+    .inbox-preview-time {
+      font-size: 12px;
+      font-weight: 800;
+      color: #64748b;
+    }
+
+    .inbox-preview-text {
+      font-size: 14px;
+      color: #111827;
+      line-height: 1.5;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .inbox-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .inbox-meta-box {
+      padding: 10px;
+      border-radius: 14px;
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .inbox-meta-box span {
+      display: block;
+      font-size: 11px;
+      font-weight: 900;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    .inbox-meta-box strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 1000;
+      color: #111827;
+      word-break: break-word;
+    }
+
+    .reply-modal-unread {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      padding: 0 9px;
+      border-radius: 999px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 1000;
+      margin-left: 8px;
+    }
+
+    .role-title-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 920px) {
       .cs-stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .winner-head {
-        grid-template-columns: 1fr;
+      .inbox-meta-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .winner-prize {
-        text-align: left;
-      }
-
-      .info-grid {
-        grid-template-columns: 1fr;
+      .reply-modal {
+        inset: 10px;
+        max-height: calc(100vh - 20px);
       }
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 560px) {
       .cs-shell {
         padding: 14px;
       }
@@ -688,134 +756,152 @@
         grid-template-columns: 1fr;
       }
 
-      .cs-actions,
-      .action-row {
-        width: 100%;
+      .winner-head {
+        flex-direction: column;
       }
 
-      .cs-btn,
-      .cs-link-btn {
-        flex: 1;
+      .winner-prize {
+        width: 100%;
+        min-width: 0;
+        text-align: left;
+        box-sizing: border-box;
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .inbox-meta-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .inbox-preview-text {
+        white-space: normal;
       }
 
       .chat-bubble {
         max-width: 92%;
+      }
+
+      .cs-btn,
+      .cs-link-btn {
+        width: 100%;
+      }
+
+      .reply-modal-head {
+        padding: 14px;
+      }
+
+      .reply-body {
+        padding: 14px;
       }
     }
   </style>
 </head>
 
 <body>
-  <!-- ADMIN LOGIN SCREEN -->
-  <div id="adminLoginScreen" class="admin-login-screen">
+  <section id="adminLoginScreen" class="admin-login-screen">
     <div class="admin-login-card">
-      <div class="admin-login-logo">77</div>
-      <h1>Admin Only</h1>
-      <p>CS Dashboard ဝင်ရန် Admin Only Api Code ထည့်ပါ</p>
+      <h1>Lucky77 CS Login</h1>
+      <p>Admin Only Api Code ထည့်ပြီးမှ Winner CS Inbox ကိုဝင်လို့ရပါမယ်။</p>
 
+      <label for="adminApiInput">Admin Only Api Code</label>
       <input
         id="adminApiInput"
         type="password"
-        placeholder="Admin Only Api Code"
-        autocomplete="current-password"
+        placeholder="Enter Admin Api Code"
+        autocomplete="off"
       />
 
       <button id="adminLoginBtn" type="button">Login</button>
-
       <div id="adminLoginError" class="admin-login-error"></div>
     </div>
-  </div>
+  </section>
 
   <main id="adminApp" class="cs-shell hidden">
-    <section class="cs-topbar">
+    <div class="cs-topbar">
       <div class="cs-title-wrap">
-        <h1>Lucky77 CS Winners</h1>
-        <p>All view မှာ Winner list သန့်သန့်ပဲပြမယ်။ Reply / Account / Note ကို Customer Reply ထဲမှာ role ခွဲပြီးပြမယ်။</p>
+        <h1>Lucky77 CS Winner List</h1>
+        <p>Customer service inbox · Winner reply management</p>
       </div>
 
       <div class="cs-actions">
-        <a
-          href="./index.html"
-          class="cs-link-btn secondary"
-          style="text-decoration:none;"
-        >
-          Spin Dashboard
-        </a>
-
-        <button class="cs-btn secondary" id="refreshBtn" type="button">Refresh</button>
-        <button class="cs-btn secondary" id="exportBtn" type="button">Export CSV</button>
-        <button class="cs-btn secondary" id="logoutBtn" type="button">Logout</button>
+        <a href="./index.html" class="cs-link-btn secondary">← Back to Main</a>
+        <button id="refreshBtn" class="cs-btn primary" type="button">Refresh</button>
+        <button id="exportBtn" class="cs-btn secondary" type="button">Export CSV</button>
+        <button id="logoutBtn" class="cs-btn danger" type="button">Logout</button>
       </div>
-    </section>
+    </div>
 
-    <section class="cs-stats">
+    <div class="cs-stats">
       <div class="cs-stat">
         <span>Total Winners</span>
         <strong id="totalWinners">0</strong>
       </div>
 
       <div class="cs-stat">
-        <span>Pending Winners</span>
+        <span>Done</span>
+        <strong id="doneCount">0</strong>
+      </div>
+
+      <div class="cs-stat">
+        <span>Pending</span>
         <strong id="pendingCount">0</strong>
       </div>
 
       <div class="cs-stat">
         <span>Done Winners</span>
-        <strong id="doneCount">0</strong>
-      </div>
-
-      <div class="cs-stat">
-        <span>Total Done Winner</span>
         <strong id="doneWinnerCount">0</strong>
       </div>
 
       <div class="cs-stat">
-        <span>Total Done Amount</span>
+        <span>Done Amount</span>
         <strong id="doneAmount">0 Ks</strong>
       </div>
-    </section>
+    </div>
 
-    <section class="cs-card">
+    <div class="cs-card">
       <div class="cs-toolbar">
         <div class="cs-search">
           <input
             id="searchInput"
-            type="search"
-            placeholder="Search name / username / user id / prize..."
+            type="text"
+            placeholder="Search name / username / id / prize / reply / account"
           />
         </div>
+
+        <div id="filterRow" class="filter-row"></div>
       </div>
 
-      <div class="filter-row" id="filterRow"></div>
+      <div id="winnerList" class="cs-list"></div>
 
-      <div class="cs-list" id="winnerList">
-        <div class="cs-empty">Loading winners...</div>
+      <div class="cs-loadmore-wrap">
+        <button id="loadMoreBtn" class="cs-link-btn primary hidden" type="button">
+          Load More
+        </button>
       </div>
 
-      <div style="margin-top: 14px; text-align: center;">
-        <button class="cs-btn secondary hidden" id="loadMoreBtn" type="button">Load More</button>
-      </div>
-
-      <div class="cs-footer-note" id="footerText">—</div>
-    </section>
+      <div class="cs-footer-note" id="footerText">Login required</div>
+    </div>
   </main>
 
-  <div class="toast hidden" id="toast"></div>
+  <div id="replyModalBackdrop" class="modal-backdrop hidden"></div>
 
-  <div class="modal-backdrop hidden" id="replyModalBackdrop"></div>
-
-  <section class="reply-modal hidden" id="replyModal">
-    <div class="reply-head">
+  <section id="replyModal" class="reply-modal hidden">
+    <div class="reply-modal-head">
       <div>
-        <div class="reply-title" id="replyModalTitle">Customer Reply</div>
-        <div class="reply-sub" id="replyModalSub">—</div>
+        <h2 id="replyModalTitle">Customer Reply</h2>
+        <p id="replyModalSub">Winner information</p>
       </div>
-      <button class="reply-close" id="replyModalClose" type="button">×</button>
+
+      <button id="replyModalClose" class="reply-modal-close" type="button">×</button>
     </div>
 
-    <div class="reply-body" id="replyModalBody"></div>
+    <div id="replyModalBody" class="reply-body"></div>
   </section>
 
-  <script src="winners.js?v=admin-login-clean-role-v1"></script>
+  <div id="toast" class="toast hidden">Ready</div>
+
+  <script src="winners.js?v=cs-inbox-login-full-v3"></script>
 </body>
 </html>
