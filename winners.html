@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="my">
 <head>
   <meta charset="UTF-8" />
   <meta
@@ -12,10 +12,11 @@
   <style>
     body {
       background: #f6f7fb;
+      color: #111827;
     }
 
     .cs-shell {
-      max-width: 1100px;
+      max-width: 1180px;
       margin: 0 auto;
       padding: 20px;
     }
@@ -32,7 +33,7 @@
     .cs-title-wrap h1 {
       margin: 0;
       font-size: 28px;
-      font-weight: 800;
+      font-weight: 900;
       color: #111827;
     }
 
@@ -58,7 +59,7 @@
 
     .cs-stats {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 14px;
       margin-bottom: 18px;
     }
@@ -79,9 +80,10 @@
     }
 
     .cs-stat strong {
-      font-size: 28px;
-      font-weight: 800;
+      font-size: 25px;
+      font-weight: 900;
       color: #111827;
+      word-break: break-word;
     }
 
     .cs-toolbar {
@@ -109,28 +111,29 @@
       background: #fff;
     }
 
-    .cs-filter-row {
+    .filter-row {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
       margin-bottom: 14px;
     }
 
-    .cs-filter-btn {
-      height: 36px;
+    .filter-btn {
+      min-height: 38px;
       padding: 0 12px;
       border-radius: 999px;
-      border: 1px solid rgba(0,0,0,0.08);
+      border: 1px solid rgba(0,0,0,0.1);
       background: #fff;
-      color: #374151;
-      font-weight: 700;
+      color: #111827;
       cursor: pointer;
+      font-weight: 800;
+      font-size: 13px;
     }
 
-    .cs-filter-btn.active {
-      background: linear-gradient(135deg, #7b5cff, #18d2ff);
+    .filter-btn.active {
+      background: #111827;
       color: #fff;
-      border-color: transparent;
+      border-color: #111827;
     }
 
     .cs-list {
@@ -140,9 +143,15 @@
 
     .cs-item {
       border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 16px;
+      border-radius: 18px;
       padding: 16px;
       background: #fff;
+      box-shadow: 0 10px 24px rgba(16,24,40,0.04);
+    }
+
+    .cs-item.done-card {
+      border-color: rgba(16,185,129,0.3);
+      background: linear-gradient(180deg, #ffffff, #f0fdf4);
     }
 
     .cs-item-top {
@@ -155,7 +164,7 @@
 
     .cs-item-title {
       font-size: 18px;
-      font-weight: 800;
+      font-weight: 900;
       color: #111827;
       margin-bottom: 4px;
     }
@@ -163,7 +172,7 @@
     .cs-item-sub {
       color: #6b7280;
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.6;
     }
 
     .cs-badges {
@@ -181,7 +190,7 @@
       padding: 0 10px;
       border-radius: 999px;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
       border: 1px solid rgba(0,0,0,0.08);
       background: #f8fafc;
       color: #334155;
@@ -205,6 +214,102 @@
       border-color: rgba(59,130,246,0.2);
     }
 
+    .winner-info-box {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 16px;
+      background: #f8fafc;
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+
+    .winner-info-title {
+      font-size: 15px;
+      font-weight: 900;
+      margin-bottom: 12px;
+      color: #111827;
+    }
+
+    .input-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      font-size: 12px;
+      font-weight: 900;
+      color: #4b5563;
+    }
+
+    .field input,
+    .field textarea {
+      width: 100%;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 12px;
+      padding: 11px 12px;
+      background: #fff;
+      outline: none;
+      font-size: 14px;
+      color: #111827;
+      box-sizing: border-box;
+    }
+
+    .field textarea {
+      min-height: 88px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .saved-preview {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #ffffff;
+      border: 1px dashed rgba(0,0,0,0.14);
+      color: #374151;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .message-box {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 16px;
+      background: #fff7ed;
+      border: 1px solid rgba(251,146,60,0.25);
+    }
+
+    .message-box-title {
+      font-size: 15px;
+      font-weight: 900;
+      color: #9a3412;
+      margin-bottom: 10px;
+    }
+
+    .message-box textarea {
+      width: 100%;
+      min-height: 94px;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+      outline: none;
+      resize: vertical;
+      font-size: 14px;
+      line-height: 1.5;
+      box-sizing: border-box;
+    }
+
     .cs-item-actions {
       display: flex;
       gap: 10px;
@@ -218,19 +323,34 @@
       padding: 0 14px;
       border: none;
       border-radius: 12px;
-      font-weight: 700;
+      font-weight: 900;
       cursor: pointer;
       font-size: 14px;
       text-decoration: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-family: inherit;
+      gap: 6px;
     }
 
     .cs-btn.primary,
     .cs-link-btn.primary {
       background: linear-gradient(135deg, #7b5cff, #18d2ff);
+      color: #fff;
+    }
+
+    .cs-btn.green {
+      background: #10b981;
+      color: #fff;
+    }
+
+    .cs-btn.orange {
+      background: #f97316;
+      color: #fff;
+    }
+
+    .cs-btn.dark {
+      background: #111827;
       color: #fff;
     }
 
@@ -241,15 +361,14 @@
       border: 1px solid rgba(0,0,0,0.1);
     }
 
-    .cs-link-btn.notice {
-      background: #111827;
+    .cs-btn.danger {
+      background: #ef4444;
       color: #fff;
     }
 
-    .cs-link-btn.danger {
-      background: rgba(224,79,106,0.12);
-      color: #be123c;
-      border: 1px solid rgba(224,79,106,0.2);
+    .cs-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
     .cs-empty {
@@ -261,235 +380,134 @@
     .cs-footer-note {
       color: #6b7280;
       font-size: 13px;
-      margin-top: 12px;
-      text-align: center;
-    }
-
-    .cs-loadmore-wrap {
       margin-top: 14px;
-      display: flex;
-      justify-content: center;
-    }
-
-    .toast {
-      position: fixed;
-      right: 18px;
-      bottom: 18px;
-      background: #fff;
-      border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 12px;
-      padding: 12px 16px;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.12);
-      z-index: 9999;
+      text-align: center;
     }
 
     .hidden {
       display: none !important;
     }
 
-    button,
-    .cs-link-btn {
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    button:disabled,
-    .cs-link-btn:disabled {
-      cursor: wait;
-      opacity: 0.72;
-    }
-
-    button.is-loading,
-    .cs-link-btn.is-loading {
-      position: relative;
-      pointer-events: none;
-    }
-
-    button.is-loading::after,
-    .cs-link-btn.is-loading::after {
-      content: "";
-      width: 13px;
-      height: 13px;
-      margin-left: 8px;
-      border: 2px solid currentColor;
-      border-top-color: transparent;
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      z-index: 60;
+      background: #111827;
+      color: #fff;
+      padding: 12px 16px;
       border-radius: 999px;
-      display: inline-block;
-      vertical-align: -2px;
-      animation: lucky77SpinMini 0.72s linear infinite;
-    }
-
-    @keyframes lucky77SpinMini {
-      to { transform: rotate(360deg); }
-    }
-
-    /* ===== CS customer message box ===== */
-    .cs-message-box {
-      margin-top: 14px;
-      padding: 14px;
-      border-radius: 16px;
-      background: #f8fafc;
-      border: 1px solid rgba(0,0,0,0.06);
-      display: grid;
-      gap: 10px;
-    }
-
-    .cs-message-title {
-      font-size: 13px;
-      color: #475569;
       font-weight: 800;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      box-shadow: 0 14px 40px rgba(0,0,0,0.25);
+      max-width: calc(100vw - 28px);
+      text-align: center;
     }
 
-    .cs-message-textarea {
-      width: 100%;
-      min-height: 100px;
-      resize: vertical;
-      border: 1px solid rgba(0,0,0,0.1);
-      border-radius: 14px;
-      padding: 12px;
-      font-size: 14px;
-      outline: none;
-      font-family: inherit;
-      background: #fff;
-      color: #111827;
-      line-height: 1.55;
-    }
-
-    .cs-message-textarea:focus {
-      border-color: rgba(123,92,255,0.5);
-      box-shadow: 0 0 0 4px rgba(123,92,255,0.08);
-    }
-
-    .cs-last-line {
-      margin-top: 8px;
-      color: #64748b;
-      font-size: 13px;
-      line-height: 1.45;
-      word-break: break-word;
-    }
-
-    .cs-last-line strong {
-      color: #111827;
-    }
-
-    /* ===== chat modal ===== */
-    .cs-chat-modal {
+    .modal-backdrop {
       position: fixed;
       inset: 0;
-      z-index: 99999;
+      background: rgba(15,23,42,0.55);
+      z-index: 80;
     }
 
-    .cs-chat-backdrop {
-      position: absolute;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.42);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    }
-
-    .cs-chat-panel {
-      position: absolute;
+    .chat-modal {
+      position: fixed;
       left: 50%;
       top: 50%;
-      width: min(94vw, 680px);
-      max-height: 86vh;
       transform: translate(-50%, -50%);
+      width: min(720px, calc(100vw - 24px));
+      max-height: min(760px, calc(100vh - 36px));
       background: #fff;
-      border-radius: 22px;
-      border: 1px solid rgba(0,0,0,0.08);
-      box-shadow: 0 28px 80px rgba(0,0,0,0.22);
-      overflow: hidden;
+      border-radius: 20px;
+      z-index: 90;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.32);
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
-    .cs-chat-head {
+    .chat-modal-head {
       padding: 16px;
       border-bottom: 1px solid rgba(0,0,0,0.08);
       display: flex;
       justify-content: space-between;
-      align-items: center;
       gap: 12px;
+      align-items: flex-start;
     }
 
-    .cs-chat-head h3 {
-      margin: 0;
-      font-size: 20px;
-      color: #111827;
+    .chat-modal-title {
+      font-weight: 900;
+      font-size: 18px;
+      margin-bottom: 4px;
     }
 
-    .cs-chat-head p {
-      margin: 4px 0 0;
-      color: #6b7280;
+    .chat-modal-sub {
       font-size: 13px;
+      color: #6b7280;
     }
 
-    .cs-chat-messages {
+    .chat-close {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.1);
+      background: #fff;
+      cursor: pointer;
+      font-weight: 900;
+    }
+
+    .chat-messages {
       padding: 16px;
-      overflow-y: auto;
+      overflow: auto;
       display: grid;
       gap: 10px;
-      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      background: #f8fafc;
     }
 
-    .cs-chat-row {
-      max-width: 88%;
-      padding: 12px 14px;
+    .chat-row {
+      display: flex;
+    }
+
+    .chat-row.outbound {
+      justify-content: flex-end;
+    }
+
+    .chat-row.inbound {
+      justify-content: flex-start;
+    }
+
+    .chat-bubble {
+      max-width: 82%;
       border-radius: 16px;
-      line-height: 1.5;
+      padding: 11px 12px;
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.08);
       white-space: pre-wrap;
-      word-break: break-word;
+      line-height: 1.5;
       font-size: 14px;
     }
 
-    .cs-chat-row.inbound {
-      justify-self: start;
-      background: #f1f5f9;
-      color: #111827;
-      border-bottom-left-radius: 6px;
+    .chat-row.outbound .chat-bubble {
+      background: #dbeafe;
+      border-color: rgba(59,130,246,0.18);
     }
 
-    .cs-chat-row.outbound {
-      justify-self: end;
-      background: linear-gradient(135deg, #7b5cff, #18d2ff);
-      color: #fff;
-      border-bottom-right-radius: 6px;
+    .chat-row.inbound .chat-bubble {
+      background: #dcfce7;
+      border-color: rgba(34,197,94,0.18);
     }
 
-    .cs-chat-meta {
-      display: block;
-      opacity: 0.78;
-      font-size: 11px;
-      margin-bottom: 5px;
-      font-weight: 800;
-    }
-
-    .cs-chat-failed {
-      display: block;
+    .chat-meta {
       margin-top: 6px;
-      color: #ffe4e6;
-      font-size: 12px;
+      font-size: 11px;
+      color: #64748b;
       font-weight: 800;
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 900px) {
       .cs-stats {
-        grid-template-columns: 1fr;
-      }
-
-      .cs-item-top {
-        flex-direction: column;
-      }
-
-      .cs-actions {
-        width: 100%;
-      }
-
-      .cs-link-btn,
-      .cs-btn {
-        flex: 1 1 auto;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 
@@ -498,112 +516,113 @@
         padding: 14px;
       }
 
-      .cs-title-wrap h1 {
-        font-size: 24px;
+      .cs-stats {
+        grid-template-columns: 1fr;
       }
 
-      .cs-card {
-        padding: 14px;
+      .input-grid {
+        grid-template-columns: 1fr;
       }
 
-      .cs-chat-panel {
-        width: 96vw;
-        max-height: 88vh;
+      .cs-item-top {
+        display: block;
       }
 
-      .cs-chat-row {
-        max-width: 94%;
+      .cs-actions,
+      .cs-item-actions {
+        width: 100%;
       }
 
-      .cs-chat-head {
-        align-items: flex-start;
+      .cs-btn,
+      .cs-link-btn {
+        flex: 1;
       }
     }
   </style>
 </head>
 
 <body>
-  <div class="cs-shell">
-    <div class="cs-topbar">
+  <main class="cs-shell">
+    <section class="cs-topbar">
       <div class="cs-title-wrap">
-        <h1>Lucky77 CS Winner List</h1>
-        <p>Customer service use only · Winner notice, reply history, custom DM</p>
+        <h1>Lucky77 CS Winners</h1>
+        <p>Winner Game Account Info, Note, DM Message, Customer Reply History</p>
       </div>
 
       <div class="cs-actions">
-        <a href="./index.html" class="cs-link-btn secondary">← Back to Main</a>
-        <button id="refreshBtn" class="cs-btn primary" type="button">Refresh</button>
-        <button id="exportBtn" class="cs-btn secondary" type="button">Export CSV</button>
+        <button class="cs-btn secondary" id="refreshBtn">Refresh</button>
+        <button class="cs-btn secondary" id="exportBtn">Export CSV</button>
       </div>
-    </div>
+    </section>
 
-    <div class="cs-stats">
+    <section class="cs-stats">
       <div class="cs-stat">
         <span>Total Winners</span>
         <strong id="totalWinners">0</strong>
       </div>
 
       <div class="cs-stat">
-        <span>Done</span>
+        <span>Pending Winners</span>
+        <strong id="pendingCount">0</strong>
+      </div>
+
+      <div class="cs-stat">
+        <span>Done Winners</span>
         <strong id="doneCount">0</strong>
       </div>
 
       <div class="cs-stat">
-        <span>Pending</span>
-        <strong id="pendingCount">0</strong>
+        <span>Total Done Winner</span>
+        <strong id="doneWinnerCount">0</strong>
       </div>
-    </div>
 
-    <div class="cs-card">
+      <div class="cs-stat">
+        <span>Total Done Amount</span>
+        <strong id="doneAmount">0 Ks</strong>
+      </div>
+    </section>
+
+    <section class="cs-card">
       <div class="cs-toolbar">
         <div class="cs-search">
-          <input id="searchInput" type="text" placeholder="Search name / username / id / prize / status" />
+          <input
+            id="searchInput"
+            type="search"
+            placeholder="Search name / username / user id / prize / note / account..."
+          />
         </div>
       </div>
 
-      <div class="cs-filter-row">
-        <button class="cs-filter-btn active" data-filter="all" type="button">All</button>
-        <button class="cs-filter-btn" data-filter="pending" type="button">Pending</button>
-        <button class="cs-filter-btn" data-filter="done" type="button">Done</button>
-        <button class="cs-filter-btn" data-filter="notice_pending" type="button">Notice Pending</button>
-        <button class="cs-filter-btn" data-filter="notice_sent" type="button">Notice Sent</button>
-        <button class="cs-filter-btn" data-filter="user_replied" type="button">User Replied</button>
+      <div class="filter-row" id="filterRow"></div>
+
+      <div class="cs-list" id="winnerList">
+        <div class="cs-empty">Loading winners...</div>
       </div>
 
-      <div id="winnerList" class="cs-list"></div>
-
-      <div class="cs-loadmore-wrap">
-        <button id="loadMoreBtn" class="cs-link-btn primary hidden" type="button">
-          Load More
-        </button>
+      <div style="margin-top: 14px; text-align: center;">
+        <button class="cs-btn secondary hidden" id="loadMoreBtn">Load More</button>
       </div>
 
-      <div class="cs-footer-note" id="footerText">Loading...</div>
+      <div class="cs-footer-note" id="footerText">—</div>
+    </section>
+  </main>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <div class="modal-backdrop hidden" id="chatModalBackdrop"></div>
+
+  <section class="chat-modal hidden" id="chatModal">
+    <div class="chat-modal-head">
+      <div>
+        <div class="chat-modal-title" id="chatModalTitle">Customer Reply</div>
+        <div class="chat-modal-sub" id="chatModalSub">—</div>
+      </div>
+      <button class="chat-close" id="chatModalClose">×</button>
     </div>
-  </div>
 
-  <!-- Customer Reply / Conversation Modal -->
-  <div id="chatModal" class="cs-chat-modal hidden">
-    <div id="chatModalBackdrop" class="cs-chat-backdrop"></div>
+    <div class="chat-messages" id="chatMessages"></div>
+  </section>
 
-    <div class="cs-chat-panel">
-      <div class="cs-chat-head">
-        <div>
-          <h3 id="chatModalTitle">Customer Reply</h3>
-          <p id="chatModalSub">Conversation history</p>
-        </div>
-
-        <button id="chatModalClose" class="cs-btn secondary" type="button">Close</button>
-      </div>
-
-      <div id="chatMessages" class="cs-chat-messages">
-        <div class="cs-empty">Loading...</div>
-      </div>
-    </div>
-  </div>
-
-  <div id="toast" class="toast hidden">Ready</div>
-
-  <script src="winners.js?v=cs-chat-v1"></script>
+  <script src="winners.js?v=cs-note-done-amount-v1"></script>
 </body>
 </html>
