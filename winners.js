@@ -216,22 +216,33 @@ async function testAdminApiKey(key) {
 
   if (!cleanKey) return false;
 
-  const health = await fetch(`${CONFIG.BASE_URL}/health?_=${Date.now()}`, {
-    cache: "no-store",
-  });
+  try {
+    const check = await fetch(
+      `${CONFIG.BASE_URL}/winners/cs?_=${Date.now()}&v=${encodeURIComponent(CONFIG.CACHE_BUSTER)}`,
+      {
+        cache: "no-store",
+        headers: {
+          "x-api-key": cleanKey,
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      }
+    );
 
-  if (!health.ok) {
+    if (check.status === 401) return false;
+
+    if (!check.ok) {
+      throw new Error(`Backend connection failed: HTTP ${check.status}`);
+    }
+
+    const data = await check.json().catch(() => ({}));
+
+    return data.ok !== false;
+  } catch (err) {
+    console.error("Login backend error:", err);
     throw new Error("Backend connection failed");
   }
-
-  const check = await fetch(`${CONFIG.BASE_URL}/winners/cs?_=${Date.now()}`, {
-    cache: "no-store",
-    headers: {
-      "x-api-key": cleanKey,
-      "Cache-Control": "no-cache",
-      Pragma: "no-cache",
-    },
-  });
+}
 
   if (check.status === 401) return false;
 
