@@ -2,11 +2,8 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "cs-inbox-live-v6",
+  CACHE_BUSTER: "cs-inbox-login-full-v4",
   PAGE_SIZE: 40,
-
-  // Auto live refresh
-  LIVE_REFRESH_MS: 5000,
 };
 
 const state = {
@@ -16,10 +13,6 @@ const state = {
   loading: false,
   activeFilter: "all",
   selectedUserId: "",
-
-  liveTimer: null,
-  isModalOpen: false,
-  isTyping: false,
 };
 
 const el = {
@@ -92,72 +85,6 @@ function formatMoney(amount) {
   return `${Number(amount || 0).toLocaleString()} Ks`;
 }
 
-function getWinnerLastTime(w) {
-  const t =
-    w.last_message_at ||
-    w.last_reply_at ||
-    w.last_outbound_at ||
-    w.updated_at ||
-    w.at ||
-    0;
-
-  const ms = new Date(t).getTime();
-
-  return Number.isNaN(ms) ? 0 : ms;
-}
-
-function getWinnerUnread(w) {
-  return Number(w.inbound_unread_count || 0) || 0;
-}
-
-function hasAnyReply(w) {
-  return (
-    Number(w.message_count || 0) > 0 ||
-    getWinnerUnread(w) > 0 ||
-    !!String(w.last_reply_text || "").trim() ||
-    !!String(w.last_message_text || "").trim()
-  );
-}
-
-function sortInboxLikeMessenger(list) {
-  return [...list].sort((a, b) => {
-    const au = getWinnerUnread(a);
-    const bu = getWinnerUnread(b);
-
-    if (au !== bu) return bu - au;
-
-    const at = getWinnerLastTime(a);
-    const bt = getWinnerLastTime(b);
-
-    if (at !== bt) return bt - at;
-
-    return Number(a.turn || 0) - Number(b.turn || 0);
-  });
-}
-
-function isChatMediaMessage(m) {
-  return Boolean(
-    m.image_url ||
-    m.photo_url ||
-    m.file_url ||
-    m.attachment_url ||
-    m.telegram_file_url ||
-    String(m.type || "").toLowerCase() === "photo" ||
-    String(m.type || "").toLowerCase() === "image"
-  );
-}
-
-function getChatMediaUrl(m) {
-  return (
-    m.image_url ||
-    m.photo_url ||
-    m.file_url ||
-    m.attachment_url ||
-    m.telegram_file_url ||
-    ""
-  );
-}
-
 function showToast(message, type = "normal") {
   if (!el.toast) return;
 
@@ -216,33 +143,22 @@ async function testAdminApiKey(key) {
 
   if (!cleanKey) return false;
 
-  try {
-    const check = await fetch(
-      `${CONFIG.BASE_URL}/winners/cs?_=${Date.now()}&v=${encodeURIComponent(CONFIG.CACHE_BUSTER)}`,
-      {
-        cache: "no-store",
-        headers: {
-          "x-api-key": cleanKey,
-          "Cache-Control": "no-cache",
-          Pragma: "no-cache",
-        },
-      }
-    );
+  const health = await fetch(`${CONFIG.BASE_URL}/health?_=${Date.now()}`, {
+    cache: "no-store",
+  });
 
-    if (check.status === 401) return false;
-
-    if (!check.ok) {
-      throw new Error(`Backend connection failed: HTTP ${check.status}`);
-    }
-
-    const data = await check.json().catch(() => ({}));
-
-    return data.ok !== false;
-  } catch (err) {
-    console.error("Login backend error:", err);
+  if (!health.ok) {
     throw new Error("Backend connection failed");
   }
-}
+
+  const check = await fetch(`${CONFIG.BASE_URL}/winners/cs?_=${Date.now()}`, {
+    cache: "no-store",
+    headers: {
+      "x-api-key": cleanKey,
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    },
+  });
 
   if (check.status === 401) return false;
 
@@ -293,7 +209,6 @@ async function handleAdminLogin() {
     setApiKey(key);
     showAdminApp();
     await refreshPage();
-    startLiveRefresh();
   } catch (err) {
     if (error) error.textContent = err.message || "Login failed";
   } finally {
@@ -442,8 +357,7 @@ async function loadWinners() {
       }))
     : [];
 
-  state.winners = sortInboxLikeMessenger(state.winners);
-  applyFilter(false);
+  applyFilter();
 }
 
 function filterMatch(w) {
@@ -451,12 +365,20 @@ function filterMatch(w) {
   if (state.activeFilter === "done") return !!w.done;
   if (state.activeFilter === "notice_pending") return !w.notice_sent;
   if (state.activeFilter === "notice_sent") return !!w.notice_sent;
-  if (state.activeFilter === "replied") return hasAnyReply(w);
+
+  if (state.activeFilter === "replied") {
+    return (
+      Number(w.message_count || 0) > 0 ||
+      Number(w.inbound_unread_count || 0) > 0 ||
+      !!String(w.last_reply_text || "").trim() ||
+      !!String(w.last_message_text || "").trim()
+    );
+  }
 
   return true;
 }
 
-function applyFilter(resetVisible = true) {
+function applyFilter() {
   const q = (el.searchInput?.value || "").trim().toLowerCase();
 
   state.filtered = (state.winners || []).filter((w) => {
@@ -487,13 +409,27 @@ function applyFilter(resetVisible = true) {
     return blob.includes(q);
   });
 
-  state.filtered = sortInboxLikeMessenger(state.filtered);
+  if (state.activeFilter === "replied") {
+    state.filtered.sort((a, b) => {
+      const au = Number(a.inbound_unread_count || 0) || 0;
+      const bu = Number(b.inbound_unread_count || 0) || 0;
 
-  if (resetVisible) {
-    state.visibleCount = CONFIG.PAGE_SIZE;
+      if (au !== bu) return bu - au;
+
+      const at =
+        new Date(a.last_message_at || a.last_reply_at || a.at || 0).getTime() ||
+        0;
+
+      const bt =
+        new Date(b.last_message_at || b.last_reply_at || b.at || 0).getTime() ||
+        0;
+
+      return bt - at;
+    });
   }
-}
 
+  state.visibleCount = CONFIG.PAGE_SIZE;
+}
 function renderStats() {
   const all = state.winners || [];
   const done = all.filter((x) => x.done).length;
@@ -520,10 +456,17 @@ function renderStats() {
 function renderFilterButtons() {
   if (!el.filterRow) return;
 
-  const replyTotal = (state.winners || []).filter(hasAnyReply).length;
+  const replyTotal = (state.winners || []).filter((w) => {
+    return (
+      Number(w.message_count || 0) > 0 ||
+      Number(w.inbound_unread_count || 0) > 0 ||
+      !!String(w.last_reply_text || "").trim() ||
+      !!String(w.last_message_text || "").trim()
+    );
+  }).length;
 
   const unreadTotal = (state.winners || []).reduce((sum, w) => {
-    return sum + getWinnerUnread(w);
+    return sum + (Number(w.inbound_unread_count || 0) || 0);
   }, 0);
 
   const filters = [
@@ -576,7 +519,7 @@ function renderLoadMore() {
 }
 
 function statusBadges(w) {
-  const unread = getWinnerUnread(w);
+  const unread = Number(w.inbound_unread_count || 0) || 0;
   const reply = String(w.last_reply_text || w.last_message_text || "").trim();
 
   const hasInfo =
@@ -596,7 +539,7 @@ function statusBadges(w) {
 }
 
 function unreadBadgeHtml(w) {
-  const unread = getWinnerUnread(w);
+  const unread = Number(w.inbound_unread_count || 0) || 0;
 
   if (!unread) return "";
 
@@ -667,12 +610,14 @@ function inboxMetaHtml(w) {
 function buildWinnerCard(w) {
   const display = w.display || w.name || (w.username ? `@${w.username}` : w.user_id);
   const tgLink = w.username ? `https://t.me/${String(w.username).replace(/^@+/, "")}` : "";
-  const unread = getWinnerUnread(w);
+  const unread = Number(w.inbound_unread_count || 0) || 0;
+
+  const isInboxView = state.activeFilter === "replied";
 
   const cardClass = [
     "winner-card",
     w.done ? "done-card" : "",
-    hasAnyReply(w) ? "inbox-card" : "",
+    isInboxView ? "inbox-card" : "",
     unread ? "unread" : "",
   ]
     .filter(Boolean)
@@ -684,7 +629,7 @@ function buildWinnerCard(w) {
         <div>
           <div class="winner-title">
             #${escapeHtml(w.turn || "-")} • ${escapeHtml(display)}
-            ${unreadBadgeHtml(w)}
+            ${isInboxView ? unreadBadgeHtml(w) : ""}
           </div>
 
           <div class="winner-sub">
@@ -701,27 +646,14 @@ function buildWinnerCard(w) {
           <span>Prize Amount</span>
           <strong>${escapeHtml(w.prize || "-")}</strong>
         </div>
-
-        <div class="quick-menu-wrap">
-          <button class="quick-menu-btn" data-quick-menu="${escapeAttr(w.user_id)}">
-            ⋯
-          </button>
-
-          <div class="quick-menu hidden" data-quick-menu-box="${escapeAttr(w.user_id)}">
-            <button data-open-reply-user="${escapeAttr(w.user_id)}">💬 Open Chat</button>
-            <button data-copy-id="${escapeAttr(w.user_id)}">🆔 Copy User ID</button>
-            <button data-copy-template-list="${escapeAttr(w.user_id)}">📋 Copy Template</button>
-            <button data-toggle-done-list="${escapeAttr(w.user_id)}">✅ Mark Done</button>
-          </div>
-        </div>
       </div>
 
-      ${inboxPreviewHtml(w)}
-      ${inboxMetaHtml(w)}
+      ${isInboxView ? inboxPreviewHtml(w) : ""}
+      ${isInboxView ? inboxMetaHtml(w) : ""}
 
       <div class="action-row">
         <button class="cs-btn primary" data-open-reply-user="${escapeAttr(w.user_id)}">
-          Customer Reply ${unreadBadgeHtml(w)}
+          Customer Reply ${!isInboxView ? unreadBadgeHtml(w) : ""}
         </button>
 
         ${
@@ -785,7 +717,7 @@ async function toggleDone(userId, button) {
       row.cs_status = row.done ? "done" : "pending";
     }
 
-    applyFilter(false);
+    applyFilter();
     renderWinners();
 
     if (state.selectedUserId) {
@@ -827,7 +759,7 @@ async function sendNotice(userId, prize, button) {
       row.cs_status = "notice_sent";
     }
 
-    applyFilter(false);
+    applyFilter();
     renderWinners();
 
     if (state.selectedUserId) {
@@ -846,7 +778,6 @@ async function sendNotice(userId, prize, button) {
     state.loading = false;
   }
 }
-
 async function sendAccountRequest(userId, prize, button) {
   const uid = String(userId || "");
   const oldText = button ? button.textContent : "";
@@ -886,7 +817,7 @@ async function sendAccountRequest(userId, prize, button) {
       w.last_message_direction = "outbound";
     }
 
-    applyFilter(false);
+    applyFilter();
     renderWinners();
 
     if (state.selectedUserId) {
@@ -946,7 +877,7 @@ async function saveWinnerInfo(userId, button) {
     }
 
     renderReplyModalContent(uid, window.__lastReplyMessages || []);
-    applyFilter(false);
+    applyFilter();
     renderWinners();
 
     showToast("Game account info saved ✅", "success");
@@ -979,38 +910,6 @@ async function sendModalCustomerMessage(userId, button) {
       button.textContent = "Sending...";
     }
 
-    const now = new Date().toISOString();
-
-    if (box) {
-      box.value = "";
-      autoResizeComposer(box);
-    }
-
-    if (w) {
-      w.notice_sent = true;
-      w.last_outbound_text = text;
-      w.last_outbound_at = now;
-      w.message_count = Number(w.message_count || 0) + 1;
-      w.last_message_text = text;
-      w.last_message_at = now;
-      w.last_message_direction = "outbound";
-    }
-
-    window.__lastReplyMessages = [
-      ...(window.__lastReplyMessages || []),
-      {
-        direction: "outbound",
-        source: "cs",
-        text,
-        at: now,
-        ok: true,
-      },
-    ];
-
-    renderReplyModalContent(uid, window.__lastReplyMessages);
-    applyFilter(false);
-    renderWinners();
-
     const data = await api("/winner/message", {
       method: "POST",
       body: JSON.stringify({
@@ -1026,14 +925,30 @@ async function sendModalCustomerMessage(userId, button) {
       return;
     }
 
-    await refreshOpenChatSilent(uid);
+    if (w) {
+      w.notice_sent = true;
+      w.last_outbound_text = text;
+      w.last_outbound_at = new Date().toISOString();
+      w.message_count = Number(w.message_count || 0) + 1;
+      w.last_message_text = text;
+      w.last_message_at = new Date().toISOString();
+      w.last_message_direction = "outbound";
+    }
+
+    if (box) box.value = "";
+
+    await openReplyModal(uid, false);
+
+    applyFilter();
+    renderWinners();
+
     showToast("Customer ဆီ message ပို့ပြီးပါပြီ ✅", "success");
   } catch (err) {
     showToast(err.message || "Send failed", "error");
   } finally {
     if (button) {
       button.disabled = false;
-      button.textContent = oldText || "Send";
+      button.textContent = oldText || "Send To Customer";
     }
   }
 }
@@ -1080,31 +995,11 @@ function chatMessagesHtml(messages) {
       const source = String(m.source || "");
       const ok = m.ok === false ? "Failed" : "OK";
       const role = direction === "outbound" ? "CS / Bot" : "Customer";
-      const mediaUrl = getChatMediaUrl(m);
-      const isMedia = isChatMediaMessage(m) && mediaUrl;
-      const text = String(m.text || m.caption || "").trim();
 
       return `
         <div class="chat-row ${escapeAttr(direction)}">
           <div class="chat-bubble">
-            ${
-              isMedia
-                ? `
-                  <a href="${escapeAttr(mediaUrl)}" target="_blank" rel="noopener">
-                    <img class="chat-image" src="${escapeAttr(mediaUrl)}" alt="Customer attachment" />
-                  </a>
-                `
-                : ""
-            }
-
-            ${
-              text
-                ? `<div class="chat-text">${escapeHtml(text)}</div>`
-                : isMedia
-                  ? `<div class="chat-text muted">Photo / attachment</div>`
-                  : ""
-            }
-
+            ${escapeHtml(m.text || "")}
             <div class="chat-meta">
               Role: ${escapeHtml(role)} • ${escapeHtml(source || "-")} • ${escapeHtml(formatTime(m.at))} • ${escapeHtml(ok)}
             </div>
@@ -1122,7 +1017,7 @@ function renderReplyModalContent(userId, messages) {
   if (!w || !el.replyModalBody) return;
 
   const display = w.display || w.name || (w.username ? `@${w.username}` : uid);
-  const unread = getWinnerUnread(w);
+  const unread = Number(w.inbound_unread_count || 0) || 0;
 
   el.replyModalBody.innerHTML = `
     <section class="role-section">
@@ -1220,7 +1115,32 @@ Last Read: ${escapeHtml(formatTime(w.last_read_at))}
       </div>
     </section>
 
-    <section class="role-section chat-section">
+    <section class="role-section">
+      <div class="role-title">
+        <span>CS Message To Customer</span>
+        <span class="role-tag">CS / Bot</span>
+      </div>
+
+      <div class="field full">
+        <label>Message</label>
+        <textarea
+          data-modal-message="${escapeAttr(uid)}"
+          placeholder="CS message ရေးပြီး Send To Customer နှိပ်ပါ..."
+        ></textarea>
+      </div>
+
+      <div class="action-row">
+        <button class="cs-btn orange" data-modal-fill-template="${escapeAttr(uid)}">
+          Fill Account Template
+        </button>
+
+        <button class="cs-btn dark" data-modal-send-message="${escapeAttr(uid)}">
+          Send To Customer
+        </button>
+      </div>
+    </section>
+
+    <section class="role-section">
       <div class="role-title">
         <div class="role-title-left">
           <span>Customer Reply / Message History</span>
@@ -1233,47 +1153,13 @@ Last Read: ${escapeHtml(formatTime(w.last_read_at))}
         <span class="role-tag">Customer Inbox</span>
       </div>
 
-      <div class="chat-list" data-chat-list="${escapeAttr(uid)}">
+      <div class="chat-list">
         ${chatMessagesHtml(messages)}
-      </div>
-
-      <div class="chat-composer">
-        <button class="composer-tool-btn" data-modal-fill-template="${escapeAttr(uid)}" title="Fill template">
-          ＋
-        </button>
-
-        <textarea
-          class="chat-input"
-          data-modal-message="${escapeAttr(uid)}"
-          placeholder="Message ရေးပါ... Enter = Send, Shift + Enter = New line"
-          rows="1"
-        ></textarea>
-
-        <button class="send-btn" data-modal-send-message="${escapeAttr(uid)}">
-          Send
-        </button>
       </div>
     </section>
   `;
 
   bindModalButtons(uid);
-}
-
-function autoResizeComposer(textarea) {
-  if (!textarea) return;
-
-  textarea.style.height = "auto";
-  textarea.style.height = `${Math.min(textarea.scrollHeight, 130)}px`;
-}
-
-function scrollChatToBottom(uid) {
-  const chatList = document.querySelector(`[data-chat-list="${cssEscape(uid)}"]`);
-
-  if (!chatList) return;
-
-  setTimeout(() => {
-    chatList.scrollTop = chatList.scrollHeight;
-  }, 50);
 }
 
 function bindModalButtons(uid) {
@@ -1284,7 +1170,6 @@ function bindModalButtons(uid) {
   const doneBtn = document.querySelector(`[data-modal-done="${cssEscape(uid)}"]`);
   const noticeBtn = document.querySelector(`[data-modal-notice="${cssEscape(uid)}"]`);
   const sendTemplateBtn = document.querySelector(`[data-modal-send-template="${cssEscape(uid)}"]`);
-  const box = document.querySelector(`[data-modal-message="${cssEscape(uid)}"]`);
 
   if (saveBtn) saveBtn.onclick = () => saveWinnerInfo(uid, saveBtn);
 
@@ -1298,11 +1183,11 @@ function bindModalButtons(uid) {
   if (fillBtn) {
     fillBtn.onclick = () => {
       const w = state.winners.find((x) => String(x.user_id) === String(uid));
+      const box = document.querySelector(`[data-modal-message="${cssEscape(uid)}"]`);
 
       if (box) {
         box.value = buildAccountRequestText(w?.prize || "");
         box.focus();
-        autoResizeComposer(box);
         showToast("Template ဖြည့်ပြီးပါပြီ ✅", "success");
       }
     };
@@ -1320,40 +1205,11 @@ function bindModalButtons(uid) {
     const w = state.winners.find((x) => String(x.user_id) === String(uid));
     sendTemplateBtn.onclick = () => sendAccountRequest(uid, w?.prize || "", sendTemplateBtn);
   }
-
-  if (box) {
-    box.oninput = () => {
-      state.isTyping = true;
-      autoResizeComposer(box);
-
-      clearTimeout(box.__typingTimer);
-      box.__typingTimer = setTimeout(() => {
-        state.isTyping = false;
-      }, 900);
-    };
-
-    box.onkeydown = (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-
-        const currentSendBtn = document.querySelector(`[data-modal-send-message="${cssEscape(uid)}"]`);
-        sendModalCustomerMessage(uid, currentSendBtn);
-      }
-    };
-
-    setTimeout(() => {
-      box.focus();
-      autoResizeComposer(box);
-    }, 80);
-  }
-
-  scrollChatToBottom(uid);
 }
 
 async function openReplyModal(userId, showLoading = true) {
   const uid = String(userId || "");
   state.selectedUserId = uid;
-  state.isModalOpen = true;
 
   const w = state.winners.find((x) => String(x.user_id) === uid);
 
@@ -1362,7 +1218,7 @@ async function openReplyModal(userId, showLoading = true) {
   el.replyModal.classList.remove("hidden");
   el.replyModalBackdrop?.classList.remove("hidden");
 
-  const unreadBeforeOpen = getWinnerUnread(w);
+  const unreadBeforeOpen = Number(w.inbound_unread_count || 0) || 0;
 
   if (el.replyModalTitle) {
     el.replyModalTitle.innerHTML = `
@@ -1398,7 +1254,7 @@ async function openReplyModal(userId, showLoading = true) {
     }
 
     renderReplyModalContent(uid, messages);
-    applyFilter(false);
+    applyFilter();
     renderWinners();
   } catch (err) {
     window.__lastReplyMessages = [];
@@ -1409,9 +1265,6 @@ async function openReplyModal(userId, showLoading = true) {
 
 function closeReplyModal() {
   state.selectedUserId = "";
-  state.isModalOpen = false;
-  state.isTyping = false;
-
   el.replyModal?.classList.add("hidden");
   el.replyModalBackdrop?.classList.add("hidden");
 }
@@ -1426,35 +1279,6 @@ function bindActionButtons() {
   document.querySelectorAll("[data-copy-id]").forEach((btn) => {
     btn.onclick = () => {
       copyText(btn.getAttribute("data-copy-id") || "");
-    };
-  });
-
-  document.querySelectorAll("[data-copy-template-list]").forEach((btn) => {
-    btn.onclick = () => {
-      const uid = btn.getAttribute("data-copy-template-list") || "";
-      const w = state.winners.find((x) => String(x.user_id) === String(uid));
-      copyText(buildAccountRequestText(w?.prize || ""));
-    };
-  });
-
-  document.querySelectorAll("[data-toggle-done-list]").forEach((btn) => {
-    btn.onclick = () => {
-      toggleDone(btn.getAttribute("data-toggle-done-list") || "", btn);
-    };
-  });
-
-  document.querySelectorAll("[data-quick-menu]").forEach((btn) => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-
-      const uid = btn.getAttribute("data-quick-menu") || "";
-      const box = document.querySelector(`[data-quick-menu-box="${cssEscape(uid)}"]`);
-
-      document.querySelectorAll("[data-quick-menu-box]").forEach((x) => {
-        if (x !== box) x.classList.add("hidden");
-      });
-
-      box?.classList.toggle("hidden");
     };
   });
 }
@@ -1532,86 +1356,32 @@ function exportCsv() {
   URL.revokeObjectURL(url);
 }
 
-async function refreshPage(options = {}) {
-  const silent = !!options.silent;
-
+async function refreshPage() {
   try {
-    if (!silent && el.refreshBtn) {
+    if (el.refreshBtn) {
       el.refreshBtn.disabled = true;
       el.refreshBtn.textContent = "Loading...";
     }
 
     await loadWinners();
-    applyFilter(false);
     renderWinners();
-
-    if (!silent) {
-      showToast("Refreshed ✅", "success");
-    }
+    showToast("Refreshed ✅", "success");
   } catch (err) {
-    if (!silent) {
-      showToast(err.message || "Load failed", "error");
+    showToast(err.message || "Load failed", "error");
 
-      if (el.winnerList) {
-        el.winnerList.innerHTML = `<div class="cs-empty">${escapeHtml(err.message || "Load failed")}</div>`;
-      }
+    if (el.winnerList) {
+      el.winnerList.innerHTML = `<div class="cs-empty">${escapeHtml(err.message || "Load failed")}</div>`;
     }
   } finally {
-    if (!silent && el.refreshBtn) {
+    if (el.refreshBtn) {
       el.refreshBtn.disabled = false;
       el.refreshBtn.textContent = "Refresh";
     }
   }
 }
 
-function startLiveRefresh() {
-  stopLiveRefresh();
-
-  state.liveTimer = setInterval(async () => {
-    if (state.loading) return;
-
-    await refreshPage({ silent: true });
-
-    if (state.selectedUserId && state.isModalOpen && !state.isTyping) {
-      await refreshOpenChatSilent(state.selectedUserId);
-    }
-  }, CONFIG.LIVE_REFRESH_MS);
-}
-
-function stopLiveRefresh() {
-  if (state.liveTimer) {
-    clearInterval(state.liveTimer);
-    state.liveTimer = null;
-  }
-}
-
-async function refreshOpenChatSilent(userId) {
-  const uid = String(userId || "");
-
-  if (!uid || state.isTyping) return;
-
-  try {
-    const data = await api(`/winner/messages?user_id=${encodeURIComponent(uid)}&mark_read=1`);
-    const messages = Array.isArray(data.messages) ? data.messages : [];
-
-    window.__lastReplyMessages = messages;
-
-    const row = state.winners.find((x) => String(x.user_id) === uid);
-
-    if (row) {
-      row.inbound_unread_count = Number(data.unread_count || 0) || 0;
-      row.last_read_at = data.last_read_at || new Date().toISOString();
-      row.message_count = Number(row.message_count || messages.length || 0) || 0;
-    }
-
-    renderReplyModalContent(uid, messages);
-  } catch (err) {
-    console.warn("Silent chat refresh failed:", err);
-  }
-}
-
 function bindEvents() {
-  el.refreshBtn?.addEventListener("click", () => refreshPage());
+  el.refreshBtn?.addEventListener("click", refreshPage);
   el.exportBtn?.addEventListener("click", exportCsv);
 
   el.logoutBtn?.addEventListener("click", () => {
@@ -1635,16 +1405,6 @@ function bindEvents() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeReplyModal();
   });
-
-  document.addEventListener("click", () => {
-    document.querySelectorAll("[data-quick-menu-box]").forEach((x) => {
-      x.classList.add("hidden");
-    });
-  });
-
-  window.addEventListener("beforeunload", () => {
-    stopLiveRefresh();
-  });
 }
 
 function startCsPage() {
@@ -1652,10 +1412,7 @@ function startCsPage() {
   bindAdminLogin();
 
   requireAdminLoginBeforeLoad().then((ok) => {
-    if (ok) {
-      refreshPage();
-      startLiveRefresh();
-    }
+    if (ok) refreshPage();
   });
 }
 
