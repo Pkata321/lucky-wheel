@@ -604,6 +604,7 @@ h2 {
   background: var(--input);
   border: 1px solid var(--card-border);
 }
+
 .toggle-wrap {
   display: flex;
   align-items: center;
@@ -1166,6 +1167,7 @@ h2 {
   cursor: pointer;
   text-decoration: none;
 }
+
 .cs-link-btn.primary {
   background: linear-gradient(90deg, #7b5cff, #18d2ff);
   color: white;
@@ -1188,7 +1190,6 @@ h2 {
   background: #fff;
   border: 1px dashed rgba(0,0,0,0.15);
 }
-
 /* Smooth interaction upgrades */
 button,
 .quick-link,
