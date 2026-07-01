@@ -2,7 +2,7 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "admin-login-clean-role-v1",
+  CACHE_BUSTER: "cs-inbox-login-full-v3",
   PAGE_SIZE: 40,
 };
 
@@ -1170,8 +1170,17 @@ async function openReplyModal(userId, showLoading = true) {
   el.replyModal.classList.remove("hidden");
   el.replyModalBackdrop?.classList.remove("hidden");
 
+  const unreadBeforeOpen = Number(w.inbound_unread_count || 0) || 0;
+
   if (el.replyModalTitle) {
-    el.replyModalTitle.textContent = `Customer Reply - ${w.display || uid}`;
+    el.replyModalTitle.innerHTML = `
+      Customer Reply - ${escapeHtml(w.display || uid)}
+      ${
+        unreadBeforeOpen
+          ? `<span class="reply-modal-unread">${escapeHtml(unreadBeforeOpen)}</span>`
+          : ""
+      }
+    `;
   }
 
   if (el.replyModalSub) {
@@ -1183,19 +1192,28 @@ async function openReplyModal(userId, showLoading = true) {
   }
 
   try {
-const data = await api(`/winner/messages?user_id=${encodeURIComponent(uid)}&mark_read=1`);
-const messages = Array.isArray(data.messages) ? data.messages : [];
-window.__lastReplyMessages = messages;
+    const data = await api(`/winner/messages?user_id=${encodeURIComponent(uid)}&mark_read=1`);
+    const messages = Array.isArray(data.messages) ? data.messages : [];
 
-const w = state.winners.find((x) => String(x.user_id) === uid);
-if (w) {
-  w.inbound_unread_count = Number(data.unread_count || 0) || 0;
-  w.last_read_at = data.last_read_at || new Date().toISOString();
+    window.__lastReplyMessages = messages;
+
+    const row = state.winners.find((x) => String(x.user_id) === uid);
+
+    if (row) {
+      row.inbound_unread_count = Number(data.unread_count || 0) || 0;
+      row.last_read_at = data.last_read_at || new Date().toISOString();
+      row.message_count = Number(row.message_count || messages.length || 0) || 0;
+    }
+
+    renderReplyModalContent(uid, messages);
+    applyFilter();
+    renderWinners();
+  } catch (err) {
+    window.__lastReplyMessages = [];
+    renderReplyModalContent(uid, []);
+    showToast(err.message || "Reply load failed", "error");
+  }
 }
-
-renderReplyModalContent(uid, messages);
-applyFilter();
-renderWinners();
 
 function closeReplyModal() {
   state.selectedUserId = "";
@@ -1230,6 +1248,11 @@ function exportCsv() {
     "Game Account",
     "Telegram Number",
     "CS Note",
+    "Message Count",
+    "Unread Count",
+    "Last Message",
+    "Last Message At",
+    "Last Message Direction",
     "Last Reply",
     "Last Reply At",
     "Last Sent",
@@ -1249,6 +1272,11 @@ function exportCsv() {
     w.game_account || "",
     w.game_phone || "",
     w.cs_note || "",
+    w.message_count || 0,
+    w.inbound_unread_count || 0,
+    w.last_message_text || "",
+    w.last_message_at || "",
+    w.last_message_direction || "",
     w.last_reply_text || "",
     w.last_reply_at || "",
     w.last_outbound_text || "",
@@ -1331,8 +1359,17 @@ function bindEvents() {
   });
 }
 
-bindEvents();
+function startCsPage() {
+  bindEvents();
+  bindAdminLogin();
 
-requireAdminLoginBeforeLoad().then((ok) => {
-  if (ok) refreshPage();
-});
+  requireAdminLoginBeforeLoad().then((ok) => {
+    if (ok) refreshPage();
+  });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", startCsPage);
+} else {
+  startCsPage();
+}
