@@ -2,7 +2,7 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "clean-role-view-v1",
+  CACHE_BUSTER: "admin-login-clean-role-v1",
   PAGE_SIZE: 40,
 };
 
@@ -26,6 +26,7 @@ const el = {
   searchInput: document.getElementById("searchInput"),
   refreshBtn: document.getElementById("refreshBtn"),
   exportBtn: document.getElementById("exportBtn"),
+  logoutBtn: document.getElementById("logoutBtn"),
   footerText: document.getElementById("footerText"),
   toast: document.getElementById("toast"),
   loadMoreBtn: document.getElementById("loadMoreBtn"),
@@ -38,6 +39,8 @@ const el = {
   replyModalSub: document.getElementById("replyModalSub"),
   replyModalBody: document.getElementById("replyModalBody"),
 };
+
+const ADMIN_KEY_STORAGE = "lucky77_admin_api_key";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -98,27 +101,156 @@ function showToast(message, type = "normal") {
 }
 
 function getApiKey() {
-  if (CONFIG.API_KEY) return CONFIG.API_KEY;
+  return sessionStorage.getItem(ADMIN_KEY_STORAGE) || "";
+}
 
-  let key = sessionStorage.getItem("lucky77_admin_api_key") || "";
-
-  if (!key) {
-    key = window.prompt("Admin API key ထည့်ပါ") || "";
-    key = key.trim();
-
-    if (key) {
-      sessionStorage.setItem("lucky77_admin_api_key", key);
-    }
-  }
-
-  return key;
+function setApiKey(key) {
+  sessionStorage.setItem(ADMIN_KEY_STORAGE, String(key || "").trim());
 }
 
 function forgetApiKey() {
-  sessionStorage.removeItem("lucky77_admin_api_key");
+  sessionStorage.removeItem(ADMIN_KEY_STORAGE);
+}
+
+function showLoginScreen(message = "") {
+  const login = document.getElementById("adminLoginScreen");
+  const app = document.getElementById("adminApp");
+  const error = document.getElementById("adminLoginError");
+
+  if (login) login.classList.remove("hidden");
+  if (app) app.classList.add("hidden");
+  if (error) error.textContent = message || "";
+}
+
+function showAdminApp() {
+  const login = document.getElementById("adminLoginScreen");
+  const app = document.getElementById("adminApp");
+  const error = document.getElementById("adminLoginError");
+
+  if (login) login.classList.add("hidden");
+  if (app) app.classList.remove("hidden");
+  if (error) error.textContent = "";
+}
+
+async function testAdminApiKey(key) {
+  const cleanKey = String(key || "").trim();
+  if (!cleanKey) return false;
+
+  const health = await fetch(`${CONFIG.BASE_URL}/health?_=${Date.now()}`, {
+    cache: "no-store",
+  });
+
+  if (!health.ok) throw new Error("Backend connection failed");
+
+  const check = await fetch(`${CONFIG.BASE_URL}/config?_=${Date.now()}`, {
+    cache: "no-store",
+    headers: {
+      "x-api-key": cleanKey,
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    },
+  });
+
+  if (check.status === 401) return false;
+  if (!check.ok) throw new Error("Login check failed");
+
+  const data = await check.json().catch(() => ({}));
+  return data.ok !== false;
+}
+
+async function handleAdminLogin() {
+  const input = document.getElementById("adminApiInput");
+  const btn = document.getElementById("adminLoginBtn");
+  const error = document.getElementById("adminLoginError");
+
+  const key = String(input?.value || "").trim();
+
+  if (!key) {
+    if (error) error.textContent = "Admin Api Code ထည့်ပါ";
+    return;
+  }
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Checking...";
+    }
+
+    if (error) error.textContent = "";
+
+    const ok = await testAdminApiKey(key);
+
+    if (!ok) {
+      forgetApiKey();
+      if (error) error.textContent = "Api Code မမှန်ပါ";
+      if (input) {
+        input.value = "";
+        input.focus();
+      }
+      return;
+    }
+
+    setApiKey(key);
+    showAdminApp();
+    await refreshPage();
+  } catch (err) {
+    if (error) error.textContent = err.message || "Login failed";
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Login";
+    }
+  }
+}
+
+function bindAdminLogin() {
+  const input = document.getElementById("adminApiInput");
+  const btn = document.getElementById("adminLoginBtn");
+
+  if (btn) btn.addEventListener("click", handleAdminLogin);
+
+  if (input) {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleAdminLogin();
+    });
+  }
+}
+
+async function requireAdminLoginBeforeLoad() {
+  bindAdminLogin();
+
+  const key = getApiKey();
+
+  if (!key) {
+    showLoginScreen();
+    return false;
+  }
+
+  try {
+    const ok = await testAdminApiKey(key);
+
+    if (!ok) {
+      forgetApiKey();
+      showLoginScreen("Api Code မမှန်ပါ");
+      return false;
+    }
+
+    showAdminApp();
+    return true;
+  } catch (_) {
+    showLoginScreen("Backend connection failed");
+    return false;
+  }
 }
 
 async function api(path, options = {}) {
+  const key = getApiKey();
+
+  if (!key) {
+    showLoginScreen();
+    throw new Error("Login required");
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
 
@@ -130,7 +262,7 @@ async function api(path, options = {}) {
       ...options,
       cache: "no-store",
       headers: {
-        "x-api-key": getApiKey(),
+        "x-api-key": key,
         "Cache-Control": "no-cache",
         Pragma: "no-cache",
         ...(options.method && options.method !== "GET"
@@ -145,7 +277,8 @@ async function api(path, options = {}) {
 
     if (response.status === 401) {
       forgetApiKey();
-      throw new Error("Unauthorized: API key ပြန်ထည့်ပါ");
+      showLoginScreen("Api Code မမှန်ပါ");
+      throw new Error("Unauthorized");
     }
 
     if (!response.ok || data.ok === false) {
@@ -291,6 +424,7 @@ function renderLoadMore() {
 
 function statusBadges(w) {
   const reply = String(w.last_reply_text || "").trim();
+
   const hasInfo =
     String(w.game_account || "").trim() ||
     String(w.game_phone || "").trim() ||
@@ -335,26 +469,6 @@ function buildWinnerCard(w) {
       <div class="action-row">
         <button class="cs-btn primary" data-open-reply-user="${escapeAttr(w.user_id)}">
           Customer Reply
-        </button>
-
-        <button
-          class="cs-btn orange"
-          data-send-template-user="${escapeAttr(w.user_id)}"
-          data-prize="${escapeAttr(w.prize || "")}"
-        >
-          Send Account Request
-        </button>
-
-        <button
-          class="cs-btn secondary"
-          data-notice-user="${escapeAttr(w.user_id)}"
-          data-prize="${escapeAttr(w.prize || "")}"
-        >
-          Notice
-        </button>
-
-        <button class="cs-btn ${w.done ? "danger" : "green"}" data-done-user="${escapeAttr(w.user_id)}">
-          ${w.done ? "Undo Done" : "Mark Done"}
         </button>
 
         ${
@@ -420,6 +534,11 @@ async function toggleDone(userId, button) {
 
     applyFilter();
     renderWinners();
+
+    if (state.selectedUserId) {
+      renderReplyModalContent(state.selectedUserId, window.__lastReplyMessages || []);
+    }
+
     showToast("Done updated ✅", "success");
   } catch (err) {
     showToast(err.message || "Done update failed", "error");
@@ -457,6 +576,10 @@ async function sendNotice(userId, prize, button) {
 
     applyFilter();
     renderWinners();
+
+    if (state.selectedUserId) {
+      await openReplyModal(state.selectedUserId, false);
+    }
 
     if (data.dm_ok === false) {
       showToast(data.dm_error || "DM failed", "error");
@@ -508,6 +631,11 @@ async function sendAccountRequest(userId, prize, button) {
 
     applyFilter();
     renderWinners();
+
+    if (state.selectedUserId) {
+      await openReplyModal(state.selectedUserId, false);
+    }
+
     showToast("Account request ပို့ပြီးပါပြီ ✅", "success");
   } catch (err) {
     showToast(err.message || "Send failed", "error");
@@ -692,7 +820,6 @@ function renderReplyModalContent(userId, messages) {
   if (!w || !el.replyModalBody) return;
 
   const display = w.display || w.name || (w.username ? `@${w.username}` : uid);
-  const template = buildAccountRequestText(w.prize);
 
   el.replyModalBody.innerHTML = `
     <section class="role-section">
@@ -707,6 +834,29 @@ User ID: ${escapeHtml(uid)}
 Username: ${w.username ? "@" + escapeHtml(w.username) : "-"}
 Prize: ${escapeHtml(w.prize || "-")}
 Win Time: ${escapeHtml(formatTime(w.at))}
+Status: ${w.done ? "Done" : "Pending"}
+      </div>
+
+      <div class="action-row">
+        <button class="cs-btn ${w.done ? "danger" : "green"}" data-modal-done="${escapeAttr(uid)}">
+          ${w.done ? "Undo Done" : "Mark Done"}
+        </button>
+
+        <button
+          class="cs-btn secondary"
+          data-modal-notice="${escapeAttr(uid)}"
+          data-prize="${escapeAttr(w.prize || "")}"
+        >
+          Notice
+        </button>
+
+        <button
+          class="cs-btn orange"
+          data-modal-send-template="${escapeAttr(uid)}"
+          data-prize="${escapeAttr(w.prize || "")}"
+        >
+          Send Account Request
+        </button>
       </div>
     </section>
 
@@ -780,8 +930,6 @@ Win Time: ${escapeHtml(formatTime(w.at))}
           Send To Customer
         </button>
       </div>
-
-      <script type="application/json" data-modal-template="${escapeAttr(uid)}">${JSON.stringify(template)}</script>
     </section>
 
     <section class="role-section">
@@ -804,10 +952,11 @@ function bindModalButtons(uid) {
   const copyBtn = document.querySelector(`[data-copy-template="${cssEscape(uid)}"]`);
   const fillBtn = document.querySelector(`[data-modal-fill-template="${cssEscape(uid)}"]`);
   const sendBtn = document.querySelector(`[data-modal-send-message="${cssEscape(uid)}"]`);
+  const doneBtn = document.querySelector(`[data-modal-done="${cssEscape(uid)}"]`);
+  const noticeBtn = document.querySelector(`[data-modal-notice="${cssEscape(uid)}"]`);
+  const sendTemplateBtn = document.querySelector(`[data-modal-send-template="${cssEscape(uid)}"]`);
 
-  if (saveBtn) {
-    saveBtn.onclick = () => saveWinnerInfo(uid, saveBtn);
-  }
+  if (saveBtn) saveBtn.onclick = () => saveWinnerInfo(uid, saveBtn);
 
   if (copyBtn) {
     copyBtn.onclick = () => {
@@ -820,6 +969,7 @@ function bindModalButtons(uid) {
     fillBtn.onclick = () => {
       const w = state.winners.find((x) => String(x.user_id) === String(uid));
       const box = document.querySelector(`[data-modal-message="${cssEscape(uid)}"]`);
+
       if (box) {
         box.value = buildAccountRequestText(w?.prize || "");
         box.focus();
@@ -828,8 +978,17 @@ function bindModalButtons(uid) {
     };
   }
 
-  if (sendBtn) {
-    sendBtn.onclick = () => sendModalCustomerMessage(uid, sendBtn);
+  if (sendBtn) sendBtn.onclick = () => sendModalCustomerMessage(uid, sendBtn);
+  if (doneBtn) doneBtn.onclick = () => toggleDone(uid, doneBtn);
+
+  if (noticeBtn) {
+    const w = state.winners.find((x) => String(x.user_id) === String(uid));
+    noticeBtn.onclick = () => sendNotice(uid, w?.prize || "", noticeBtn);
+  }
+
+  if (sendTemplateBtn) {
+    const w = state.winners.find((x) => String(x.user_id) === String(uid));
+    sendTemplateBtn.onclick = () => sendAccountRequest(uid, w?.prize || "", sendTemplateBtn);
   }
 }
 
@@ -878,32 +1037,6 @@ function bindActionButtons() {
   document.querySelectorAll("[data-open-reply-user]").forEach((btn) => {
     btn.onclick = () => {
       openReplyModal(btn.getAttribute("data-open-reply-user"));
-    };
-  });
-
-  document.querySelectorAll("[data-done-user]").forEach((btn) => {
-    btn.onclick = () => {
-      toggleDone(btn.getAttribute("data-done-user"), btn);
-    };
-  });
-
-  document.querySelectorAll("[data-notice-user]").forEach((btn) => {
-    btn.onclick = () => {
-      sendNotice(
-        btn.getAttribute("data-notice-user"),
-        btn.getAttribute("data-prize") || "",
-        btn
-      );
-    };
-  });
-
-  document.querySelectorAll("[data-send-template-user]").forEach((btn) => {
-    btn.onclick = () => {
-      sendAccountRequest(
-        btn.getAttribute("data-send-template-user"),
-        btn.getAttribute("data-prize") || "",
-        btn
-      );
     };
   });
 
@@ -1005,6 +1138,11 @@ function bindEvents() {
   el.refreshBtn?.addEventListener("click", refreshPage);
   el.exportBtn?.addEventListener("click", exportCsv);
 
+  el.logoutBtn?.addEventListener("click", () => {
+    forgetApiKey();
+    location.reload();
+  });
+
   el.searchInput?.addEventListener("input", () => {
     applyFilter();
     renderWinners();
@@ -1024,4 +1162,7 @@ function bindEvents() {
 }
 
 bindEvents();
-refreshPage();
+
+requireAdminLoginBeforeLoad().then((ok) => {
+  if (ok) refreshPage();
+});
