@@ -2,7 +2,7 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "cs-note-done-amount-v1",
+  CACHE_BUSTER: "clean-role-view-v1",
   PAGE_SIZE: 40,
 };
 
@@ -12,6 +12,7 @@ const state = {
   visibleCount: CONFIG.PAGE_SIZE,
   loading: false,
   activeFilter: "all",
+  selectedUserId: "",
 };
 
 const el = {
@@ -30,12 +31,12 @@ const el = {
   loadMoreBtn: document.getElementById("loadMoreBtn"),
   filterRow: document.getElementById("filterRow"),
 
-  chatModal: document.getElementById("chatModal"),
-  chatModalBackdrop: document.getElementById("chatModalBackdrop"),
-  chatModalClose: document.getElementById("chatModalClose"),
-  chatModalTitle: document.getElementById("chatModalTitle"),
-  chatModalSub: document.getElementById("chatModalSub"),
-  chatMessages: document.getElementById("chatMessages"),
+  replyModal: document.getElementById("replyModal"),
+  replyModalBackdrop: document.getElementById("replyModalBackdrop"),
+  replyModalClose: document.getElementById("replyModalClose"),
+  replyModalTitle: document.getElementById("replyModalTitle"),
+  replyModalSub: document.getElementById("replyModalSub"),
+  replyModalBody: document.getElementById("replyModalBody"),
 };
 
 function escapeHtml(value) {
@@ -48,6 +49,14 @@ function escapeHtml(value) {
 
 function escapeAttr(value) {
   return escapeHtml(value).replace(/'/g, "&#039;");
+}
+
+function cssEscape(value) {
+  if (window.CSS && typeof window.CSS.escape === "function") {
+    return window.CSS.escape(String(value));
+  }
+
+  return String(value).replace(/["\\]/g, "\\$&");
 }
 
 function formatTime(value) {
@@ -210,12 +219,6 @@ function applyFilter() {
       w.prize,
       w.done ? "done" : "pending",
       w.notice_sent ? "notice sent" : "notice pending",
-      w.game_account,
-      w.game_phone,
-      w.cs_note,
-      w.cs_status,
-      w.last_reply_text,
-      w.last_outbound_text,
     ]
       .join(" ")
       .toLowerCase();
@@ -255,7 +258,7 @@ function renderFilterButtons() {
     ["done", "Done"],
     ["notice_pending", "Notice Pending"],
     ["notice_sent", "Notice Sent"],
-    ["replied", "User Replied"],
+    ["replied", "User Reply"],
   ];
 
   el.filterRow.innerHTML = filters
@@ -286,36 +289,19 @@ function renderLoadMore() {
   }
 }
 
-function statusBadgeHtml(w) {
-  const doneClass = w.done ? "done" : "pending";
-  const doneText = w.done ? "Done" : "Pending";
-  const noticeText = w.notice_sent ? "Notice Sent" : "Notice Pending";
-  const noticeClass = w.notice_sent ? "done" : "pending";
+function statusBadges(w) {
   const reply = String(w.last_reply_text || "").trim();
+  const hasInfo =
+    String(w.game_account || "").trim() ||
+    String(w.game_phone || "").trim() ||
+    String(w.cs_note || "").trim();
 
   return `
-    <div class="cs-badges">
-      <span class="cs-badge ${doneClass}">${doneText}</span>
-      <span class="cs-badge ${noticeClass}">${noticeText}</span>
-      ${reply ? `<span class="cs-badge reply">User Replied</span>` : ""}
-    </div>
-  `;
-}
-
-function savedPreviewHtml(w) {
-  const account = String(w.game_account || "").trim();
-  const phone = String(w.game_phone || "").trim();
-  const note = String(w.cs_note || "").trim();
-
-  if (!account && !phone && !note) {
-    return `<div class="saved-preview">Saved Info: မရှိသေးပါ</div>`;
-  }
-
-  return `
-    <div class="saved-preview">
-Account Name - ${escapeHtml(account || "-")}
-Telegram Number - ${escapeHtml(phone || "-")}
-CS Note - ${escapeHtml(note || "-")}
+    <div class="badge-row">
+      <span class="badge ${w.done ? "done" : "pending"}">${w.done ? "Done" : "Pending"}</span>
+      <span class="badge ${w.notice_sent ? "done" : "pending"}">${w.notice_sent ? "Notice Sent" : "Notice Pending"}</span>
+      ${reply ? `<span class="badge reply">User Replied</span>` : ""}
+      ${hasInfo ? `<span class="badge info">Info Saved</span>` : ""}
     </div>
   `;
 }
@@ -323,131 +309,41 @@ CS Note - ${escapeHtml(note || "-")}
 function buildWinnerCard(w) {
   const display = w.display || w.name || (w.username ? `@${w.username}` : w.user_id);
   const tgLink = w.username ? `https://t.me/${String(w.username).replace(/^@+/, "")}` : "";
-  const replyText = String(w.last_reply_text || "").trim();
-  const outboundText = String(w.last_outbound_text || "").trim();
-
-  const accountTemplate = buildAccountRequestText(w.prize);
 
   return `
-    <article class="cs-item ${w.done ? "done-card" : ""}">
-      <div class="cs-item-top">
+    <article class="winner-card ${w.done ? "done-card" : ""}">
+      <div class="winner-head">
         <div>
-          <div class="cs-item-title">
-            #${escapeHtml(w.turn || "-")} • ${escapeHtml(display)}
-          </div>
+          <div class="winner-title">#${escapeHtml(w.turn || "-")} • ${escapeHtml(display)}</div>
 
-          <div class="cs-item-sub">
-            Prize: <b>${escapeHtml(w.prize || "-")}</b><br />
+          <div class="winner-sub">
+            Role: <b>Winner</b><br />
             User ID: <b>${escapeHtml(w.user_id || "-")}</b><br />
             Username: <b>${w.username ? "@" + escapeHtml(w.username) : "-"}</b><br />
             Win Time: ${escapeHtml(formatTime(w.at))}
           </div>
 
-          ${statusBadgeHtml(w)}
+          ${statusBadges(w)}
+        </div>
+
+        <div class="winner-prize">
+          <span>Prize Amount</span>
+          <strong>${escapeHtml(w.prize || "-")}</strong>
         </div>
       </div>
 
-      <div class="winner-info-box">
-        <div class="winner-info-title">Winner Game Acc Information</div>
-
-        <div class="input-grid">
-          <div class="field">
-            <label>Account Name / Game Account</label>
-            <input
-              data-game-account-user="${escapeAttr(w.user_id)}"
-              value="${escapeAttr(w.game_account || "")}"
-              placeholder="Account Name -"
-            />
-          </div>
-
-          <div class="field">
-            <label>Telegram Number</label>
-            <input
-              data-game-phone-user="${escapeAttr(w.user_id)}"
-              value="${escapeAttr(w.game_phone || "")}"
-              placeholder="Telegram Number -"
-            />
-          </div>
-
-          <div class="field full">
-            <label>CS Note</label>
-            <textarea
-              data-note-user="${escapeAttr(w.user_id)}"
-              placeholder="Winner account info / payment note / CS remark..."
-            >${escapeHtml(w.cs_note || "")}</textarea>
-          </div>
-        </div>
-
-        ${savedPreviewHtml(w)}
-
-        <div class="cs-item-actions">
-          <button class="cs-btn green" data-save-info-user="${escapeAttr(w.user_id)}">
-            Save Game Acc Info
-          </button>
-
-          <button class="cs-btn secondary" data-copy-template-user="${escapeAttr(w.user_id)}">
-            Copy Account Template
-          </button>
-        </div>
-      </div>
-
-      <div class="message-box">
-        <div class="message-box-title">Send Message To Customer</div>
-
-        <textarea
-          data-message-text-user="${escapeAttr(w.user_id)}"
-          placeholder="CS message ရေးပြီး Send To Customer နှိပ်ပါ..."
-        ></textarea>
-
-        <div class="cs-item-actions">
-          <button class="cs-btn orange" data-fill-template-user="${escapeAttr(w.user_id)}">
-            Fill Account Template
-          </button>
-
-          <button
-            class="cs-btn primary"
-            data-send-template-user="${escapeAttr(w.user_id)}"
-            data-prize="${escapeAttr(w.prize || "")}"
-          >
-            Send Account Request
-          </button>
-
-          <button
-            class="cs-btn dark"
-            data-message-user="${escapeAttr(w.user_id)}"
-            data-prize="${escapeAttr(w.prize || "")}"
-          >
-            Send To Customer
-          </button>
-        </div>
-      </div>
-
-      ${
-        outboundText
-          ? `<div class="saved-preview">Last Sent: ${escapeHtml(outboundText)}\nAt: ${escapeHtml(formatTime(w.last_outbound_at))}</div>`
-          : ""
-      }
-
-      ${
-        replyText
-          ? `<div class="saved-preview">Last Reply: ${escapeHtml(replyText)}\nAt: ${escapeHtml(formatTime(w.last_reply_at))}</div>`
-          : ""
-      }
-
-      <div class="cs-item-actions">
-        <button class="cs-btn secondary" data-open-chat-user="${escapeAttr(w.user_id)}">
+      <div class="action-row">
+        <button class="cs-btn primary" data-open-reply-user="${escapeAttr(w.user_id)}">
           Customer Reply
         </button>
 
-        <button class="cs-btn secondary" data-copy-id="${escapeAttr(w.user_id)}">
-          Copy User ID
+        <button
+          class="cs-btn orange"
+          data-send-template-user="${escapeAttr(w.user_id)}"
+          data-prize="${escapeAttr(w.prize || "")}"
+        >
+          Send Account Request
         </button>
-
-        ${
-          tgLink
-            ? `<a class="cs-link-btn secondary" href="${escapeAttr(tgLink)}" target="_blank" rel="noopener">Open Telegram</a>`
-            : ""
-        }
 
         <button
           class="cs-btn secondary"
@@ -460,9 +356,17 @@ function buildWinnerCard(w) {
         <button class="cs-btn ${w.done ? "danger" : "green"}" data-done-user="${escapeAttr(w.user_id)}">
           ${w.done ? "Undo Done" : "Mark Done"}
         </button>
-      </div>
 
-      <script type="application/json" data-template-json="${escapeAttr(w.user_id)}">${JSON.stringify(accountTemplate)}</script>
+        ${
+          tgLink
+            ? `<a class="cs-link-btn secondary" href="${escapeAttr(tgLink)}" target="_blank" rel="noopener">Open Telegram</a>`
+            : ""
+        }
+
+        <button class="cs-btn secondary" data-copy-id="${escapeAttr(w.user_id)}">
+          Copy ID
+        </button>
+      </div>
     </article>
   `;
 }
@@ -524,58 +428,6 @@ async function toggleDone(userId, button) {
   }
 }
 
-async function saveWinnerInfo(userId, button) {
-  const uid = String(userId || "");
-
-  const accountInput = document.querySelector(`[data-game-account-user="${CSS.escape(uid)}"]`);
-  const phoneInput = document.querySelector(`[data-game-phone-user="${CSS.escape(uid)}"]`);
-  const noteInput = document.querySelector(`[data-note-user="${CSS.escape(uid)}"]`);
-
-  const game_account = accountInput ? accountInput.value.trim() : "";
-  const game_phone = phoneInput ? phoneInput.value.trim() : "";
-  const cs_note = noteInput ? noteInput.value.trim() : "";
-
-  const oldText = button ? button.textContent : "";
-
-  try {
-    if (button) {
-      button.disabled = true;
-      button.textContent = "Saving...";
-    }
-
-    const data = await api("/winner/update", {
-      method: "POST",
-      body: JSON.stringify({
-        user_id: uid,
-        game_account,
-        game_phone,
-        cs_note,
-      }),
-    });
-
-    if (!data.ok) throw new Error(data.error || "Save failed");
-
-    const w = state.winners.find((x) => String(x.user_id) === uid);
-
-    if (w) {
-      w.game_account = game_account;
-      w.game_phone = game_phone;
-      w.cs_note = cs_note;
-    }
-
-    applyFilter();
-    renderWinners();
-    showToast("Game account info saved ✅", "success");
-  } catch (err) {
-    showToast(err.message || "Save failed", "error");
-  } finally {
-    if (button) {
-      button.disabled = false;
-      button.textContent = oldText || "Save Game Acc Info";
-    }
-  }
-}
-
 async function sendNotice(userId, prize, button) {
   if (!userId || state.loading) return;
 
@@ -616,62 +468,6 @@ async function sendNotice(userId, prize, button) {
     showToast(err.message || "Notice failed", "error");
   } finally {
     state.loading = false;
-  }
-}
-
-async function sendCustomerMessage(userId, prize, button) {
-  const uid = String(userId || "");
-  const box = document.querySelector(`[data-message-text-user="${CSS.escape(uid)}"]`);
-  const text = box ? box.value.trim() : "";
-
-  if (!text) {
-    showToast("Message ရေးပြီးမှ Send လုပ်ပါ", "error");
-    return;
-  }
-
-  const oldText = button ? button.textContent : "";
-
-  try {
-    if (button) {
-      button.disabled = true;
-      button.textContent = "Sending...";
-    }
-
-    const data = await api("/winner/message", {
-      method: "POST",
-      body: JSON.stringify({
-        user_id: uid,
-        prize,
-        text,
-        mode: "custom",
-      }),
-    });
-
-    if (data.dm_ok === false) {
-      showToast(data.dm_error || "DM failed", "error");
-      return;
-    }
-
-    const w = state.winners.find((x) => String(x.user_id) === uid);
-
-    if (w) {
-      w.notice_sent = true;
-      w.last_outbound_text = text;
-      w.last_outbound_at = new Date().toISOString();
-    }
-
-    if (box) box.value = "";
-
-    applyFilter();
-    renderWinners();
-    showToast("Customer ဆီ message ပို့ပြီးပါပြီ ✅", "success");
-  } catch (err) {
-    showToast(err.message || "Send failed", "error");
-  } finally {
-    if (button) {
-      button.disabled = false;
-      button.textContent = oldText || "Send To Customer";
-    }
   }
 }
 
@@ -723,16 +519,113 @@ async function sendAccountRequest(userId, prize, button) {
   }
 }
 
-function fillAccountTemplate(userId) {
+async function saveWinnerInfo(userId, button) {
+  const uid = String(userId || "");
+
+  const accountInput = document.querySelector(`[data-modal-account="${cssEscape(uid)}"]`);
+  const phoneInput = document.querySelector(`[data-modal-phone="${cssEscape(uid)}"]`);
+  const noteInput = document.querySelector(`[data-modal-note="${cssEscape(uid)}"]`);
+
+  const game_account = accountInput ? accountInput.value.trim() : "";
+  const game_phone = phoneInput ? phoneInput.value.trim() : "";
+  const cs_note = noteInput ? noteInput.value.trim() : "";
+
+  const oldText = button ? button.textContent : "";
+
+  try {
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Saving...";
+    }
+
+    const data = await api("/winner/update", {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: uid,
+        game_account,
+        game_phone,
+        cs_note,
+      }),
+    });
+
+    if (!data.ok) throw new Error(data.error || "Save failed");
+
+    const w = state.winners.find((x) => String(x.user_id) === uid);
+
+    if (w) {
+      w.game_account = game_account;
+      w.game_phone = game_phone;
+      w.cs_note = cs_note;
+    }
+
+    renderReplyModalContent(uid, window.__lastReplyMessages || []);
+    applyFilter();
+    renderWinners();
+    showToast("Game account info saved ✅", "success");
+  } catch (err) {
+    showToast(err.message || "Save failed", "error");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = oldText || "Save Game Acc Info";
+    }
+  }
+}
+
+async function sendModalCustomerMessage(userId, button) {
   const uid = String(userId || "");
   const w = state.winners.find((x) => String(x.user_id) === uid);
-  const box = document.querySelector(`[data-message-text-user="${CSS.escape(uid)}"]`);
+  const box = document.querySelector(`[data-modal-message="${cssEscape(uid)}"]`);
+  const text = box ? box.value.trim() : "";
 
-  if (!box || !w) return;
+  if (!text) {
+    showToast("Message ရေးပြီးမှ Send လုပ်ပါ", "error");
+    return;
+  }
 
-  box.value = buildAccountRequestText(w.prize);
-  box.focus();
-  showToast("Template ဖြည့်ပြီးပါပြီ ✅", "success");
+  const oldText = button ? button.textContent : "";
+
+  try {
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Sending...";
+    }
+
+    const data = await api("/winner/message", {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: uid,
+        prize: w?.prize || "",
+        text,
+        mode: "custom",
+      }),
+    });
+
+    if (data.dm_ok === false) {
+      showToast(data.dm_error || "DM failed", "error");
+      return;
+    }
+
+    if (w) {
+      w.notice_sent = true;
+      w.last_outbound_text = text;
+      w.last_outbound_at = new Date().toISOString();
+    }
+
+    if (box) box.value = "";
+
+    await openReplyModal(uid, false);
+    applyFilter();
+    renderWinners();
+    showToast("Customer ဆီ message ပို့ပြီးပါပြီ ✅", "success");
+  } catch (err) {
+    showToast(err.message || "Send failed", "error");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = oldText || "Send To Customer";
+    }
+  }
 }
 
 async function copyText(text) {
@@ -750,81 +643,247 @@ async function copyText(text) {
   }
 }
 
-function copyAccountTemplate(userId) {
-  const uid = String(userId || "");
-  const w = state.winners.find((x) => String(x.user_id) === uid);
-  if (!w) return;
-  copyText(buildAccountRequestText(w.prize));
+function savedAccountView(w) {
+  const account = String(w.game_account || "").trim();
+  const phone = String(w.game_phone || "").trim();
+  const note = String(w.cs_note || "").trim();
+
+  if (!account && !phone && !note) {
+    return `Saved Info: မရှိသေးပါ`;
+  }
+
+  return `Saved Info
+
+Account Name - ${account || "-"}
+Telegram Number - ${phone || "-"}
+CS Note - ${note || "-"}`;
 }
 
-async function openCustomerReply(userId) {
+function chatMessagesHtml(messages) {
+  if (!messages.length) {
+    return `<div class="cs-empty">Reply / Message history မရှိသေးပါ</div>`;
+  }
+
+  return messages
+    .map((m) => {
+      const direction = String(m.direction || "inbound");
+      const source = String(m.source || "");
+      const ok = m.ok === false ? "Failed" : "OK";
+      const role = direction === "outbound" ? "CS / Bot" : "Customer";
+
+      return `
+        <div class="chat-row ${escapeAttr(direction)}">
+          <div class="chat-bubble">
+            ${escapeHtml(m.text || "")}
+            <div class="chat-meta">
+              Role: ${escapeHtml(role)} • ${escapeHtml(source || "-")} • ${escapeHtml(formatTime(m.at))} • ${escapeHtml(ok)}
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderReplyModalContent(userId, messages) {
   const uid = String(userId || "");
   const w = state.winners.find((x) => String(x.user_id) === uid);
 
-  if (!el.chatModal || !el.chatMessages) return;
+  if (!w || !el.replyModalBody) return;
 
-  el.chatModal.classList.remove("hidden");
-  el.chatModalBackdrop?.classList.remove("hidden");
+  const display = w.display || w.name || (w.username ? `@${w.username}` : uid);
+  const template = buildAccountRequestText(w.prize);
 
-  if (el.chatModalTitle) {
-    el.chatModalTitle.textContent = `Customer Reply - ${w?.display || uid}`;
+  el.replyModalBody.innerHTML = `
+    <section class="role-section">
+      <div class="role-title">
+        <span>Winner Role / Customer Information</span>
+        <span class="role-tag">Winner</span>
+      </div>
+
+      <div class="saved-view">
+Winner: ${escapeHtml(display)}
+User ID: ${escapeHtml(uid)}
+Username: ${w.username ? "@" + escapeHtml(w.username) : "-"}
+Prize: ${escapeHtml(w.prize || "-")}
+Win Time: ${escapeHtml(formatTime(w.at))}
+      </div>
+    </section>
+
+    <section class="role-section">
+      <div class="role-title">
+        <span>Winner Game Account Information</span>
+        <span class="role-tag">CS Save</span>
+      </div>
+
+      <div class="info-grid">
+        <div class="field">
+          <label>Account Name / Game Account</label>
+          <input
+            data-modal-account="${escapeAttr(uid)}"
+            value="${escapeAttr(w.game_account || "")}"
+            placeholder="Account Name -"
+          />
+        </div>
+
+        <div class="field">
+          <label>Telegram Number</label>
+          <input
+            data-modal-phone="${escapeAttr(uid)}"
+            value="${escapeAttr(w.game_phone || "")}"
+            placeholder="Telegram Number -"
+          />
+        </div>
+
+        <div class="field full">
+          <label>CS Note</label>
+          <textarea
+            data-modal-note="${escapeAttr(uid)}"
+            placeholder="Winner account info / payment note / CS remark..."
+          >${escapeHtml(w.cs_note || "")}</textarea>
+        </div>
+      </div>
+
+      <div class="saved-view">${escapeHtml(savedAccountView(w))}</div>
+
+      <div class="action-row">
+        <button class="cs-btn green" data-modal-save="${escapeAttr(uid)}">
+          Save Game Acc Info
+        </button>
+
+        <button class="cs-btn secondary" data-copy-template="${escapeAttr(uid)}">
+          Copy Account Template
+        </button>
+      </div>
+    </section>
+
+    <section class="role-section">
+      <div class="role-title">
+        <span>CS Message To Customer</span>
+        <span class="role-tag">CS / Bot</span>
+      </div>
+
+      <div class="field full">
+        <label>Message</label>
+        <textarea
+          data-modal-message="${escapeAttr(uid)}"
+          placeholder="CS message ရေးပြီး Send To Customer နှိပ်ပါ..."
+        ></textarea>
+      </div>
+
+      <div class="action-row">
+        <button class="cs-btn orange" data-modal-fill-template="${escapeAttr(uid)}">
+          Fill Account Template
+        </button>
+
+        <button class="cs-btn dark" data-modal-send-message="${escapeAttr(uid)}">
+          Send To Customer
+        </button>
+      </div>
+
+      <script type="application/json" data-modal-template="${escapeAttr(uid)}">${JSON.stringify(template)}</script>
+    </section>
+
+    <section class="role-section">
+      <div class="role-title">
+        <span>Customer Reply / Message History</span>
+        <span class="role-tag">Customer</span>
+      </div>
+
+      <div class="chat-list">
+        ${chatMessagesHtml(messages)}
+      </div>
+    </section>
+  `;
+
+  bindModalButtons(uid);
+}
+
+function bindModalButtons(uid) {
+  const saveBtn = document.querySelector(`[data-modal-save="${cssEscape(uid)}"]`);
+  const copyBtn = document.querySelector(`[data-copy-template="${cssEscape(uid)}"]`);
+  const fillBtn = document.querySelector(`[data-modal-fill-template="${cssEscape(uid)}"]`);
+  const sendBtn = document.querySelector(`[data-modal-send-message="${cssEscape(uid)}"]`);
+
+  if (saveBtn) {
+    saveBtn.onclick = () => saveWinnerInfo(uid, saveBtn);
   }
 
-  if (el.chatModalSub) {
-    el.chatModalSub.textContent = `User ID: ${uid} • Prize: ${w?.prize || "-"}`;
+  if (copyBtn) {
+    copyBtn.onclick = () => {
+      const w = state.winners.find((x) => String(x.user_id) === String(uid));
+      copyText(buildAccountRequestText(w?.prize || ""));
+    };
   }
 
-  el.chatMessages.innerHTML = `<div class="cs-empty">Loading messages...</div>`;
+  if (fillBtn) {
+    fillBtn.onclick = () => {
+      const w = state.winners.find((x) => String(x.user_id) === String(uid));
+      const box = document.querySelector(`[data-modal-message="${cssEscape(uid)}"]`);
+      if (box) {
+        box.value = buildAccountRequestText(w?.prize || "");
+        box.focus();
+        showToast("Template ဖြည့်ပြီးပါပြီ ✅", "success");
+      }
+    };
+  }
+
+  if (sendBtn) {
+    sendBtn.onclick = () => sendModalCustomerMessage(uid, sendBtn);
+  }
+}
+
+async function openReplyModal(userId, showLoading = true) {
+  const uid = String(userId || "");
+  state.selectedUserId = uid;
+
+  const w = state.winners.find((x) => String(x.user_id) === uid);
+
+  if (!w || !el.replyModal || !el.replyModalBody) return;
+
+  el.replyModal.classList.remove("hidden");
+  el.replyModalBackdrop?.classList.remove("hidden");
+
+  if (el.replyModalTitle) {
+    el.replyModalTitle.textContent = `Customer Reply - ${w.display || uid}`;
+  }
+
+  if (el.replyModalSub) {
+    el.replyModalSub.textContent = `User ID: ${uid} • Prize: ${w.prize || "-"} • Role: Winner`;
+  }
+
+  if (showLoading) {
+    el.replyModalBody.innerHTML = `<div class="cs-empty">Loading customer reply...</div>`;
+  }
 
   try {
     const data = await api(`/winner/messages?user_id=${encodeURIComponent(uid)}`);
     const messages = Array.isArray(data.messages) ? data.messages : [];
-
-    if (!messages.length) {
-      el.chatMessages.innerHTML = `<div class="cs-empty">Reply / message history မရှိသေးပါ</div>`;
-      return;
-    }
-
-    el.chatMessages.innerHTML = messages
-      .map((m) => {
-        const direction = String(m.direction || "inbound");
-        const source = String(m.source || "");
-        const ok = m.ok === false ? "Failed" : "OK";
-
-        return `
-          <div class="chat-row ${escapeAttr(direction)}">
-            <div class="chat-bubble">
-              ${escapeHtml(m.text || "")}
-              <div class="chat-meta">
-                ${escapeHtml(direction)} • ${escapeHtml(source || "-")} • ${escapeHtml(formatTime(m.at))} • ${escapeHtml(ok)}
-              </div>
-            </div>
-          </div>
-        `;
-      })
-      .join("");
-
-    el.chatMessages.scrollTop = el.chatMessages.scrollHeight;
+    window.__lastReplyMessages = messages;
+    renderReplyModalContent(uid, messages);
   } catch (err) {
-    el.chatMessages.innerHTML = `<div class="cs-empty">${escapeHtml(err.message || "Load failed")}</div>`;
+    window.__lastReplyMessages = [];
+    renderReplyModalContent(uid, []);
+    showToast(err.message || "Reply load failed", "error");
   }
 }
 
-function closeCustomerReply() {
-  el.chatModal?.classList.add("hidden");
-  el.chatModalBackdrop?.classList.add("hidden");
+function closeReplyModal() {
+  state.selectedUserId = "";
+  el.replyModal?.classList.add("hidden");
+  el.replyModalBackdrop?.classList.add("hidden");
 }
 
 function bindActionButtons() {
-  document.querySelectorAll("[data-done-user]").forEach((btn) => {
+  document.querySelectorAll("[data-open-reply-user]").forEach((btn) => {
     btn.onclick = () => {
-      toggleDone(btn.getAttribute("data-done-user"), btn);
+      openReplyModal(btn.getAttribute("data-open-reply-user"));
     };
   });
 
-  document.querySelectorAll("[data-save-info-user]").forEach((btn) => {
+  document.querySelectorAll("[data-done-user]").forEach((btn) => {
     btn.onclick = () => {
-      saveWinnerInfo(btn.getAttribute("data-save-info-user"), btn);
+      toggleDone(btn.getAttribute("data-done-user"), btn);
     };
   });
 
@@ -838,16 +897,6 @@ function bindActionButtons() {
     };
   });
 
-  document.querySelectorAll("[data-message-user]").forEach((btn) => {
-    btn.onclick = () => {
-      sendCustomerMessage(
-        btn.getAttribute("data-message-user"),
-        btn.getAttribute("data-prize") || "",
-        btn
-      );
-    };
-  });
-
   document.querySelectorAll("[data-send-template-user]").forEach((btn) => {
     btn.onclick = () => {
       sendAccountRequest(
@@ -855,24 +904,6 @@ function bindActionButtons() {
         btn.getAttribute("data-prize") || "",
         btn
       );
-    };
-  });
-
-  document.querySelectorAll("[data-fill-template-user]").forEach((btn) => {
-    btn.onclick = () => {
-      fillAccountTemplate(btn.getAttribute("data-fill-template-user"));
-    };
-  });
-
-  document.querySelectorAll("[data-copy-template-user]").forEach((btn) => {
-    btn.onclick = () => {
-      copyAccountTemplate(btn.getAttribute("data-copy-template-user"));
-    };
-  });
-
-  document.querySelectorAll("[data-open-chat-user]").forEach((btn) => {
-    btn.onclick = () => {
-      openCustomerReply(btn.getAttribute("data-open-chat-user"));
     };
   });
 
@@ -984,11 +1015,11 @@ function bindEvents() {
     renderWinners();
   });
 
-  el.chatModalClose?.addEventListener("click", closeCustomerReply);
-  el.chatModalBackdrop?.addEventListener("click", closeCustomerReply);
+  el.replyModalClose?.addEventListener("click", closeReplyModal);
+  el.replyModalBackdrop?.addEventListener("click", closeReplyModal);
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeCustomerReply();
+    if (e.key === "Escape") closeReplyModal();
   });
 }
 
