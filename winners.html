@@ -15,6 +15,142 @@
       color: #111827;
     }
 
+/* =========================================================
+   USER REPLY INBOX UI
+   ========================================================= */
+
+.inbox-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 1000;
+  line-height: 1;
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
+}
+
+.inbox-card {
+  border-color: rgba(59, 130, 246, 0.28);
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+}
+
+.inbox-card.unread {
+  border-color: rgba(239, 68, 68, 0.34);
+  background: linear-gradient(180deg, #ffffff, #fff7f7);
+  box-shadow: 0 14px 34px rgba(239, 68, 68, 0.08);
+}
+
+.inbox-preview {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.inbox-preview-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+  flex-wrap: wrap;
+}
+
+.inbox-preview-role {
+  font-size: 12px;
+  font-weight: 1000;
+  color: #1d4ed8;
+}
+
+.inbox-preview-time {
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.inbox-preview-text {
+  font-size: 14px;
+  color: #111827;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inbox-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.inbox-meta-box {
+  padding: 10px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.inbox-meta-box span {
+  display: block;
+  font-size: 11px;
+  font-weight: 900;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.inbox-meta-box strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 1000;
+  color: #111827;
+  word-break: break-word;
+}
+
+.reply-modal-unread {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 1000;
+  margin-left: 8px;
+}
+
+.role-title-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 900px) {
+  .inbox-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .inbox-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inbox-preview-text {
+    white-space: normal;
+  }
+}
+
     .cs-shell {
       max-width: 1180px;
       margin: 0 auto;
