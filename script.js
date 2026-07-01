@@ -2,7 +2,7 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "full-polished-v1",
+  CACHE_BUSTER: "premium-v4-round-timer-fix",
 };
 
 const SETTINGS_KEY = "lucky77_premium_settings_full_v1";
@@ -20,7 +20,11 @@ const defaultSettings = {
   accent1: "#7b5cff",
   accent2: "#18d2ff",
   arrowColor: "#ffe6a8",
-  spinDurationMs: 5600,
+  // Total time from wheel start to winner popup. Default: 6 seconds per person.
+  spinRoundMs: 6000,
+  spinDurationMs: 5600, // legacy fallback
+  autoNextDelayMs: 900,
+  winnerPopupAutoCloseMs: 1200,
 };
 
 const state = {
@@ -34,6 +38,7 @@ const state = {
   spinning: false,
   autoSpinning: false,
   autoSpinStopRequested: false,
+  autoSpinRunId: 0,
   wheelDeg: 0,
   spinLoopTimer: null,
   tickTimer: null,
@@ -95,6 +100,9 @@ const el = {
   accent1Input: document.getElementById("accent1Input"),
   accent2Input: document.getElementById("accent2Input"),
   arrowColorInput: document.getElementById("arrowColorInput"),
+  spinRoundSecondsInput: document.getElementById("spinRoundSecondsInput"),
+  autoNextDelaySecondsInput: document.getElementById("autoNextDelaySecondsInput"),
+  winnerPopupCloseSecondsInput: document.getElementById("winnerPopupCloseSecondsInput"),
 
   bannerTitleInput: document.getElementById("bannerTitleInput"),
   bannerSubInput: document.getElementById("bannerSubInput"),
@@ -765,6 +773,32 @@ async function fileToDataUrl(file) {
   });
 }
 
+function clampNumber(value, min, max, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+function getSpinRoundMs() {
+  const raw = settings.spinRoundMs ?? settings.spinDurationMs ?? defaultSettings.spinRoundMs;
+  return Math.round(clampNumber(raw, 3000, 20000, defaultSettings.spinRoundMs));
+}
+
+function getAutoNextDelayMs() {
+  const raw = settings.autoNextDelayMs ?? defaultSettings.autoNextDelayMs;
+  return Math.round(clampNumber(raw, 0, 10000, defaultSettings.autoNextDelayMs));
+}
+
+function getWinnerPopupAutoCloseMs() {
+  const raw = settings.winnerPopupAutoCloseMs ?? defaultSettings.winnerPopupAutoCloseMs;
+  return Math.round(clampNumber(raw, 500, 15000, defaultSettings.winnerPopupAutoCloseMs));
+}
+
+function secondsFromMs(ms) {
+  const n = Number(ms || 0) / 1000;
+  return Number.isFinite(n) ? String(Number(n.toFixed(1))) : "";
+}
+
 function applyCustomColors() {
   document.documentElement.style.setProperty("--bg", settings.bgColor || defaultSettings.bgColor);
   document.documentElement.style.setProperty("--card-solid", settings.cardColor || defaultSettings.cardColor);
@@ -790,6 +824,9 @@ function applySettingsToUI() {
   if (el.accent1Input) el.accent1Input.value = settings.accent1 || defaultSettings.accent1;
   if (el.accent2Input) el.accent2Input.value = settings.accent2 || defaultSettings.accent2;
   if (el.arrowColorInput) el.arrowColorInput.value = settings.arrowColor || defaultSettings.arrowColor;
+  if (el.spinRoundSecondsInput) el.spinRoundSecondsInput.value = secondsFromMs(getSpinRoundMs());
+  if (el.autoNextDelaySecondsInput) el.autoNextDelaySecondsInput.value = secondsFromMs(getAutoNextDelayMs());
+  if (el.winnerPopupCloseSecondsInput) el.winnerPopupCloseSecondsInput.value = secondsFromMs(getWinnerPopupAutoCloseMs());
 
   if (settings.topLogo && el.brandLogoImg && el.brandLogoFallback) {
     el.brandLogoImg.src = settings.topLogo;
@@ -1069,10 +1106,14 @@ Last Scan: ${state.scan?.last_scan_at ? formatTime(state.scan.last_scan_at) : "N
     let needed = targetDeg - currentBase;
     if (needed < 0) needed += 360;
 
-    const targetTotalDuration = Number(settings.spinDurationMs || defaultSettings.spinDurationMs || 5600);
+    const roundBudgetMs = getSpinRoundMs();
     const elapsedBeforeStop = performance.now() - spinStartedAt;
-    const spinDuration = Math.max(1800, Math.min(targetTotalDuration, targetTotalDuration - elapsedBeforeStop));
-    const extraRounds = 360 * (spinDuration < 2600 ? 2 : 4 + Math.floor(Math.random() * 2));
+    // Winner popup should appear within the configured round budget.
+    // If the backend/network is slow, we keep the final stop animation short instead of exceeding too much.
+    const popupReserveMs = 90;
+    const maxAnimationMs = Math.max(900, roundBudgetMs - elapsedBeforeStop - popupReserveMs);
+    const spinDuration = Math.round(clampNumber(maxAnimationMs, 900, roundBudgetMs, Math.min(5600, roundBudgetMs)));
+    const extraRounds = 360 * (spinDuration < 1800 ? 1 : spinDuration < 3200 ? 2 : 4 + Math.floor(Math.random() * 2));
     const finalDeg = state.wheelDeg + extraRounds + needed;
 
     requestAnimationFrame(() => {
@@ -1086,7 +1127,7 @@ Last Scan: ${state.scan?.last_scan_at ? formatTime(state.scan.last_scan_at) : "N
       });
     });
 
-    await new Promise((resolve) => setTimeout(resolve, spinDuration + 120));
+    await new Promise((resolve) => setTimeout(resolve, spinDuration + 40));
 
     if (el.winnerFlash) el.winnerFlash.classList.remove("hidden");
     if (el.winnerFlashName) el.winnerFlashName.textContent = winnerName;
@@ -1116,7 +1157,7 @@ Last Scan: ${state.scan?.last_scan_at ? formatTime(state.scan.last_scan_at) : "N
 
 function interruptibleSleep(ms) {
   return new Promise((resolve) => {
-    const step = 100;
+    const step = 80;
     let elapsed = 0;
     const tick = () => {
       if (!state.autoSpinning || state.autoSpinStopRequested) return resolve(false);
@@ -1128,38 +1169,50 @@ function interruptibleSleep(ms) {
   });
 }
 
+function setAutoSpinButton(running, stopping = false) {
+  if (!el.autoSpinBtn) return;
+  el.autoSpinBtn.disabled = false;
+  el.autoSpinBtn.classList.toggle("auto-running", !!running);
+  el.autoSpinBtn.classList.toggle("is-loading", !!running);
+  el.autoSpinBtn.textContent = running
+    ? (stopping ? "STOPPING..." : "STOP AUTO")
+    : "AUTO SPIN";
+}
+
 async function runAutoSpin() {
   if (state.autoSpinning) return;
+
+  const runId = Date.now();
+  state.autoSpinRunId = runId;
   state.autoSpinning = true;
   state.autoSpinStopRequested = false;
-  if (el.autoSpinBtn) {
-    el.autoSpinBtn.textContent = "STOP AUTO";
-    el.autoSpinBtn.classList.add("is-loading");
-  }
+  setAutoSpinButton(true, false);
   if (el.scanBtn) el.scanBtn.disabled = true;
+  if (el.spinBtn) el.spinBtn.disabled = true;
 
   try {
-    while (state.autoSpinning && !state.autoSpinStopRequested) {
+    while (state.autoSpinning && !state.autoSpinStopRequested && state.autoSpinRunId === runId) {
       if (Number(state.pool?.count || 0) <= 0) {
         showToast("Auto Spin stopped: pool empty", "error");
         break;
       }
+
       const ok = await handleSpin({ auto: true });
-      if (!ok || !state.autoSpinning || state.autoSpinStopRequested) break;
-      autoCloseWinnerPopup(3000);
-      await interruptibleSleep(3000);
-      if (!state.autoSpinning || state.autoSpinStopRequested) break;
+
+      if (!ok || state.autoSpinStopRequested || state.autoSpinRunId !== runId) break;
+
+      autoCloseWinnerPopup(getWinnerPopupAutoCloseMs());
+      const shouldContinue = await interruptibleSleep(getAutoNextDelayMs());
+      if (!shouldContinue || state.autoSpinStopRequested || state.autoSpinRunId !== runId) break;
     }
   } finally {
-    state.autoSpinning = false;
-    state.autoSpinStopRequested = false;
-    if (el.autoSpinBtn) {
-      el.autoSpinBtn.textContent = "AUTO SPIN";
-      el.autoSpinBtn.classList.remove("is-loading");
-      el.autoSpinBtn.disabled = false;
+    if (state.autoSpinRunId === runId) {
+      state.autoSpinning = false;
+      state.autoSpinStopRequested = false;
+      setAutoSpinButton(false);
+      if (el.spinBtn) el.spinBtn.disabled = false;
+      if (el.scanBtn) el.scanBtn.disabled = false;
     }
-    if (el.spinBtn) el.spinBtn.disabled = false;
-    if (el.scanBtn) el.scanBtn.disabled = false;
   }
 }
 
@@ -1167,14 +1220,12 @@ function toggleAutoSpin() {
   if (state.autoSpinning) {
     state.autoSpinStopRequested = true;
     state.autoSpinning = false;
+    state.autoSpinRunId = Date.now();
     clearAutoCloseTimer();
-    hideWinnerPopup();
-    if (el.autoSpinBtn) {
-      el.autoSpinBtn.textContent = "AUTO SPIN";
-      el.autoSpinBtn.classList.remove("is-loading");
-      el.autoSpinBtn.disabled = false;
-    }
-    showToast("Auto Spin stopped", "normal");
+    setAutoSpinButton(false);
+    if (el.spinBtn) el.spinBtn.disabled = false;
+    if (el.scanBtn) el.scanBtn.disabled = false;
+    showToast("Auto Spin stopped. Current spin will finish safely if already started.", "normal");
     return;
   }
   runAutoSpin();
@@ -1509,6 +1560,16 @@ function bindEvents() {
     settings.accent1 = el.accent1Input?.value || defaultSettings.accent1;
     settings.accent2 = el.accent2Input?.value || defaultSettings.accent2;
     settings.arrowColor = el.arrowColorInput?.value || defaultSettings.arrowColor;
+
+    const roundSeconds = clampNumber(el.spinRoundSecondsInput?.value, 3, 20, defaultSettings.spinRoundMs / 1000);
+    settings.spinRoundMs = Math.round(roundSeconds * 1000);
+    settings.spinDurationMs = settings.spinRoundMs; // legacy fallback for older saved settings
+
+    const nextDelaySeconds = clampNumber(el.autoNextDelaySecondsInput?.value, 0, 10, defaultSettings.autoNextDelayMs / 1000);
+    settings.autoNextDelayMs = Math.round(nextDelaySeconds * 1000);
+
+    const popupCloseSeconds = clampNumber(el.winnerPopupCloseSecondsInput?.value, 0.5, 15, defaultSettings.winnerPopupAutoCloseMs / 1000);
+    settings.winnerPopupAutoCloseMs = Math.round(popupCloseSeconds * 1000);
 
     persistSettings();
     applySettingsToUI();
