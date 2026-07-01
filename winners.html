@@ -49,14 +49,6 @@
       flex-wrap: wrap;
     }
 
-    .cs-card {
-      background: #ffffff;
-      border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 10px 30px rgba(16,24,40,0.06);
-    }
-
     .cs-stats {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -86,6 +78,14 @@
       word-break: break-word;
     }
 
+    .cs-card {
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(16,24,40,0.06);
+    }
+
     .cs-toolbar {
       display: flex;
       justify-content: space-between;
@@ -109,6 +109,7 @@
       font-size: 14px;
       outline: none;
       background: #fff;
+      box-sizing: border-box;
     }
 
     .filter-row {
@@ -141,7 +142,7 @@
       gap: 12px;
     }
 
-    .cs-item {
+    .winner-card {
       border: 1px solid rgba(0,0,0,0.08);
       border-radius: 18px;
       padding: 16px;
@@ -149,40 +150,62 @@
       box-shadow: 0 10px 24px rgba(16,24,40,0.04);
     }
 
-    .cs-item.done-card {
+    .winner-card.done-card {
       border-color: rgba(16,185,129,0.3);
       background: linear-gradient(180deg, #ffffff, #f0fdf4);
     }
 
-    .cs-item-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+    .winner-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
       gap: 12px;
-      margin-bottom: 10px;
+      align-items: start;
     }
 
-    .cs-item-title {
+    .winner-title {
       font-size: 18px;
       font-weight: 900;
       color: #111827;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
-    .cs-item-sub {
+    .winner-sub {
       color: #6b7280;
       font-size: 14px;
-      line-height: 1.6;
+      line-height: 1.7;
     }
 
-    .cs-badges {
+    .winner-prize {
+      text-align: right;
+      background: #f8fafc;
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 14px;
+      padding: 12px;
+      min-width: 145px;
+    }
+
+    .winner-prize span {
+      display: block;
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+
+    .winner-prize strong {
+      font-size: 20px;
+      font-weight: 1000;
+      color: #111827;
+    }
+
+    .badge-row {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
-      margin-top: 10px;
+      margin-top: 12px;
     }
 
-    .cs-badge {
+    .badge {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -190,127 +213,37 @@
       padding: 0 10px;
       border-radius: 999px;
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 900;
       border: 1px solid rgba(0,0,0,0.08);
       background: #f8fafc;
       color: #334155;
     }
 
-    .cs-badge.done {
+    .badge.done {
       background: rgba(16,185,129,0.12);
       color: #047857;
-      border-color: rgba(16,185,129,0.2);
+      border-color: rgba(16,185,129,0.22);
     }
 
-    .cs-badge.pending {
+    .badge.pending {
       background: rgba(245,158,11,0.12);
       color: #b45309;
-      border-color: rgba(245,158,11,0.2);
+      border-color: rgba(245,158,11,0.22);
     }
 
-    .cs-badge.reply {
+    .badge.reply {
       background: rgba(59,130,246,0.12);
       color: #1d4ed8;
-      border-color: rgba(59,130,246,0.2);
+      border-color: rgba(59,130,246,0.22);
     }
 
-    .winner-info-box {
-      margin-top: 14px;
-      padding: 14px;
-      border-radius: 16px;
-      background: #f8fafc;
-      border: 1px solid rgba(0,0,0,0.08);
+    .badge.info {
+      background: rgba(139,92,246,0.12);
+      color: #6d28d9;
+      border-color: rgba(139,92,246,0.22);
     }
 
-    .winner-info-title {
-      font-size: 15px;
-      font-weight: 900;
-      margin-bottom: 12px;
-      color: #111827;
-    }
-
-    .input-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .field {
-      display: grid;
-      gap: 6px;
-    }
-
-    .field.full {
-      grid-column: 1 / -1;
-    }
-
-    .field label {
-      font-size: 12px;
-      font-weight: 900;
-      color: #4b5563;
-    }
-
-    .field input,
-    .field textarea {
-      width: 100%;
-      border: 1px solid rgba(0,0,0,0.12);
-      border-radius: 12px;
-      padding: 11px 12px;
-      background: #fff;
-      outline: none;
-      font-size: 14px;
-      color: #111827;
-      box-sizing: border-box;
-    }
-
-    .field textarea {
-      min-height: 88px;
-      resize: vertical;
-      line-height: 1.5;
-    }
-
-    .saved-preview {
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: #ffffff;
-      border: 1px dashed rgba(0,0,0,0.14);
-      color: #374151;
-      font-size: 13px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-    }
-
-    .message-box {
-      margin-top: 14px;
-      padding: 14px;
-      border-radius: 16px;
-      background: #fff7ed;
-      border: 1px solid rgba(251,146,60,0.25);
-    }
-
-    .message-box-title {
-      font-size: 15px;
-      font-weight: 900;
-      color: #9a3412;
-      margin-bottom: 10px;
-    }
-
-    .message-box textarea {
-      width: 100%;
-      min-height: 94px;
-      border: 1px solid rgba(0,0,0,0.12);
-      border-radius: 12px;
-      padding: 12px;
-      background: #fff;
-      outline: none;
-      resize: vertical;
-      font-size: 14px;
-      line-height: 1.5;
-      box-sizing: border-box;
-    }
-
-    .cs-item-actions {
+    .action-row {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
@@ -407,27 +340,27 @@
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(15,23,42,0.55);
+      background: rgba(15,23,42,0.58);
       z-index: 80;
     }
 
-    .chat-modal {
+    .reply-modal {
       position: fixed;
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      width: min(720px, calc(100vw - 24px));
-      max-height: min(760px, calc(100vh - 36px));
+      width: min(920px, calc(100vw - 24px));
+      max-height: min(820px, calc(100vh - 36px));
       background: #fff;
-      border-radius: 20px;
+      border-radius: 22px;
       z-index: 90;
-      box-shadow: 0 24px 80px rgba(0,0,0,0.32);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.34);
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
 
-    .chat-modal-head {
+    .reply-head {
       padding: 16px;
       border-bottom: 1px solid rgba(0,0,0,0.08);
       display: flex;
@@ -436,33 +369,120 @@
       align-items: flex-start;
     }
 
-    .chat-modal-title {
-      font-weight: 900;
-      font-size: 18px;
-      margin-bottom: 4px;
+    .reply-title {
+      font-weight: 1000;
+      font-size: 19px;
+      margin-bottom: 5px;
+      color: #111827;
     }
 
-    .chat-modal-sub {
+    .reply-sub {
       font-size: 13px;
       color: #6b7280;
+      line-height: 1.5;
     }
 
-    .chat-close {
+    .reply-close {
       width: 38px;
       height: 38px;
       border-radius: 999px;
       border: 1px solid rgba(0,0,0,0.1);
       background: #fff;
       cursor: pointer;
-      font-weight: 900;
+      font-weight: 1000;
+      font-size: 20px;
     }
 
-    .chat-messages {
-      padding: 16px;
+    .reply-body {
       overflow: auto;
+      padding: 16px;
+      background: #f8fafc;
+      display: grid;
+      gap: 14px;
+    }
+
+    .role-section {
+      border: 1px solid rgba(0,0,0,0.08);
+      background: #fff;
+      border-radius: 18px;
+      padding: 14px;
+    }
+
+    .role-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 1000;
+      color: #111827;
+      margin-bottom: 12px;
+    }
+
+    .role-tag {
+      font-size: 11px;
+      font-weight: 1000;
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: #eef2ff;
+      color: #4338ca;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      font-size: 12px;
+      font-weight: 900;
+      color: #4b5563;
+    }
+
+    .field input,
+    .field textarea {
+      width: 100%;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 12px;
+      padding: 11px 12px;
+      background: #fff;
+      outline: none;
+      font-size: 14px;
+      color: #111827;
+      box-sizing: border-box;
+    }
+
+    .field textarea {
+      min-height: 90px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .saved-view {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px dashed rgba(0,0,0,0.14);
+      color: #374151;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .chat-list {
       display: grid;
       gap: 10px;
-      background: #f8fafc;
     }
 
     .chat-row {
@@ -502,12 +522,24 @@
       margin-top: 6px;
       font-size: 11px;
       color: #64748b;
-      font-weight: 800;
+      font-weight: 900;
     }
 
     @media (max-width: 900px) {
       .cs-stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .winner-head {
+        grid-template-columns: 1fr;
+      }
+
+      .winner-prize {
+        text-align: left;
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -520,22 +552,18 @@
         grid-template-columns: 1fr;
       }
 
-      .input-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .cs-item-top {
-        display: block;
-      }
-
       .cs-actions,
-      .cs-item-actions {
+      .action-row {
         width: 100%;
       }
 
       .cs-btn,
       .cs-link-btn {
         flex: 1;
+      }
+
+      .chat-bubble {
+        max-width: 92%;
       }
     }
   </style>
@@ -546,7 +574,7 @@
     <section class="cs-topbar">
       <div class="cs-title-wrap">
         <h1>Lucky77 CS Winners</h1>
-        <p>Winner Game Account Info, Note, DM Message, Customer Reply History</p>
+        <p>All view မှာ Winner list သန့်သန့်ပဲပြမယ်။ Reply / Account / Note ကို Customer Reply ထဲမှာ role ခွဲပြီးပြမယ်။</p>
       </div>
 
       <div class="cs-actions">
@@ -588,7 +616,7 @@
           <input
             id="searchInput"
             type="search"
-            placeholder="Search name / username / user id / prize / note / account..."
+            placeholder="Search name / username / user id / prize..."
           />
         </div>
       </div>
@@ -609,20 +637,20 @@
 
   <div class="toast hidden" id="toast"></div>
 
-  <div class="modal-backdrop hidden" id="chatModalBackdrop"></div>
+  <div class="modal-backdrop hidden" id="replyModalBackdrop"></div>
 
-  <section class="chat-modal hidden" id="chatModal">
-    <div class="chat-modal-head">
+  <section class="reply-modal hidden" id="replyModal">
+    <div class="reply-head">
       <div>
-        <div class="chat-modal-title" id="chatModalTitle">Customer Reply</div>
-        <div class="chat-modal-sub" id="chatModalSub">—</div>
+        <div class="reply-title" id="replyModalTitle">Customer Reply</div>
+        <div class="reply-sub" id="replyModalSub">—</div>
       </div>
-      <button class="chat-close" id="chatModalClose">×</button>
+      <button class="reply-close" id="replyModalClose">×</button>
     </div>
 
-    <div class="chat-messages" id="chatMessages"></div>
+    <div class="reply-body" id="replyModalBody"></div>
   </section>
 
-  <script src="winners.js?v=cs-note-done-amount-v1"></script>
+  <script src="winners.js?v=clean-role-view-v1"></script>
 </body>
 </html>
