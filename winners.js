@@ -2,7 +2,7 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "cs-inbox-login-full-v3",
+  CACHE_BUSTER: "cs-inbox-login-full-v4",
   PAGE_SIZE: 40,
 };
 
@@ -64,15 +64,20 @@ function cssEscape(value) {
 
 function formatTime(value) {
   if (!value) return "-";
+
   const d = new Date(value);
+
   if (Number.isNaN(d.getTime())) return String(value);
+
   return d.toLocaleString();
 }
 
 function parsePrizeAmount(prize) {
   const text = String(prize || "");
   const nums = text.match(/\d+/g);
+
   if (!nums || !nums.length) return 0;
+
   return Number(nums.join("")) || 0;
 }
 
@@ -95,6 +100,7 @@ function showToast(message, type = "normal") {
   }
 
   clearTimeout(showToast.timer);
+
   showToast.timer = setTimeout(() => {
     el.toast.classList.add("hidden");
   }, 2400);
@@ -189,11 +195,14 @@ async function handleAdminLogin() {
 
     if (!ok) {
       forgetApiKey();
+
       if (error) error.textContent = "Api Code မမှန်ပါ";
+
       if (input) {
         input.value = "";
         input.focus();
       }
+
       return;
     }
 
@@ -214,18 +223,23 @@ function bindAdminLogin() {
   const input = document.getElementById("adminApiInput");
   const btn = document.getElementById("adminLoginBtn");
 
-  if (btn) btn.addEventListener("click", handleAdminLogin);
-
-  if (input) {
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") handleAdminLogin();
-    });
+  if (!input || !btn) {
+    console.warn("Login input/button not found");
+    return;
   }
+
+  btn.onclick = function () {
+    handleAdminLogin();
+  };
+
+  input.onkeydown = function (e) {
+    if (e.key === "Enter") {
+      handleAdminLogin();
+    }
+  };
 }
 
 async function requireAdminLoginBeforeLoad() {
-  bindAdminLogin();
-
   const key = getApiKey();
 
   if (!key) {
@@ -294,7 +308,10 @@ async function api(path, options = {}) {
 
     return data;
   } catch (err) {
-    if (err?.name === "AbortError") throw new Error("Request timeout");
+    if (err?.name === "AbortError") {
+      throw new Error("Request timeout");
+    }
+
     throw err;
   } finally {
     clearTimeout(timeoutId);
@@ -319,6 +336,7 @@ async function loadWinners() {
   state.winners = Array.isArray(data.winners)
     ? data.winners.map((w) => ({
         ...w,
+
         game_account: String(w.game_account || ""),
         game_phone: String(w.game_phone || ""),
         cs_note: String(w.cs_note || ""),
@@ -341,6 +359,7 @@ async function loadWinners() {
 
   applyFilter();
 }
+
 function filterMatch(w) {
   if (state.activeFilter === "pending") return !w.done;
   if (state.activeFilter === "done") return !!w.done;
@@ -392,13 +411,18 @@ function applyFilter() {
 
   if (state.activeFilter === "replied") {
     state.filtered.sort((a, b) => {
-      const au = Number(a.inbound_unread_count || 0);
-      const bu = Number(b.inbound_unread_count || 0);
+      const au = Number(a.inbound_unread_count || 0) || 0;
+      const bu = Number(b.inbound_unread_count || 0) || 0;
 
       if (au !== bu) return bu - au;
 
-      const at = new Date(a.last_message_at || a.last_reply_at || a.at || 0).getTime() || 0;
-      const bt = new Date(b.last_message_at || b.last_reply_at || b.at || 0).getTime() || 0;
+      const at =
+        new Date(a.last_message_at || a.last_reply_at || a.at || 0).getTime() ||
+        0;
+
+      const bt =
+        new Date(b.last_message_at || b.last_reply_at || b.at || 0).getTime() ||
+        0;
 
       return bt - at;
     });
@@ -406,7 +430,6 @@ function applyFilter() {
 
   state.visibleCount = CONFIG.PAGE_SIZE;
 }
-
 function renderStats() {
   const all = state.winners || [];
   const done = all.filter((x) => x.done).length;
@@ -423,7 +446,10 @@ function renderStats() {
   if (el.doneAmount) el.doneAmount.textContent = formatMoney(doneAmount);
 
   if (el.footerText) {
-    el.footerText.textContent = `${Math.min(state.visibleCount, state.filtered.length)} / ${state.filtered.length} item(s) shown`;
+    el.footerText.textContent = `${Math.min(
+      state.visibleCount,
+      state.filtered.length
+    )} / ${state.filtered.length} item(s) shown`;
   }
 }
 
@@ -439,10 +465,9 @@ function renderFilterButtons() {
     );
   }).length;
 
-  const unreadTotal = (state.winners || []).reduce(
-    (sum, w) => sum + (Number(w.inbound_unread_count || 0) || 0),
-    0
-  );
+  const unreadTotal = (state.winners || []).reduce((sum, w) => {
+    return sum + (Number(w.inbound_unread_count || 0) || 0);
+  }, 0);
 
   const filters = [
     ["all", "All"],
@@ -450,28 +475,23 @@ function renderFilterButtons() {
     ["done", "Done"],
     ["notice_pending", "Notice Pending"],
     ["notice_sent", "Notice Sent"],
-    [
-      "replied",
-      `User Reply${unreadTotal ? ` ${unreadTotal}` : replyTotal ? ` ${replyTotal}` : ""}`,
-    ],
+    ["replied", "User Reply"],
   ];
 
   el.filterRow.innerHTML = filters
     .map(([key, label]) => {
       const active = state.activeFilter === key ? "active" : "";
+
       const badge =
         key === "replied" && unreadTotal
           ? `<span class="inbox-badge">${escapeHtml(unreadTotal)}</span>`
-          : "";
-
-      const cleanLabel =
-        key === "replied"
-          ? "User Reply"
-          : label;
+          : key === "replied" && replyTotal
+            ? `<span class="inbox-badge">${escapeHtml(replyTotal)}</span>`
+            : "";
 
       return `
         <button class="filter-btn ${active}" data-filter="${escapeAttr(key)}">
-          ${escapeHtml(cleanLabel)}${badge}
+          ${escapeHtml(label)}${badge}
         </button>
       `;
     })
@@ -517,9 +537,12 @@ function statusBadges(w) {
     </div>
   `;
 }
+
 function unreadBadgeHtml(w) {
   const unread = Number(w.inbound_unread_count || 0) || 0;
+
   if (!unread) return "";
+
   return `<span class="inbox-badge">${escapeHtml(unread)}</span>`;
 }
 
@@ -552,6 +575,7 @@ function inboxPreviewHtml(w) {
         <div class="inbox-preview-role">${escapeHtml(role)}</div>
         <div class="inbox-preview-time">${escapeHtml(formatTime(at))}</div>
       </div>
+
       <div class="inbox-preview-text">${escapeHtml(text)}</div>
     </div>
   `;
@@ -582,6 +606,7 @@ function inboxMetaHtml(w) {
     </div>
   `;
 }
+
 function buildWinnerCard(w) {
   const display = w.display || w.name || (w.username ? `@${w.username}` : w.user_id);
   const tgLink = w.username ? `https://t.me/${String(w.username).replace(/^@+/, "")}` : "";
@@ -753,7 +778,6 @@ async function sendNotice(userId, prize, button) {
     state.loading = false;
   }
 }
-
 async function sendAccountRequest(userId, prize, button) {
   const uid = String(userId || "");
   const oldText = button ? button.textContent : "";
@@ -787,6 +811,10 @@ async function sendAccountRequest(userId, prize, button) {
       w.cs_status = "notice_sent";
       w.last_outbound_text = text;
       w.last_outbound_at = new Date().toISOString();
+      w.message_count = Number(w.message_count || 0) + 1;
+      w.last_message_text = text;
+      w.last_message_at = new Date().toISOString();
+      w.last_message_direction = "outbound";
     }
 
     applyFilter();
@@ -836,7 +864,9 @@ async function saveWinnerInfo(userId, button) {
       }),
     });
 
-    if (!data.ok) throw new Error(data.error || "Save failed");
+    if (!data.ok) {
+      throw new Error(data.error || "Save failed");
+    }
 
     const w = state.winners.find((x) => String(x.user_id) === uid);
 
@@ -849,6 +879,7 @@ async function saveWinnerInfo(userId, button) {
     renderReplyModalContent(uid, window.__lastReplyMessages || []);
     applyFilter();
     renderWinners();
+
     showToast("Game account info saved ✅", "success");
   } catch (err) {
     showToast(err.message || "Save failed", "error");
@@ -898,13 +929,19 @@ async function sendModalCustomerMessage(userId, button) {
       w.notice_sent = true;
       w.last_outbound_text = text;
       w.last_outbound_at = new Date().toISOString();
+      w.message_count = Number(w.message_count || 0) + 1;
+      w.last_message_text = text;
+      w.last_message_at = new Date().toISOString();
+      w.last_message_direction = "outbound";
     }
 
     if (box) box.value = "";
 
     await openReplyModal(uid, false);
+
     applyFilter();
     renderWinners();
+
     showToast("Customer ဆီ message ပို့ပြီးပါပြီ ✅", "success");
   } catch (err) {
     showToast(err.message || "Send failed", "error");
@@ -980,20 +1017,21 @@ function renderReplyModalContent(userId, messages) {
   if (!w || !el.replyModalBody) return;
 
   const display = w.display || w.name || (w.username ? `@${w.username}` : uid);
+  const unread = Number(w.inbound_unread_count || 0) || 0;
 
   el.replyModalBody.innerHTML = `
     <section class="role-section">
-<div class="role-title">
-  <div class="role-title-left">
-    <span>Customer Reply / Message History</span>
-    ${
-      Number(w.inbound_unread_count || 0)
-        ? `<span class="reply-modal-unread">${escapeHtml(w.inbound_unread_count)}</span>`
-        : ""
-    }
-  </div>
-  <span class="role-tag">Customer Inbox</span>
-</div>
+      <div class="role-title">
+        <div class="role-title-left">
+          <span>Winner Role / Customer Information</span>
+          ${
+            unread
+              ? `<span class="reply-modal-unread">${escapeHtml(unread)}</span>`
+              : ""
+          }
+        </div>
+        <span class="role-tag">Winner</span>
+      </div>
 
       <div class="saved-view">
 Winner: ${escapeHtml(display)}
@@ -1002,6 +1040,9 @@ Username: ${w.username ? "@" + escapeHtml(w.username) : "-"}
 Prize: ${escapeHtml(w.prize || "-")}
 Win Time: ${escapeHtml(formatTime(w.at))}
 Status: ${w.done ? "Done" : "Pending"}
+Messages: ${escapeHtml(w.message_count || messages.length || 0)}
+Unread: ${escapeHtml(unread)}
+Last Read: ${escapeHtml(formatTime(w.last_read_at))}
       </div>
 
       <div class="action-row">
@@ -1101,8 +1142,15 @@ Status: ${w.done ? "Done" : "Pending"}
 
     <section class="role-section">
       <div class="role-title">
-        <span>Customer Reply / Message History</span>
-        <span class="role-tag">Customer</span>
+        <div class="role-title-left">
+          <span>Customer Reply / Message History</span>
+          ${
+            unread
+              ? `<span class="reply-modal-unread">${escapeHtml(unread)}</span>`
+              : ""
+          }
+        </div>
+        <span class="role-tag">Customer Inbox</span>
       </div>
 
       <div class="chat-list">
