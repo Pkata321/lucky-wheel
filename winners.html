@@ -8,6 +8,7 @@
   />
   <title>Lucky77 CS Winners</title>
   <link rel="stylesheet" href="styles.css" />
+
   <style>
     body {
       background: #f6f7fb;
@@ -108,6 +109,30 @@
       background: #fff;
     }
 
+    .cs-filter-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .cs-filter-btn {
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: #fff;
+      color: #374151;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .cs-filter-btn.active {
+      background: linear-gradient(135deg, #7b5cff, #18d2ff);
+      color: #fff;
+      border-color: transparent;
+    }
+
     .cs-list {
       display: grid;
       gap: 12px;
@@ -174,6 +199,12 @@
       border-color: rgba(245,158,11,0.2);
     }
 
+    .cs-badge.reply {
+      background: rgba(59,130,246,0.12);
+      color: #1d4ed8;
+      border-color: rgba(59,130,246,0.2);
+    }
+
     .cs-item-actions {
       display: flex;
       gap: 10px;
@@ -183,7 +214,7 @@
 
     .cs-btn,
     .cs-link-btn {
-      height: 42px;
+      min-height: 42px;
       padding: 0 14px;
       border: none;
       border-radius: 12px;
@@ -194,6 +225,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      font-family: inherit;
     }
 
     .cs-btn.primary,
@@ -207,6 +239,17 @@
       background: #fff;
       color: #111827;
       border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .cs-link-btn.notice {
+      background: #111827;
+      color: #fff;
+    }
+
+    .cs-link-btn.danger {
+      background: rgba(224,79,106,0.12);
+      color: #be123c;
+      border: 1px solid rgba(224,79,106,0.2);
     }
 
     .cs-empty {
@@ -244,6 +287,193 @@
       display: none !important;
     }
 
+    button,
+    .cs-link-btn {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:disabled,
+    .cs-link-btn:disabled {
+      cursor: wait;
+      opacity: 0.72;
+    }
+
+    button.is-loading,
+    .cs-link-btn.is-loading {
+      position: relative;
+      pointer-events: none;
+    }
+
+    button.is-loading::after,
+    .cs-link-btn.is-loading::after {
+      content: "";
+      width: 13px;
+      height: 13px;
+      margin-left: 8px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 999px;
+      display: inline-block;
+      vertical-align: -2px;
+      animation: lucky77SpinMini 0.72s linear infinite;
+    }
+
+    @keyframes lucky77SpinMini {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ===== CS customer message box ===== */
+    .cs-message-box {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 16px;
+      background: #f8fafc;
+      border: 1px solid rgba(0,0,0,0.06);
+      display: grid;
+      gap: 10px;
+    }
+
+    .cs-message-title {
+      font-size: 13px;
+      color: #475569;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .cs-message-textarea {
+      width: 100%;
+      min-height: 100px;
+      resize: vertical;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+      background: #fff;
+      color: #111827;
+      line-height: 1.55;
+    }
+
+    .cs-message-textarea:focus {
+      border-color: rgba(123,92,255,0.5);
+      box-shadow: 0 0 0 4px rgba(123,92,255,0.08);
+    }
+
+    .cs-last-line {
+      margin-top: 8px;
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .cs-last-line strong {
+      color: #111827;
+    }
+
+    /* ===== chat modal ===== */
+    .cs-chat-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+    }
+
+    .cs-chat-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .cs-chat-panel {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: min(94vw, 680px);
+      max-height: 86vh;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border-radius: 22px;
+      border: 1px solid rgba(0,0,0,0.08);
+      box-shadow: 0 28px 80px rgba(0,0,0,0.22);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cs-chat-head {
+      padding: 16px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .cs-chat-head h3 {
+      margin: 0;
+      font-size: 20px;
+      color: #111827;
+    }
+
+    .cs-chat-head p {
+      margin: 4px 0 0;
+      color: #6b7280;
+      font-size: 13px;
+    }
+
+    .cs-chat-messages {
+      padding: 16px;
+      overflow-y: auto;
+      display: grid;
+      gap: 10px;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+    }
+
+    .cs-chat-row {
+      max-width: 88%;
+      padding: 12px 14px;
+      border-radius: 16px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 14px;
+    }
+
+    .cs-chat-row.inbound {
+      justify-self: start;
+      background: #f1f5f9;
+      color: #111827;
+      border-bottom-left-radius: 6px;
+    }
+
+    .cs-chat-row.outbound {
+      justify-self: end;
+      background: linear-gradient(135deg, #7b5cff, #18d2ff);
+      color: #fff;
+      border-bottom-right-radius: 6px;
+    }
+
+    .cs-chat-meta {
+      display: block;
+      opacity: 0.78;
+      font-size: 11px;
+      margin-bottom: 5px;
+      font-weight: 800;
+    }
+
+    .cs-chat-failed {
+      display: block;
+      margin-top: 6px;
+      color: #ffe4e6;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
     @media (max-width: 768px) {
       .cs-stats {
         grid-template-columns: 1fr;
@@ -252,15 +482,52 @@
       .cs-item-top {
         flex-direction: column;
       }
+
+      .cs-actions {
+        width: 100%;
+      }
+
+      .cs-link-btn,
+      .cs-btn {
+        flex: 1 1 auto;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .cs-shell {
+        padding: 14px;
+      }
+
+      .cs-title-wrap h1 {
+        font-size: 24px;
+      }
+
+      .cs-card {
+        padding: 14px;
+      }
+
+      .cs-chat-panel {
+        width: 96vw;
+        max-height: 88vh;
+      }
+
+      .cs-chat-row {
+        max-width: 94%;
+      }
+
+      .cs-chat-head {
+        align-items: flex-start;
+      }
     }
   </style>
 </head>
+
 <body>
   <div class="cs-shell">
     <div class="cs-topbar">
       <div class="cs-title-wrap">
         <h1>Lucky77 CS Winner List</h1>
-        <p>Customer service use only - Winner list only page</p>
+        <p>Customer service use only · Winner notice, reply history, custom DM</p>
       </div>
 
       <div class="cs-actions">
@@ -275,10 +542,12 @@
         <span>Total Winners</span>
         <strong id="totalWinners">0</strong>
       </div>
+
       <div class="cs-stat">
         <span>Done</span>
         <strong id="doneCount">0</strong>
       </div>
+
       <div class="cs-stat">
         <span>Pending</span>
         <strong id="pendingCount">0</strong>
@@ -288,8 +557,17 @@
     <div class="cs-card">
       <div class="cs-toolbar">
         <div class="cs-search">
-          <input id="searchInput" type="text" placeholder="Search name / username / id / prize" />
+          <input id="searchInput" type="text" placeholder="Search name / username / id / prize / status" />
         </div>
+      </div>
+
+      <div class="cs-filter-row">
+        <button class="cs-filter-btn active" data-filter="all" type="button">All</button>
+        <button class="cs-filter-btn" data-filter="pending" type="button">Pending</button>
+        <button class="cs-filter-btn" data-filter="done" type="button">Done</button>
+        <button class="cs-filter-btn" data-filter="notice_pending" type="button">Notice Pending</button>
+        <button class="cs-filter-btn" data-filter="notice_sent" type="button">Notice Sent</button>
+        <button class="cs-filter-btn" data-filter="user_replied" type="button">User Replied</button>
       </div>
 
       <div id="winnerList" class="cs-list"></div>
@@ -304,8 +582,28 @@
     </div>
   </div>
 
+  <!-- Customer Reply / Conversation Modal -->
+  <div id="chatModal" class="cs-chat-modal hidden">
+    <div id="chatModalBackdrop" class="cs-chat-backdrop"></div>
+
+    <div class="cs-chat-panel">
+      <div class="cs-chat-head">
+        <div>
+          <h3 id="chatModalTitle">Customer Reply</h3>
+          <p id="chatModalSub">Conversation history</p>
+        </div>
+
+        <button id="chatModalClose" class="cs-btn secondary" type="button">Close</button>
+      </div>
+
+      <div id="chatMessages" class="cs-chat-messages">
+        <div class="cs-empty">Loading...</div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden">Ready</div>
 
-  <script src="winners.js?v=cs-winners-round-timer-fix"></script>
+  <script src="winners.js?v=cs-chat-v1"></script>
 </body>
 </html>
