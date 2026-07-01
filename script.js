@@ -222,6 +222,24 @@ function forgetApiKey() {
   sessionStorage.removeItem("lucky77_admin_api_key");
 }
 
+async function publicApi(path) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
+  const separator = path.includes("?") ? "&" : "?";
+  const url = `${CONFIG.BASE_URL}${path}${separator}_=${Date.now()}&v=${encodeURIComponent(CONFIG.CACHE_BUSTER)}`;
+  try {
+    const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) throw new Error(data.error || `HTTP ${response.status}`);
+    return data;
+  } catch (err) {
+    if (err?.name === "AbortError") throw new Error("Request timeout");
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function api(path, options = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
@@ -372,9 +390,17 @@ function computeTargetRotationDeg(prizeName) {
 }
 
 async function loadHealth() {
-  state.health = await api("/health");
+  // /health is public, so the dashboard counters must load even when API key/session is wrong.
+  state.health = await publicApi("/health");
   if (state.health?.event) {
     state.event = { ...state.event, ...state.health.event, active_register_count: Number(state.health.active_register_count || 0) };
+  }
+  if (state.health) {
+    state.scan = {
+      ...state.scan,
+      status: state.health.scan_status || state.scan.status || "idle",
+      last_scan_at: state.health.last_scan_at || state.scan.last_scan_at || "",
+    };
   }
 }
 
@@ -423,13 +449,18 @@ async function loadScanStatus() {
 
 async function firstLoad() {
   await loadHealth().catch(() => { state.health = null; });
+  renderAll();
+
   await loadPrizeConfig().catch(() => {});
   await loadMembers().catch(() => { state.members = []; });
   await loadWinners().catch(() => { state.winners = []; });
   await loadHistory().catch(() => { state.history = []; });
-  await loadPool().catch(() => { state.pool = { count: 0, ids: [] }; });
+  await loadPool().catch(() => {
+    if (state.health) state.pool = { count: Number(state.health.pool || 0), ids: [] };
+    else state.pool = { count: 0, ids: [] };
+  });
   await loadScanStatus().catch(() => {
-    state.scan = { status: "idle", summary: null, last_scan_at: "" };
+    if (!state.health) state.scan = { status: "idle", summary: null, last_scan_at: "" };
   });
 
   buildWheelPrizeSegments();
@@ -439,11 +470,15 @@ async function firstLoad() {
 
 async function refreshAllData() {
   await loadHealth().catch(() => {});
+  renderAll();
+
   await loadPrizeConfig().catch(() => {});
   await loadMembers().catch(() => {});
   await loadWinners().catch(() => {});
   await loadHistory().catch(() => {});
-  await loadPool().catch(() => {});
+  await loadPool().catch(() => {
+    if (state.health) state.pool = { count: Number(state.health.pool || 0), ids: state.pool?.ids || [] };
+  });
   await loadScanStatus().catch(() => {});
   buildWheelPrizeSegments();
   drawWheel();
@@ -1530,7 +1565,10 @@ function bindEvents() {
   el.refreshBtn?.addEventListener("click", async () => {
     try {
       el.refreshBtn.disabled = true;
-      await refreshAllData();
+      await loadHealth();
+      renderAll();
+      // Then load protected/detail data in the background. If API key is wrong, counters still stay visible.
+      refreshAllData().catch((err) => showToast(err.message || "Refresh detail failed", "error"));
       showToast("Refreshed", "success");
     } catch (err) {
       showToast(err.message || "Refresh failed", "error");
