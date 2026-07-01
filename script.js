@@ -2,7 +2,7 @@ const CONFIG = {
   BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
   API_KEY: "",
   TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "premium-v4-urgent-speed-notice-fix",
+  CACHE_BUSTER: "admin-login-spin-v1",
 };
 
 const SETTINGS_KEY = "lucky77_premium_settings_full_v1";
@@ -20,12 +20,7 @@ const defaultSettings = {
   accent1: "#7b5cff",
   accent2: "#18d2ff",
   arrowColor: "#ffe6a8",
-  // Total time from wheel start to winner popup. Default: 6 seconds per person.
-  spinRoundMs: 6000,
-  spinDurationMs: 5600, // legacy fallback
-  autoNextDelayMs: 0,
-  winnerPopupAutoCloseMs: 700,
-  autoNoticeEnabled: true,
+  spinDurationMs: 5600,
 };
 
 const state = {
@@ -35,11 +30,9 @@ const state = {
   history: [],
   pool: { count: 0, ids: [] },
   scan: { status: "idle", summary: null, last_scan_at: "" },
-  event: { open: true, limit: 0, name: "Lucky77 Event", active_register_count: 0 },
   spinning: false,
   autoSpinning: false,
   autoSpinStopRequested: false,
-  autoSpinRunId: 0,
   wheelDeg: 0,
   spinLoopTimer: null,
   tickTimer: null,
@@ -67,6 +60,7 @@ const el = {
   autoSpinBtn: document.getElementById("autoSpinBtn"),
   restartBtn: document.getElementById("restartBtn"),
   refreshBtn: document.getElementById("refreshBtn"),
+  logoutBtn: document.getElementById("logoutBtn"),
 
   winnerFlash: document.getElementById("winnerFlash"),
   winnerFlashName: document.getElementById("winnerFlashName"),
@@ -101,10 +95,6 @@ const el = {
   accent1Input: document.getElementById("accent1Input"),
   accent2Input: document.getElementById("accent2Input"),
   arrowColorInput: document.getElementById("arrowColorInput"),
-  spinRoundSecondsInput: document.getElementById("spinRoundSecondsInput"),
-  autoNextDelaySecondsInput: document.getElementById("autoNextDelaySecondsInput"),
-  winnerPopupCloseSecondsInput: document.getElementById("winnerPopupCloseSecondsInput"),
-  autoNoticeEnabledInput: document.getElementById("autoNoticeEnabledInput"),
 
   bannerTitleInput: document.getElementById("bannerTitleInput"),
   bannerSubInput: document.getElementById("bannerSubInput"),
@@ -124,14 +114,6 @@ const el = {
   bgMusicPlayer: document.getElementById("bgMusicPlayer"),
 
   exportHistoryBtn: document.getElementById("exportHistoryBtn"),
-  eventOpenToggle: document.getElementById("eventOpenToggle"),
-  eventNameInput: document.getElementById("eventNameInput"),
-  eventLimitInput: document.getElementById("eventLimitInput"),
-  eventStatusText: document.getElementById("eventStatusText"),
-  saveEventBtn: document.getElementById("saveEventBtn"),
-  backupExportBtn: document.getElementById("backupExportBtn"),
-  backupRestoreInput: document.getElementById("backupRestoreInput"),
-  backupRestoreBtn: document.getElementById("backupRestoreBtn"),
 
   winnerPopup: document.getElementById("winnerPopup"),
   winnerPopupBackdrop: document.getElementById("winnerPopupBackdrop"),
@@ -208,39 +190,162 @@ function showToast(message, type = "normal") {
   }, 2600);
 }
 
+const ADMIN_KEY_STORAGE = "lucky77_admin_api_key";
+
 function getApiKey() {
-  let key = sessionStorage.getItem("lucky77_admin_api_key") || "";
-  if (!key) {
-    key = window.prompt("Admin API key") || "";
-    key = key.trim();
-    if (key) sessionStorage.setItem("lucky77_admin_api_key", key);
-  }
-  return key;
+  return sessionStorage.getItem(ADMIN_KEY_STORAGE) || "";
+}
+
+function setApiKey(key) {
+  sessionStorage.setItem(ADMIN_KEY_STORAGE, String(key || "").trim());
 }
 
 function forgetApiKey() {
-  sessionStorage.removeItem("lucky77_admin_api_key");
+  sessionStorage.removeItem(ADMIN_KEY_STORAGE);
 }
 
-async function publicApi(path) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
-  const separator = path.includes("?") ? "&" : "?";
-  const url = `${CONFIG.BASE_URL}${path}${separator}_=${Date.now()}&v=${encodeURIComponent(CONFIG.CACHE_BUSTER)}`;
+function showLoginScreen(message = "") {
+  const login = document.getElementById("adminLoginScreen");
+  const app = document.getElementById("adminApp");
+  const error = document.getElementById("adminLoginError");
+
+  if (login) login.classList.remove("hidden");
+  if (app) app.classList.add("hidden");
+  if (error) error.textContent = message || "";
+}
+
+function showAdminApp() {
+  const login = document.getElementById("adminLoginScreen");
+  const app = document.getElementById("adminApp");
+  const error = document.getElementById("adminLoginError");
+
+  if (login) login.classList.add("hidden");
+  if (app) app.classList.remove("hidden");
+  if (error) error.textContent = "";
+}
+
+async function testAdminApiKey(key) {
+  const cleanKey = String(key || "").trim();
+  if (!cleanKey) return false;
+
+  const health = await fetch(`${CONFIG.BASE_URL}/health?_=${Date.now()}`, {
+    cache: "no-store",
+  });
+
+  if (!health.ok) {
+    throw new Error("Backend connection failed");
+  }
+
+  const check = await fetch(`${CONFIG.BASE_URL}/config?_=${Date.now()}`, {
+    cache: "no-store",
+    headers: {
+      "x-api-key": cleanKey,
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    },
+  });
+
+  if (check.status === 401) return false;
+  if (!check.ok) throw new Error("Login check failed");
+
+  const data = await check.json().catch(() => ({}));
+  return data.ok !== false;
+}
+
+async function handleAdminLogin() {
+  const input = document.getElementById("adminApiInput");
+  const btn = document.getElementById("adminLoginBtn");
+  const error = document.getElementById("adminLoginError");
+
+  const key = String(input?.value || "").trim();
+
+  if (!key) {
+    if (error) error.textContent = "Admin Api Code ထည့်ပါ";
+    return;
+  }
+
   try {
-    const response = await fetch(url, { cache: "no-store", signal: controller.signal });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data.ok === false) throw new Error(data.error || `HTTP ${response.status}`);
-    return data;
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Checking...";
+    }
+
+    if (error) error.textContent = "";
+
+    const ok = await testAdminApiKey(key);
+
+    if (!ok) {
+      forgetApiKey();
+      if (error) error.textContent = "Api Code မမှန်ပါ";
+      if (input) {
+        input.value = "";
+        input.focus();
+      }
+      return;
+    }
+
+    setApiKey(key);
+    showAdminApp();
+
+    await firstLoad();
   } catch (err) {
-    if (err?.name === "AbortError") throw new Error("Request timeout");
-    throw err;
+    if (error) error.textContent = err.message || "Login failed";
   } finally {
-    clearTimeout(timeoutId);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Login";
+    }
+  }
+}
+
+function bindAdminLogin() {
+  const input = document.getElementById("adminApiInput");
+  const btn = document.getElementById("adminLoginBtn");
+
+  if (btn) btn.addEventListener("click", handleAdminLogin);
+
+  if (input) {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleAdminLogin();
+    });
+  }
+}
+
+async function requireAdminLoginBeforeLoad() {
+  bindAdminLogin();
+
+  const key = getApiKey();
+
+  if (!key) {
+    showLoginScreen();
+    return false;
+  }
+
+  try {
+    const ok = await testAdminApiKey(key);
+
+    if (!ok) {
+      forgetApiKey();
+      showLoginScreen("Api Code မမှန်ပါ");
+      return false;
+    }
+
+    showAdminApp();
+    return true;
+  } catch (_) {
+    showLoginScreen("Backend connection failed");
+    return false;
   }
 }
 
 async function api(path, options = {}) {
+  const key = getApiKey();
+
+  if (!key) {
+    showLoginScreen();
+    throw new Error("Login required");
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
 
@@ -252,7 +357,7 @@ async function api(path, options = {}) {
       ...options,
       cache: "no-store",
       headers: {
-        "x-api-key": getApiKey(),
+        "x-api-key": key,
         "Cache-Control": "no-cache",
         Pragma: "no-cache",
         ...(options.method && options.method !== "GET"
@@ -267,7 +372,8 @@ async function api(path, options = {}) {
 
     if (response.status === 401) {
       forgetApiKey();
-      throw new Error("Unauthorized: Enter API key again");
+      showLoginScreen("Api Code မမှန်ပါ");
+      throw new Error("Unauthorized");
     }
 
     if (!response.ok || data.ok === false) {
@@ -358,7 +464,7 @@ function drawWheel() {
     while (ctx.measureText(shown).width > maxWidth && shown.length > 6) {
       shown = shown.slice(0, -1);
     }
-    if (shown !== text) shown = shown.slice(0, -1) + "â¦";
+    if (shown !== text) shown = shown.slice(0, -1) + "…";
 
     ctx.fillText(shown, radius - 34, 8);
     ctx.restore();
@@ -390,27 +496,13 @@ function computeTargetRotationDeg(prizeName) {
 }
 
 async function loadHealth() {
-  // /health is public, so the dashboard counters must load even when API key/session is wrong.
-  state.health = await publicApi("/health");
-  if (state.health?.event) {
-    state.event = { ...state.event, ...state.health.event, active_register_count: Number(state.health.active_register_count || 0) };
-  }
-  if (state.health) {
-    state.scan = {
-      ...state.scan,
-      status: state.health.scan_status || state.scan.status || "idle",
-      last_scan_at: state.health.last_scan_at || state.scan.last_scan_at || "",
-    };
-  }
+  state.health = await api("/health");
 }
 
 async function loadPrizeConfig() {
   const data = await api("/config");
   if (data?.prize_source && String(data.prize_source).trim() && el.prizeText) {
     el.prizeText.value = String(data.prize_source).trim();
-  }
-  if (data?.event) {
-    state.event = { ...state.event, ...data.event, active_register_count: Number(data.active_register_count || 0) };
   }
 }
 
@@ -449,18 +541,13 @@ async function loadScanStatus() {
 
 async function firstLoad() {
   await loadHealth().catch(() => { state.health = null; });
-  renderAll();
-
   await loadPrizeConfig().catch(() => {});
   await loadMembers().catch(() => { state.members = []; });
   await loadWinners().catch(() => { state.winners = []; });
   await loadHistory().catch(() => { state.history = []; });
-  await loadPool().catch(() => {
-    if (state.health) state.pool = { count: Number(state.health.pool || 0), ids: [] };
-    else state.pool = { count: 0, ids: [] };
-  });
+  await loadPool().catch(() => { state.pool = { count: 0, ids: [] }; });
   await loadScanStatus().catch(() => {
-    if (!state.health) state.scan = { status: "idle", summary: null, last_scan_at: "" };
+    state.scan = { status: "idle", summary: null, last_scan_at: "" };
   });
 
   buildWheelPrizeSegments();
@@ -470,15 +557,11 @@ async function firstLoad() {
 
 async function refreshAllData() {
   await loadHealth().catch(() => {});
-  renderAll();
-
   await loadPrizeConfig().catch(() => {});
   await loadMembers().catch(() => {});
   await loadWinners().catch(() => {});
   await loadHistory().catch(() => {});
-  await loadPool().catch(() => {
-    if (state.health) state.pool = { count: Number(state.health.pool || 0), ids: state.pool?.ids || [] };
-  });
+  await loadPool().catch(() => {});
   await loadScanStatus().catch(() => {});
   buildWheelPrizeSegments();
   drawWheel();
@@ -533,18 +616,6 @@ function renderHealth() {
   else el.poolEmptyText.classList.add("hidden");
 }
 
-function renderEventControl() {
-  const e = state.event || {};
-  if (el.eventOpenToggle) el.eventOpenToggle.checked = e.open !== false;
-  if (el.eventNameInput && document.activeElement !== el.eventNameInput) el.eventNameInput.value = e.name || "Lucky77 Event";
-  if (el.eventLimitInput && document.activeElement !== el.eventLimitInput) el.eventLimitInput.value = Number(e.limit || 0);
-  if (el.eventStatusText) {
-    const count = Number(e.active_register_count || 0);
-    const limit = Number(e.limit || 0);
-    el.eventStatusText.textContent = `${e.open !== false ? "OPEN" : "CLOSED"} - Registered ${count}${limit ? ` / ${limit}` : ""} - Memory kept after event restart`;
-  }
-}
-
 function renderScan() {
   const s = state.scan || {};
   const summary = s.summary || null;
@@ -557,7 +628,7 @@ function renderScan() {
   if (!el.scanSummaryText) return;
   if (summary) {
     el.scanSummaryText.textContent =
-      `Active ${summary.active ?? 0} - Left ${summary.left ?? 0} - Needs Register ${summary.needs_register ?? 0} - Pool ${summary.pool ?? 0}`;
+      `Active ${summary.active ?? 0} · Left ${summary.left ?? 0} · Pool ${summary.pool ?? 0}`;
   } else if (s.last_scan_at) {
     el.scanSummaryText.textContent = `Last scan ${formatTime(s.last_scan_at)}`;
   } else {
@@ -577,212 +648,231 @@ function matchesSearch(fields, q) {
     .toLowerCase()
     .includes(q);
 }
-
-function debounce(fn, delay = 140) {
-  let timer = null;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), delay);
-  };
-}
-
-const debouncedRenderAll = debounce(renderAll, 120);
-
-function renderChunked(listEl, htmlItems, emptyHtml, chunkSize = 40) {
-  if (!listEl) return;
-  listEl.innerHTML = "";
-  if (!htmlItems.length) {
-    listEl.innerHTML = emptyHtml;
-    return;
-  }
-  let index = 0;
-  const append = () => {
-    listEl.insertAdjacentHTML("beforeend", htmlItems.slice(index, index + chunkSize).join(""));
-    index += chunkSize;
-    if (index < htmlItems.length) requestAnimationFrame(append);
-  };
-  append();
+function memberStatusText(m) {
+  if (m.removed) return "removed";
+  if (m.rejoin_required) return "rejoin required";
+  if (!m.active) return "left";
+  if (m.isWinner) return "winner";
+  return "active";
 }
 
 function renderMembers() {
-  if (!el.memberList || !el.membersCountText) return;
-
   const q = getSearchQuery();
-  const showRemoved = !!el.showRemovedToggle?.checked;
 
-  const filtered = (state.members || []).filter((m) => {
-    if (!showRemoved && m.removed) return false;
-    if (!q) return true;
-    return matchesSearch([
-      m.display,
-      m.name,
-      m.username,
-      m.id,
-      m.left_reason,
-      m.status,
-      m.isWinner ? "winner" : "",
-    ], q);
-  });
+  const rows = (state.members || []).filter((m) =>
+    matchesSearch(
+      [
+        m.id,
+        m.name,
+        m.username,
+        m.display,
+        m.status,
+        m.left_reason,
+      ],
+      q
+    )
+  );
 
-  el.membersCountText.textContent = `${filtered.length} users`;
+  if (el.membersCountText) {
+    el.membersCountText.textContent = `${rows.length} users`;
+  }
 
-  const items = filtered.map((m) => {
-    const statusText = m.removed ? "removed" : m.active ? "active" : "left";
-    const statusClass = m.removed ? "removed" : m.rejoin_required ? "left" : m.active ? "active" : "left";
+  if (!el.memberList) return;
 
-    return `
-      <div class="item-card">
-        <div class="item-top">
-          <div>
-            <div class="item-title">${escapeHtml(m.display || m.id)}</div>
-            <div class="item-sub">
-              ID: ${escapeHtml(m.id)} - ${m.username ? "@" + escapeHtml(m.username) : "no username"}
+  if (!rows.length) {
+    el.memberList.innerHTML = `<div class="empty-list">No members found</div>`;
+    return;
+  }
+
+  el.memberList.innerHTML = rows
+    .map((m) => {
+      const username = m.username ? `@${escapeHtml(m.username)}` : "-";
+      const status = memberStatusText(m);
+
+      return `
+        <div class="list-item">
+          <div class="list-main">
+            <div class="list-title">${escapeHtml(m.display || m.name || m.id)}</div>
+            <div class="list-sub">
+              ID: ${escapeHtml(m.id)} · Username: ${username} · Status: ${escapeHtml(status)}
             </div>
           </div>
-          <div class="badge ${statusClass}">${escapeHtml(statusText)}</div>
-        </div>
 
-        <div class="badges">
-          ${m.isWinner ? `<span class="badge winner">winner</span>` : ""}
-          ${m.dm_ready ? `<span class="badge active">dm ready</span>` : `<span class="badge left">dm off</span>`}
-          ${m.registered_at ? `<span class="badge">reg ${escapeHtml(formatTime(m.registered_at))}</span>` : ""}
-          ${m.left_at ? `<span class="badge">left ${escapeHtml(formatTime(m.left_at))}</span>` : ""}
+          <div class="list-meta">
+            ${m.dm_ready ? "DM Ready" : "DM Not Ready"}
+          </div>
         </div>
-      </div>
-    `;
-  });
-
-  renderChunked(el.memberList, items, `<div class="empty">No members found</div>`);
+      `;
+    })
+    .join("");
 }
 
 function renderWinners() {
-  if (!el.winnerList || !el.winnersCountText) return;
-
   const q = getSearchQuery();
-  const winners = (state.winners || []).filter((w) =>
-    matchesSearch([
-      w.turn,
-      w.user_id,
-      w.name,
-      w.username,
-      w.display,
-      w.prize,
-      w.done ? "done" : "pending",
-      w.notice_sent ? "notice sent" : "notice pending",
-    ], q)
+
+  const rows = (state.winners || []).filter((w) =>
+    matchesSearch(
+      [
+        w.turn,
+        w.user_id,
+        w.name,
+        w.username,
+        w.display,
+        w.prize,
+        w.done ? "done" : "pending",
+      ],
+      q
+    )
   );
-  el.winnersCountText.textContent = q
-    ? `${winners.length} / ${(state.winners || []).length} winners`
-    : `${winners.length} winners`;
 
-  const items = winners.map((w) => {
-    const username = String(w.username || "").replace(/^@+/, "");
+  if (el.winnersCountText) {
+    el.winnersCountText.textContent = `${rows.length} winners`;
+  }
 
-    return `
-      <div class="item-card">
-        <div class="item-top">
-          <div>
-            <div class="item-title">#${escapeHtml(w.turn)} - ${escapeHtml(w.display || w.user_id)}</div>
-            <div class="item-sub">
-              Prize: ${escapeHtml(w.prize || "-")} - ${escapeHtml(formatTime(w.at))}
+  if (!el.winnerList) return;
+
+  if (!rows.length) {
+    el.winnerList.innerHTML = `<div class="empty-list">No winners found</div>`;
+    return;
+  }
+
+  el.winnerList.innerHTML = rows
+    .map((w) => {
+      const display =
+        w.display ||
+        w.name ||
+        (w.username ? `@${w.username}` : w.user_id || "-");
+
+      return `
+        <div class="list-item winner-row">
+          <div class="list-main">
+            <div class="list-title">
+              #${escapeHtml(w.turn || "-")} · ${escapeHtml(display)}
+            </div>
+
+            <div class="list-sub">
+              Prize: <b>${escapeHtml(w.prize || "-")}</b>
+              · ID: ${escapeHtml(w.user_id || "-")}
+              · Username: ${w.username ? "@" + escapeHtml(w.username) : "-"}
+              · Time: ${escapeHtml(formatTime(w.at))}
             </div>
           </div>
-          <div class="badge ${w.done ? "active" : "left"}">${w.done ? "done" : "pending"}</div>
-        </div>
 
-        <div class="badges">
-          ${w.notice_sent ? `<span class="badge active">notice sent</span>` : `<span class="badge left">notice pending</span>`}
-          ${username ? `<span class="badge">@${escapeHtml(username)}</span>` : ""}
-          ${w.done_at ? `<span class="badge">done ${escapeHtml(formatTime(w.done_at))}</span>` : ""}
+          <div class="list-meta">
+            ${w.done ? "Done ✅" : "Pending"}
+          </div>
         </div>
-
-        <div class="item-actions">
-          ${username ? `<button class="small-btn telegram" data-tg-user="${escapeHtml(username)}">Telegram</button>` : ""}
-          <button class="small-btn notice" data-notice-user="${escapeHtml(w.user_id)}" data-notice-prize="${escapeHtml(w.prize || "")}">Notice</button>
-          <button class="small-btn done" data-done-user="${escapeHtml(w.user_id)}">${w.done ? "Undo Done" : "Done"}</button>
-        </div>
-      </div>
-    `;
-  });
-
-  renderChunked(el.winnerList, items, `<div class="empty">No winners found</div>`);
+      `;
+    })
+    .join("");
 }
 
 function renderHistory() {
-  if (!el.historyList || !el.historyCountText) return;
-
   const q = getSearchQuery();
-  const history = (state.history || []).filter((h) => {
-    const winner = h?.winner || {};
-    return matchesSearch([
-      h.turn,
-      h.prize,
-      h.at,
-      winner.id,
-      winner.name,
-      winner.username,
-      winner.display,
-      h.display,
-      h.user_id,
-    ], q);
+
+  const rows = (state.history || []).filter((h) => {
+    const w = h.winner || {};
+    return matchesSearch(
+      [
+        h.turn,
+        h.prize,
+        h.at,
+        w.id,
+        w.name,
+        w.username,
+        w.display,
+      ],
+      q
+    );
   });
-  el.historyCountText.textContent = q
-    ? `${history.length} / ${(state.history || []).length} logs`
-    : `${history.length} logs`;
 
-  const items = history.map((h) => {
-    const winnerDisplay =
-      h?.winner?.display ||
-      h?.winner?.name ||
-      h?.winner?.username ||
-      h?.winner?.id ||
-      h?.display ||
-      h?.user_id ||
-      "-";
+  if (el.historyCountText) {
+    el.historyCountText.textContent = `${rows.length} logs`;
+  }
 
-    return `
-      <div class="item-card">
-        <div class="item-top">
-          <div>
-            <div class="item-title">#${escapeHtml(h.turn || "-")} - ${escapeHtml(winnerDisplay)}</div>
-            <div class="item-sub">
-              Prize: ${escapeHtml(h.prize || "-")} - ${escapeHtml(formatTime(h.at))}
+  if (!el.historyList) return;
+
+  if (!rows.length) {
+    el.historyList.innerHTML = `<div class="empty-list">No history found</div>`;
+    return;
+  }
+
+  el.historyList.innerHTML = rows
+    .map((h) => {
+      const w = h.winner || {};
+      const display =
+        w.display ||
+        w.name ||
+        (w.username ? `@${w.username}` : w.id || "-");
+
+      return `
+        <div class="list-item history-row">
+          <div class="list-main">
+            <div class="list-title">
+              #${escapeHtml(h.turn || "-")} · ${escapeHtml(display)}
+            </div>
+
+            <div class="list-sub">
+              Won: <b>${escapeHtml(h.prize || "-")}</b>
+              · ID: ${escapeHtml(w.id || "-")}
+              · ${escapeHtml(formatTime(h.at))}
             </div>
           </div>
-          <div class="badge">history</div>
-        </div>
-      </div>
-    `;
-  });
 
-  renderChunked(el.historyList, items, `<div class="empty">No history found</div>`);
+          <div class="list-meta">History</div>
+        </div>
+      `;
+    })
+    .join("");
 }
 
 function renderAll() {
   renderHealth();
   renderScan();
-  renderEventControl();
   renderMembers();
   renderWinners();
   renderHistory();
+  updateButtons();
+}
+
+function updateButtons() {
+  const poolCount = Number(state.pool?.count || state.health?.pool || 0);
+  const prizeCount = Number(state.health?.remaining_prizes || 0);
+
+  if (el.spinBtn) {
+    el.spinBtn.disabled = state.spinning || poolCount <= 0 || prizeCount <= 0;
+  }
+
+  if (el.autoSpinBtn) {
+    if (state.autoSpinning) {
+      el.autoSpinBtn.textContent = "STOP AUTO";
+      el.autoSpinBtn.classList.add("danger-outline");
+    } else {
+      el.autoSpinBtn.textContent = "AUTO SPIN";
+      el.autoSpinBtn.classList.remove("danger-outline");
+    }
+  }
 }
 
 function showSection(section) {
   state.currentSection = section;
 
-  const allSections = [
-    el.liveDashboardSection,
-    el.prizeBuilderSection,
-    el.listsSection,
-  ];
+  const map = {
+    wheel: el.wheelHomeSection,
+    live: el.liveDashboardSection,
+    prize: el.prizeBuilderSection,
+    lists: el.listsSection,
+  };
 
-  allSections.forEach((node) => node?.classList.add("hidden"));
+  Object.values(map).forEach((node) => {
+    if (node) node.classList.add("hidden");
+  });
 
-  if (section === "live") el.liveDashboardSection?.classList.remove("hidden");
-  if (section === "prize") el.prizeBuilderSection?.classList.remove("hidden");
-  if (section === "lists") el.listsSection?.classList.remove("hidden");
+  if (map[section]) {
+    map[section].classList.remove("hidden");
+  }
 
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  closeQuickMenu();
 }
 
 function openSettings() {
@@ -801,70 +891,27 @@ function closeQuickMenu() {
   el.quickMenuDrawer?.classList.remove("open");
 }
 
-async function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result || ""));
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
+function applySettingsToUi() {
+  document.body.dataset.theme = settings.theme || "white";
 
-function clampNumber(value, min, max, fallback) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
+  document.documentElement.style.setProperty("--custom-bg", settings.bgColor);
+  document.documentElement.style.setProperty("--custom-card", settings.cardColor);
+  document.documentElement.style.setProperty("--accent-1", settings.accent1);
+  document.documentElement.style.setProperty("--accent-2", settings.accent2);
+  document.documentElement.style.setProperty("--arrow-color", settings.arrowColor);
 
-function getSpinRoundMs() {
-  const raw = settings.spinRoundMs ?? settings.spinDurationMs ?? defaultSettings.spinRoundMs;
-  return Math.round(clampNumber(raw, 3000, 20000, defaultSettings.spinRoundMs));
-}
-
-function getAutoNextDelayMs() {
-  const raw = settings.autoNextDelayMs ?? defaultSettings.autoNextDelayMs;
-  return Math.round(clampNumber(raw, 0, 10000, defaultSettings.autoNextDelayMs));
-}
-
-function getWinnerPopupAutoCloseMs() {
-  const raw = settings.winnerPopupAutoCloseMs ?? defaultSettings.winnerPopupAutoCloseMs;
-  return Math.round(clampNumber(raw, 500, 15000, defaultSettings.winnerPopupAutoCloseMs));
-}
-
-function secondsFromMs(ms) {
-  const n = Number(ms || 0) / 1000;
-  return Number.isFinite(n) ? String(Number(n.toFixed(1))) : "";
-}
-
-function applyCustomColors() {
-  document.documentElement.style.setProperty("--bg", settings.bgColor || defaultSettings.bgColor);
-  document.documentElement.style.setProperty("--card-solid", settings.cardColor || defaultSettings.cardColor);
-  document.documentElement.style.setProperty("--bg-soft", settings.cardColor || defaultSettings.cardColor);
-  document.documentElement.style.setProperty("--primary-1", settings.accent1 || defaultSettings.accent1);
-  document.documentElement.style.setProperty("--primary-2", settings.accent2 || defaultSettings.accent2);
-  document.documentElement.style.setProperty("--arrow-color", settings.arrowColor || defaultSettings.arrowColor);
-}
-
-function applySettingsToUI() {
-  document.documentElement.setAttribute("data-theme", settings.theme || "white");
-  applyCustomColors();
-
-  if (el.bannerTitleText) el.bannerTitleText.textContent = settings.bannerTitle || defaultSettings.bannerTitle;
-  if (el.bannerSubText) el.bannerSubText.textContent = settings.bannerSub || defaultSettings.bannerSub;
+  if (el.themeSelect) el.themeSelect.value = settings.theme;
+  if (el.bgColorInput) el.bgColorInput.value = settings.bgColor;
+  if (el.cardColorInput) el.cardColorInput.value = settings.cardColor;
+  if (el.accent1Input) el.accent1Input.value = settings.accent1;
+  if (el.accent2Input) el.accent2Input.value = settings.accent2;
+  if (el.arrowColorInput) el.arrowColorInput.value = settings.arrowColor;
 
   if (el.bannerTitleInput) el.bannerTitleInput.value = settings.bannerTitle || "";
   if (el.bannerSubInput) el.bannerSubInput.value = settings.bannerSub || "";
-  if (el.themeSelect) el.themeSelect.value = settings.theme || "white";
 
-  if (el.bgColorInput) el.bgColorInput.value = settings.bgColor || defaultSettings.bgColor;
-  if (el.cardColorInput) el.cardColorInput.value = settings.cardColor || defaultSettings.cardColor;
-  if (el.accent1Input) el.accent1Input.value = settings.accent1 || defaultSettings.accent1;
-  if (el.accent2Input) el.accent2Input.value = settings.accent2 || defaultSettings.accent2;
-  if (el.arrowColorInput) el.arrowColorInput.value = settings.arrowColor || defaultSettings.arrowColor;
-  if (el.spinRoundSecondsInput) el.spinRoundSecondsInput.value = secondsFromMs(getSpinRoundMs());
-  if (el.autoNextDelaySecondsInput) el.autoNextDelaySecondsInput.value = secondsFromMs(getAutoNextDelayMs());
-  if (el.winnerPopupCloseSecondsInput) el.winnerPopupCloseSecondsInput.value = secondsFromMs(getWinnerPopupAutoCloseMs());
-  if (el.autoNoticeEnabledInput) el.autoNoticeEnabledInput.checked = settings.autoNoticeEnabled !== false;
+  if (el.bannerTitleText) el.bannerTitleText.textContent = settings.bannerTitle || "Lucky77 Event";
+  if (el.bannerSubText) el.bannerSubText.textContent = settings.bannerSub || "Spin & Win premium prizes";
 
   if (settings.topLogo && el.brandLogoImg && el.brandLogoFallback) {
     el.brandLogoImg.src = settings.topLogo;
@@ -886,499 +933,388 @@ function applySettingsToUI() {
 
   if (settings.musicDataUrl && el.bgMusicPlayer) {
     el.bgMusicPlayer.src = settings.musicDataUrl;
+    el.bgMusicPlayer.loop = true;
   }
 }
 
-function playWinnerTone() {
+function saveSettingsFromUi() {
+  settings.theme = el.themeSelect?.value || "white";
+  settings.bgColor = el.bgColorInput?.value || defaultSettings.bgColor;
+  settings.cardColor = el.cardColorInput?.value || defaultSettings.cardColor;
+  settings.accent1 = el.accent1Input?.value || defaultSettings.accent1;
+  settings.accent2 = el.accent2Input?.value || defaultSettings.accent2;
+  settings.arrowColor = el.arrowColorInput?.value || defaultSettings.arrowColor;
+  settings.bannerTitle = el.bannerTitleInput?.value || defaultSettings.bannerTitle;
+  settings.bannerSub = el.bannerSubInput?.value || defaultSettings.bannerSub;
+
+  persistSettings();
+  applySettingsToUi();
+  showToast("Settings saved ✅", "success");
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("File read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleTopLogoFile(file) {
+  if (!file) return;
+  settings.topLogo = await readFileAsDataUrl(file);
+  persistSettings();
+  applySettingsToUi();
+}
+
+async function handleWheelLogoFile(file) {
+  if (!file) return;
+  settings.wheelLogo = await readFileAsDataUrl(file);
+  persistSettings();
+  applySettingsToUi();
+}
+
+async function handleMusicFile(file) {
+  if (!file) return;
+  settings.musicDataUrl = await readFileAsDataUrl(file);
+  settings.musicOn = true;
+  persistSettings();
+  applySettingsToUi();
+  playMusic();
+}
+
+function playMusic() {
+  if (!el.bgMusicPlayer || !settings.musicDataUrl) {
+    showToast("Music file မရှိသေးပါ", "error");
+    return;
+  }
+
+  settings.musicOn = true;
+  persistSettings();
+
+  el.bgMusicPlayer
+    .play()
+    .then(() => showToast("Music ON ✅", "success"))
+    .catch(() => showToast("Browser က Music ကို block လုပ်ထားပါတယ်", "error"));
+}
+
+function stopMusic() {
+  settings.musicOn = false;
+  persistSettings();
+
+  if (el.bgMusicPlayer) {
+    el.bgMusicPlayer.pause();
+  }
+
+  showToast("Music OFF", "success");
+}
+
+function playTickSound() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const notes = [880, 1320, 1760];
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.value = freq;
-      gain.gain.value = 0.06;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      const start = ctx.currentTime + i * 0.12;
-      osc.start(start);
-      osc.stop(start + 0.12);
-    });
-  } catch {}
+    if (!window.AudioContext && !window.webkitAudioContext) return;
+
+    if (!state.audioCtx) {
+      state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    const ctx = state.audioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.frequency.value = 760;
+    gain.gain.value = 0.045;
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.035);
+  } catch (_) {}
 }
 
-function launchConfetti() {
-  if (!el.confettiLayer) return;
+function startSpinLoopVisual() {
+  stopSpinLoopVisual();
 
-  el.confettiLayer.innerHTML = "";
-  const colors = ["#ff5a7d", "#ffd166", "#7b5cff", "#18d2ff", "#1bb36b", "#ff8fab"];
-  const count = 70;
+  state.spinLoopTimer = setInterval(() => {
+    state.wheelDeg += state.spinLoopDegStep;
+    if (el.wheelCanvas) {
+      el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
+    }
+  }, 28);
 
-  for (let i = 0; i < count; i++) {
-    const node = document.createElement("div");
-    node.className = "confetti";
-    node.style.left = `${Math.random() * 100}%`;
-    node.style.background = colors[Math.floor(Math.random() * colors.length)];
-    node.style.animationDuration = `${2.4 + Math.random() * 2.2}s`;
-    node.style.animationDelay = `${Math.random() * 0.4}s`;
-    node.style.transform = `rotate(${Math.random() * 180}deg)`;
-    el.confettiLayer.appendChild(node);
+  state.tickTimer = setInterval(playTickSound, 88);
+}
+
+function stopSpinLoopVisual() {
+  if (state.spinLoopTimer) {
+    clearInterval(state.spinLoopTimer);
+    state.spinLoopTimer = null;
   }
 
-  setTimeout(() => {
-    if (el.confettiLayer) el.confettiLayer.innerHTML = "";
-  }, 4800);
-}
-
-function clearAutoCloseTimer() {
-  if (state.autoCloseTimer) {
-    clearTimeout(state.autoCloseTimer);
-    state.autoCloseTimer = null;
-  }
-}
-
-function autoCloseWinnerPopup(delayMs = 3000) {
-  clearAutoCloseTimer();
-  state.autoCloseTimer = setTimeout(() => {
-    state.autoCloseTimer = null;
-    hideWinnerPopup();
-  }, delayMs);
-}
-
-function showWinnerPopup(name, prize) {
-  clearAutoCloseTimer();
-  if (el.winnerPopupName) el.winnerPopupName.textContent = name || "-";
-  if (el.winnerPopupPrize) el.winnerPopupPrize.textContent = prize || "-";
-  if (el.winnerPopup) el.winnerPopup.classList.remove("hidden");
-  launchConfetti();
-  playWinnerTone();
-}
-
-function hideWinnerPopup() {
-  clearAutoCloseTimer();
-  if (el.winnerPopup) el.winnerPopup.classList.add("hidden");
-  if (el.confettiLayer) el.confettiLayer.innerHTML = "";
-}
-
-function getAudioContext() {
-  try {
-    if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (state.audioCtx.state === "suspended") state.audioCtx.resume().catch(() => {});
-    return state.audioCtx;
-  } catch {
-    return null;
-  }
-}
-
-function playTickTone(intensity = 1) {
-  const ctx = getAudioContext();
-  if (!ctx) return;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = "square";
-  osc.frequency.value = 900 + Math.random() * 260;
-  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.035 * intensity, ctx.currentTime + 0.006);
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.045);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.05);
-}
-
-function startTickSound() {
-  stopTickSound();
-  let interval = 52;
-  const run = () => {
-    if (!state.spinning) return;
-    playTickTone(0.75);
-    interval = Math.min(160, interval + 3.8);
-    state.tickTimer = setTimeout(run, interval);
-  };
-  run();
-}
-
-function stopTickSound() {
   if (state.tickTimer) {
-    clearTimeout(state.tickTimer);
+    clearInterval(state.tickTimer);
     state.tickTimer = null;
   }
 }
 
-function startWheelLoop() {
-  if (!el.wheelCanvas) return;
-  stopWheelLoop();
-  el.wheelCanvas.style.transition = "none";
-  let last = performance.now();
-  let speedDegPerSecond = 160;
-  const maxSpeed = 980;
-  const accel = 2600;
-  const tick = (now) => {
-    const dt = Math.min(50, now - last) / 1000;
-    last = now;
-    speedDegPerSecond = Math.min(maxSpeed, speedDegPerSecond + accel * dt);
-    state.wheelDeg += speedDegPerSecond * dt;
-    el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
-    state.spinLoopTimer = requestAnimationFrame(tick);
-  };
-  startTickSound();
-  state.spinLoopTimer = requestAnimationFrame(tick);
-}
-
-function stopWheelLoop() {
-  if (state.spinLoopTimer) {
-    cancelAnimationFrame(state.spinLoopTimer);
-    state.spinLoopTimer = null;
-  }
-}
-
-async function handleScan() {
-  if (state.spinning) {
-    showToast("Spin áá±áá»á­ááº scan ááá¯ááºááá«", "error");
-    return;
-  }
-
-  try {
-    if (el.scanBtn) el.scanBtn.disabled = true;
-    setPill(el.scanStatusBadge, "scanning", "warning");
-    if (el.scanSummaryText) el.scanSummaryText.textContent = "Checking registered member IDs...";
-
-    await api("/scan/members", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-
-    await refreshAfterScan();
-    showToast("Scan completed", "success");
-  } catch (err) {
-    showToast(err.message || "Scan failed", "error");
-    await loadScanStatus().catch(() => {});
-    renderScan();
-  } finally {
-    if (el.scanBtn) el.scanBtn.disabled = false;
-  }
-}
-
-
-function queueAutoNotice(userId, prize) {
-  if (!userId || settings.autoNoticeEnabled === false) return;
-  // Fire-and-forget: do not slow down the next spin.
-  api("/notice", {
-    method: "POST",
-    body: JSON.stringify({ user_id: userId, prize }),
-  })
-    .then((data) => {
-      const row = (state.winners || []).find((x) => String(x.user_id) === String(userId));
-      if (row && data && data.dm_ok !== false) {
-        row.notice_sent = true;
-        row.notice_at = new Date().toISOString();
-        renderWinners();
-      }
-    })
-    .catch((err) => {
-      console.warn("Auto notice failed", err);
-    });
-}
-
-async function handleSpin(options = {}) {
-  const autoMode = !!options.auto;
-  if (state.spinning) return false;
-
-  try {
-    if (!autoMode) {
-      const poolCount = Number(state.pool?.count || 0);
-      const prizeCount = Number(state.health?.remaining_prizes || 0);
-      if (!window.confirm(`Spin áá¯ááºááá¬á¸?
-Pool: ${poolCount}
-Prizes Left: ${prizeCount}
-Last Scan: ${state.scan?.last_scan_at ? formatTime(state.scan.last_scan_at) : "No scan"}`)) {
-        return false;
-      }
-    }
-    if (Number(state.pool?.count || 0) <= 0) {
-      showToast("No members left in pool", "error");
-      return;
-    }
-
-    state.spinning = true;
-    if (el.spinBtn) {
-      el.spinBtn.disabled = true;
-      el.spinBtn.classList.add("is-loading");
-      el.spinBtn.textContent = "SPINNING...";
-    }
-    if (el.scanBtn) el.scanBtn.disabled = true;
-    if (el.winnerFlash) el.winnerFlash.classList.add("hidden");
-
-    buildWheelPrizeSegments();
-    drawWheel();
-
-    startWheelLoop();
-    const spinStartedAt = performance.now();
-
-    const result = await api("/spin", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-
-    const winnerName = result?.winner?.display || result?.winner?.id || "Unknown";
-    const prize = result?.prize || "â";
-
-    const optimisticItem = {
-      turn: result?.turn || 0,
-      at: new Date().toISOString(),
-      prize,
-      winner: {
-        id: result?.winner?.id || "",
-        name: result?.winner?.name || "",
-        username: result?.winner?.username || "",
-        display: winnerName,
-      },
-    };
-
-    state.history = [optimisticItem, ...(state.history || [])];
-
-    state.winners = [
-      {
-        turn: result?.turn || 0,
-        at: optimisticItem.at,
-        prize,
-        user_id: result?.winner?.id || "",
-        name: result?.winner?.name || "",
-        username: result?.winner?.username || "",
-        display: winnerName,
-        done: false,
-        done_at: "",
-        notice_sent: false,
-        notice_at: "",
-      },
-      ...(state.winners || []),
-    ];
-
-    state.pool.count = Math.max(0, Number(state.pool?.count || 0) - 1);
-    if (state.health) {
-      state.health.pool = state.pool.count;
-      state.health.winners = Number(state.health.winners || 0) + 1;
-      state.health.remaining_prizes = Math.max(0, Number(state.health.remaining_prizes || 0) - 1);
-    }
-    renderAll();
-
-    stopWheelLoop();
-
-    const targetDeg = computeTargetRotationDeg(prize);
-    const currentBase = state.wheelDeg % 360;
-    let needed = targetDeg - currentBase;
-    if (needed < 0) needed += 360;
-
-    const roundBudgetMs = getSpinRoundMs();
-    const elapsedBeforeStop = performance.now() - spinStartedAt;
-    // Winner popup should appear within the configured round budget.
-    // If the backend/network is slow, we keep the final stop animation short instead of exceeding too much.
-    const popupReserveMs = 90;
-    const maxAnimationMs = Math.max(900, roundBudgetMs - elapsedBeforeStop - popupReserveMs);
-    const spinDuration = Math.round(clampNumber(maxAnimationMs, 900, roundBudgetMs, Math.min(5600, roundBudgetMs)));
-    const extraRounds = 360 * (spinDuration < 1800 ? 1 : spinDuration < 3200 ? 2 : 4 + Math.floor(Math.random() * 2));
-    const finalDeg = state.wheelDeg + extraRounds + needed;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (el.wheelCanvas) {
-          el.wheelCanvas.style.transition =
-            `transform ${spinDuration}ms cubic-bezier(0.06, 0.82, 0.08, 1)`;
-          state.wheelDeg = finalDeg;
-          el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
-        }
-      });
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, spinDuration + 40));
-
-    if (el.winnerFlash) el.winnerFlash.classList.remove("hidden");
-    if (el.winnerFlashName) el.winnerFlashName.textContent = winnerName;
-    if (el.winnerFlashPrize) el.winnerFlashPrize.textContent = prize;
-
-    showWinnerPopup(winnerName, prize);
-    queueAutoNotice(result?.winner?.id, prize);
-    // Do not wait for data refresh before allowing the next auto spin.
-    refreshAfterSpin().catch(() => {});
-    if (!autoMode) showToast(`Winner: ${winnerName}`, "success");
-    stopTickSound();
-  } catch (err) {
-    stopWheelLoop();
-    stopTickSound();
-    showToast(err.message || "Spin failed", "error");
-    await refreshAllData().catch(() => {});
-  } finally {
-    state.spinning = false;
-    if (el.spinBtn) {
-      el.spinBtn.disabled = false;
-      el.spinBtn.classList.remove("is-loading");
-      el.spinBtn.textContent = "SPIN";
-    }
-    if (el.scanBtn && !state.autoSpinning) el.scanBtn.disabled = false;
-  }
-
-  return true;
-}
-
-function interruptibleSleep(ms) {
+function animateWheelToPrize(prize) {
   return new Promise((resolve) => {
-    const step = 80;
-    let elapsed = 0;
-    const tick = () => {
-      if (!state.autoSpinning || state.autoSpinStopRequested) return resolve(false);
-      elapsed += step;
-      if (elapsed >= ms) return resolve(true);
-      setTimeout(tick, step);
-    };
-    setTimeout(tick, step);
+    stopSpinLoopVisual();
+
+    const target = computeTargetRotationDeg(prize);
+    const current = ((state.wheelDeg % 360) + 360) % 360;
+    const diff = (target - current + 360) % 360;
+    const extra = 360 * 8;
+    const finalDeg = state.wheelDeg + extra + diff;
+
+    if (el.wheelCanvas) {
+      el.wheelCanvas.style.transition = `transform ${settings.spinDurationMs}ms cubic-bezier(.12,.74,.12,1)`;
+      requestAnimationFrame(() => {
+        state.wheelDeg = finalDeg;
+        el.wheelCanvas.style.transform = `rotate(${finalDeg}deg)`;
+      });
+    }
+
+    setTimeout(() => {
+      if (el.wheelCanvas) {
+        el.wheelCanvas.style.transition = "";
+      }
+      resolve();
+    }, settings.spinDurationMs + 80);
   });
 }
 
-function setAutoSpinButton(running, stopping = false) {
-  if (!el.autoSpinBtn) return;
-  el.autoSpinBtn.disabled = false;
-  el.autoSpinBtn.classList.toggle("auto-running", !!running);
-  el.autoSpinBtn.classList.remove("is-loading");
-  el.autoSpinBtn.textContent = running
-    ? (stopping ? "STOPPING..." : "STOP AUTO")
-    : "AUTO SPIN";
+function createConfetti() {
+  if (!el.confettiLayer) return;
+
+  el.confettiLayer.innerHTML = "";
+
+  const colors = ["#ff5f6d", "#ffc371", "#23d5ab", "#23a6d5", "#8b5dff", "#ffd166"];
+
+  for (let i = 0; i < 80; i++) {
+    const piece = document.createElement("span");
+    piece.className = "confetti";
+    piece.style.left = `${Math.random() * 100}%`;
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDelay = `${Math.random() * 0.45}s`;
+    piece.style.animationDuration = `${1.2 + Math.random() * 1.4}s`;
+    el.confettiLayer.appendChild(piece);
+  }
 }
 
-async function runAutoSpin() {
-  if (state.autoSpinning) return;
+function showWinnerPopup(winner, prize) {
+  if (!el.winnerPopup) return;
 
-  const runId = Date.now();
-  state.autoSpinRunId = runId;
-  state.autoSpinning = true;
-  state.autoSpinStopRequested = false;
-  setAutoSpinButton(true, false);
-  if (el.scanBtn) el.scanBtn.disabled = true;
-  if (el.spinBtn) el.spinBtn.disabled = true;
+  const display =
+    winner?.display ||
+    winner?.name ||
+    (winner?.username ? `@${winner.username}` : winner?.id || "-");
+
+  if (el.winnerPopupName) el.winnerPopupName.textContent = display;
+  if (el.winnerPopupPrize) el.winnerPopupPrize.textContent = prize || "-";
+
+  el.winnerPopup.classList.remove("hidden");
+  createConfetti();
+
+  clearTimeout(state.autoCloseTimer);
+  state.autoCloseTimer = setTimeout(closeWinnerPopup, 4200);
+}
+
+function closeWinnerPopup() {
+  el.winnerPopup?.classList.add("hidden");
+  if (el.confettiLayer) el.confettiLayer.innerHTML = "";
+}
+
+function updateWinnerFlash(winner, prize) {
+  const display =
+    winner?.display ||
+    winner?.name ||
+    (winner?.username ? `@${winner.username}` : winner?.id || "-");
+
+  if (el.winnerFlashName) el.winnerFlashName.textContent = display;
+  if (el.winnerFlashPrize) el.winnerFlashPrize.textContent = prize || "-";
+  el.winnerFlash?.classList.remove("hidden");
+}
+
+async function spinOnce() {
+  if (state.spinning) return null;
 
   try {
-    while (state.autoSpinning && !state.autoSpinStopRequested && state.autoSpinRunId === runId) {
-      if (Number(state.pool?.count || 0) <= 0) {
-        showToast("Auto Spin stopped: pool empty", "error");
-        break;
-      }
+    state.spinning = true;
+    updateButtons();
+    startSpinLoopVisual();
 
-      const ok = await handleSpin({ auto: true });
+    const data = await api("/spin", { method: "POST" });
 
-      if (!ok || state.autoSpinStopRequested || state.autoSpinRunId !== runId) break;
-
-      autoCloseWinnerPopup(getWinnerPopupAutoCloseMs());
-      const shouldContinue = await interruptibleSleep(getAutoNextDelayMs());
-      if (!shouldContinue || state.autoSpinStopRequested || state.autoSpinRunId !== runId) break;
+    if (!data.ok) {
+      throw new Error(data.error || "Spin failed");
     }
+
+    await animateWheelToPrize(data.prize);
+
+    updateWinnerFlash(data.winner, data.prize);
+    showWinnerPopup(data.winner, data.prize);
+
+    state.health = {
+      ...(state.health || {}),
+      pool: Math.max(0, Number(state.health?.pool || state.pool?.count || 0) - 1),
+      winners: Number(state.health?.winners || 0) + 1,
+      remaining_prizes: Math.max(0, Number(state.health?.remaining_prizes || 0) - 1),
+    };
+
+    state.pool = {
+      ...(state.pool || {}),
+      count: Math.max(0, Number(state.pool?.count || 0) - 1),
+    };
+
+    await refreshAfterSpin();
+
+    return data;
+  } catch (err) {
+    stopSpinLoopVisual();
+    showToast(err.message || "Spin failed", "error");
+    return null;
   } finally {
-    if (state.autoSpinRunId === runId) {
+    state.spinning = false;
+    stopSpinLoopVisual();
+    updateButtons();
+  }
+}
+
+async function autoSpinLoop() {
+  if (!state.autoSpinning) return;
+
+  while (state.autoSpinning && !state.autoSpinStopRequested) {
+    const poolCount = Number(state.pool?.count || state.health?.pool || 0);
+    const prizeCount = Number(state.health?.remaining_prizes || 0);
+
+    if (poolCount <= 0 || prizeCount <= 0) {
       state.autoSpinning = false;
       state.autoSpinStopRequested = false;
-      setAutoSpinButton(false);
-      if (el.spinBtn) el.spinBtn.disabled = false;
-      if (el.scanBtn) el.scanBtn.disabled = false;
+      updateButtons();
+      showToast("Auto spin completed", "success");
+      return;
     }
+
+    const result = await spinOnce();
+
+    if (!result) {
+      state.autoSpinning = false;
+      state.autoSpinStopRequested = false;
+      updateButtons();
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 900));
   }
+
+  state.autoSpinning = false;
+  state.autoSpinStopRequested = false;
+  updateButtons();
 }
 
 function toggleAutoSpin() {
   if (state.autoSpinning) {
     state.autoSpinStopRequested = true;
     state.autoSpinning = false;
-    state.autoSpinRunId = Date.now();
-    clearAutoCloseTimer();
-    setAutoSpinButton(false);
-    if (el.spinBtn) el.spinBtn.disabled = false;
-    if (el.scanBtn) el.scanBtn.disabled = false;
-    showToast("Auto Spin stopped. Current spin will finish safely if already started.", "normal");
+    updateButtons();
+    showToast("Auto spin stopping...", "success");
     return;
   }
-  runAutoSpin();
+
+  state.autoSpinning = true;
+  state.autoSpinStopRequested = false;
+  updateButtons();
+  autoSpinLoop();
 }
 
-async function handleSavePrize() {
-  const prizeText = el.prizeText?.value.trim();
-  if (!prizeText) {
-    showToast("Prize text required", "error");
-    return;
-  }
+async function savePrizeConfig() {
+  if (!el.prizeText) return;
 
   try {
     if (el.savePrizeBtn) {
       el.savePrizeBtn.disabled = true;
-      el.savePrizeBtn.classList.add("is-loading");
       el.savePrizeBtn.textContent = "Saving...";
     }
 
-    buildWheelPrizeSegments();
-    drawWheel();
-    showToast("Saving prize bag...", "normal");
-
-    await api("/config/prizes", {
+    const data = await api("/config/prizes", {
       method: "POST",
-      body: JSON.stringify({ prizeText }),
+      body: JSON.stringify({
+        prizeText: el.prizeText.value,
+      }),
     });
 
-    const parsedTotal = parsePrizeLines(prizeText).reduce((sum, p) => sum + Number(p.times || 0), 0);
-    if (state.health) state.health.remaining_prizes = parsedTotal;
-    await loadHealth().catch(() => {});
-    renderHealth();
-    showToast("Prize bag saved", "success");
+    buildWheelPrizeSegments();
+    drawWheel();
+
+    await refreshAllData();
+
+    showToast(`Prize saved: ${data.total} item(s)`, "success");
   } catch (err) {
-    showToast(err.message || "Save prize failed", "error");
+    showToast(err.message || "Save failed", "error");
   } finally {
     if (el.savePrizeBtn) {
       el.savePrizeBtn.disabled = false;
-      el.savePrizeBtn.classList.remove("is-loading");
       el.savePrizeBtn.textContent = "Save Prize";
     }
   }
 }
 
-async function handleRestart() {
-  if (state.spinning || state.autoSpinning) {
-    showToast("Spin/Auto Spin áááºáá¼á®á¸áá¾ restart áá¯ááºáá«", "error");
-    return;
-  }
+async function scanMembers() {
+  try {
+    if (el.scanBtn) {
+      el.scanBtn.disabled = true;
+      el.scanBtn.textContent = "Scanning...";
+    }
 
-  const choice = window.prompt(
-    "Restart mode áá½á±á¸áá«:\n" +
-      "1 = Safe Restart (winners/history clear, members keep, pool rebuild, prizes reload)\n" +
-      "2 = Prize Reload Only (members/winners/history/pool ááá­)\n" +
-      "3 = Full Reset (old behavior: winners/history clear, pool empty until scan)\n\n" +
-      "1, 2, 3 áá²ááááºáá¯áá­á¯ááºáá«",
-    "1"
+    const data = await api("/scan/members", {
+      method: "POST",
+    });
+
+    state.scan = {
+      status: "completed",
+      summary: data.summary || null,
+      last_scan_at: data.summary?.scanned_at || "",
+    };
+
+    await refreshAfterScan();
+
+    showToast("Scan completed ✅", "success");
+  } catch (err) {
+    showToast(err.message || "Scan failed", "error");
+  } finally {
+    if (el.scanBtn) {
+      el.scanBtn.disabled = false;
+      el.scanBtn.textContent = "Scan Channel Member";
+    }
+  }
+}
+
+async function restartEvent() {
+  const ok = window.confirm(
+    "Restart Event လုပ်မလား?\n\nWinner/History ကို reset လုပ်မယ်။ Member memory မဖျက်ပါ။"
   );
-  if (!choice) return;
-  const modeMap = { "1": "safe_restart", "2": "prize_reload", "3": "full_reset" };
-  const mode = modeMap[String(choice).trim()];
-  if (!mode) {
-    showToast("Invalid restart mode", "error");
-    return;
-  }
-  const label = mode === "safe_restart" ? "Safe Restart" : mode === "prize_reload" ? "Prize Reload Only" : "Full Reset";
-  if (mode === "full_reset") {
-    const typed = window.prompt("Full Reset á pool áá­á¯ scan ááá¯ááºááá»ááºá¸ empty áá¬á¸áá«áááºá áááºáá¯ááºáááº FULL RESET áá­á¯á·áá­á¯ááºáá«á", "");
-    if (typed !== "FULL RESET") return;
-  } else {
-    const ok = window.confirm(`${label} áá¯ááºáá¾á¬áá±áá»á¬áá¬á¸?`);
-    if (!ok) return;
-  }
+
+  if (!ok) return;
 
   try {
     if (el.restartBtn) {
       el.restartBtn.disabled = true;
       el.restartBtn.textContent = "Restarting...";
     }
+
     await api("/restart-spin", {
       method: "POST",
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify({
+        mode: "safe_restart",
+      }),
     });
-    if (el.winnerFlash) el.winnerFlash.classList.add("hidden");
-    hideWinnerPopup();
+
     await refreshAllData();
-    showToast(`${label} complete`, "success");
+
+    showToast("Restart complete ✅", "success");
   } catch (err) {
     showToast(err.message || "Restart failed", "error");
   } finally {
@@ -1388,373 +1324,3 @@ async function handleRestart() {
     }
   }
 }
-
-async function sendNotice(userId, prize) {
-  try {
-    const data = await api("/notice", {
-      method: "POST",
-      body: JSON.stringify({ user_id: userId, prize }),
-    });
-
-    await refreshAfterWinnerAction();
-
-    if (data.dm_ok === false) {
-      showToast("DM failed", "error");
-      return;
-    }
-
-    showToast("Notice sent", "success");
-  } catch (err) {
-    showToast(err.message || "Notice failed", "error");
-  }
-}
-
-async function toggleDone(userId) {
-  try {
-    await api("/winner/done", {
-      method: "POST",
-      body: JSON.stringify({ user_id: userId, toggle: true }),
-    });
-
-    await refreshAfterWinnerAction();
-    showToast("Winner updated", "success");
-  } catch (err) {
-    showToast(err.message || "Done update failed", "error");
-  }
-}
-
-function bindWinnerActionButtons() {
-  document.querySelectorAll("[data-notice-user]").forEach((btn) => {
-    btn.onclick = () => {
-      const userId = btn.getAttribute("data-notice-user");
-      const prize = btn.getAttribute("data-notice-prize") || "";
-      sendNotice(userId, prize);
-    };
-  });
-
-  document.querySelectorAll("[data-done-user]").forEach((btn) => {
-    btn.onclick = () => {
-      const userId = btn.getAttribute("data-done-user");
-      toggleDone(userId);
-    };
-  });
-
-  document.querySelectorAll("[data-tg-user]").forEach((btn) => {
-    btn.onclick = () => {
-      const username = btn.getAttribute("data-tg-user");
-      if (!username) return;
-      window.open(`https://t.me/${username}`, "_blank");
-    };
-  });
-}
-
-function bindTabs() {
-  const tabs = Array.from(document.querySelectorAll(".tab-btn"));
-  const panels = Array.from(document.querySelectorAll(".tab-panel"));
-
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      const target = tab.dataset.tab;
-      tabs.forEach((t) => t.classList.toggle("active", t === tab));
-      panels.forEach((p) => p.classList.toggle("active", p.id === `tab-${target}`));
-    });
-  });
-}
-
-function exportHistoryCsv() {
-  const rows = [["Turn", "Winner", "Prize", "Time"]];
-
-  (state.history || []).forEach((h) => {
-    const winnerDisplay =
-      h?.winner?.display ||
-      h?.winner?.name ||
-      h?.winner?.username ||
-      h?.winner?.id ||
-      h?.display ||
-      h?.user_id ||
-      "-";
-
-    rows.push([
-      String(h.turn || ""),
-      String(winnerDisplay || ""),
-      String(h.prize || ""),
-      String(h.at || ""),
-    ]);
-  });
-
-  const csv = rows
-    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-    .join("\n");
-
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "lucky77-history.csv";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-function bindSectionMenu() {
-  document.querySelectorAll(".quick-nav-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const target = btn.dataset.section;
-      showSection(target);
-      closeQuickMenu();
-    });
-  });
-}
-
-async function handleSaveEventSettings() {
-  try {
-    if (el.saveEventBtn) el.saveEventBtn.disabled = true;
-    const body = {
-      open: !!el.eventOpenToggle?.checked,
-      name: el.eventNameInput?.value?.trim() || "Lucky77 Event",
-      limit: Number(el.eventLimitInput?.value || 0) || 0,
-    };
-    const data = await api("/event/settings", { method: "POST", body: JSON.stringify(body) });
-    state.event = { ...state.event, ...data.event, active_register_count: Number(data.active_register_count || 0) };
-    renderEventControl();
-    showToast("Event settings saved", "success");
-  } catch (err) {
-    showToast(err.message || "Event save failed", "error");
-  } finally {
-    if (el.saveEventBtn) el.saveEventBtn.disabled = false;
-  }
-}
-
-async function handleBackupExport() {
-  try {
-    const data = await api("/backup/export");
-    const blob = new Blob([JSON.stringify(data.backup, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `lucky77-backup-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    showToast("Backup exported", "success");
-  } catch (err) {
-    showToast(err.message || "Backup failed", "error");
-  }
-}
-
-async function handleBackupRestore() {
-  const file = el.backupRestoreInput?.files?.[0];
-  if (!file) return showToast("Backup JSON file áá½á±á¸áá«", "error");
-  const confirmText = window.prompt("Restore áá¯ááºáááº current event data áá­á¯ backup data áá²á·á¡áá¬á¸áá­á¯á¸áá«áááºá RESTORE áá­á¯á·áá­á¯ááºáá«á", "");
-  if (confirmText !== "RESTORE") return;
-  try {
-    const text = await file.text();
-    const backup = JSON.parse(text);
-    await api("/backup/restore", { method: "POST", body: JSON.stringify({ backup }) });
-    await refreshAllData();
-    showToast("Backup restored", "success");
-  } catch (err) {
-    showToast(err.message || "Restore failed", "error");
-  }
-}
-
-function bindEvents() {
-  el.refreshBtn?.addEventListener("click", async () => {
-    try {
-      el.refreshBtn.disabled = true;
-      await loadHealth();
-      renderAll();
-      // Then load protected/detail data in the background. If API key is wrong, counters still stay visible.
-      refreshAllData().catch((err) => showToast(err.message || "Refresh detail failed", "error"));
-      showToast("Refreshed", "success");
-    } catch (err) {
-      showToast(err.message || "Refresh failed", "error");
-    } finally {
-      el.refreshBtn.disabled = false;
-    }
-  });
-
-  el.scanBtn?.addEventListener("click", handleScan);
-  el.spinBtn?.addEventListener("click", () => handleSpin());
-  el.autoSpinBtn?.addEventListener("click", toggleAutoSpin);
-  el.restartBtn?.addEventListener("click", handleRestart);
-  el.savePrizeBtn?.addEventListener("click", handleSavePrize);
-
-  el.searchInput?.addEventListener("input", debouncedRenderAll);
-
-  el.winnerList?.addEventListener("click", (event) => {
-    const btn = event.target.closest("button");
-    if (!btn) return;
-
-    if (btn.matches("[data-notice-user]")) {
-      sendNotice(btn.getAttribute("data-notice-user"), btn.getAttribute("data-notice-prize") || "");
-      return;
-    }
-
-    if (btn.matches("[data-done-user]")) {
-      toggleDone(btn.getAttribute("data-done-user"));
-      return;
-    }
-
-    if (btn.matches("[data-tg-user]")) {
-      const username = btn.getAttribute("data-tg-user");
-      if (username) window.open(`https://t.me/${username}`, "_blank");
-    }
-  });
-
-  el.showRemovedToggle?.addEventListener("change", async () => {
-    await loadMembers().catch(() => {
-      state.members = [];
-    });
-    renderMembers();
-  });
-
-  el.settingsBtn?.addEventListener("click", openSettings);
-  el.settingsBackdrop?.addEventListener("click", closeSettings);
-  el.settingsCloseBtn?.addEventListener("click", closeSettings);
-
-  el.quickMenuBtn?.addEventListener("click", openQuickMenu);
-  el.quickMenuBackdrop?.addEventListener("click", closeQuickMenu);
-  el.quickMenuCloseBtn?.addEventListener("click", closeQuickMenu);
-
-  el.saveSettingsBtn?.addEventListener("click", () => {
-    settings.theme = el.themeSelect?.value || defaultSettings.theme;
-    settings.bannerTitle = el.bannerTitleInput?.value.trim() || defaultSettings.bannerTitle;
-    settings.bannerSub = el.bannerSubInput?.value.trim() || defaultSettings.bannerSub;
-    settings.bgColor = el.bgColorInput?.value || defaultSettings.bgColor;
-    settings.cardColor = el.cardColorInput?.value || defaultSettings.cardColor;
-    settings.accent1 = el.accent1Input?.value || defaultSettings.accent1;
-    settings.accent2 = el.accent2Input?.value || defaultSettings.accent2;
-    settings.arrowColor = el.arrowColorInput?.value || defaultSettings.arrowColor;
-
-    const roundSeconds = clampNumber(el.spinRoundSecondsInput?.value, 3, 20, defaultSettings.spinRoundMs / 1000);
-    settings.spinRoundMs = Math.round(roundSeconds * 1000);
-    settings.spinDurationMs = settings.spinRoundMs; // legacy fallback for older saved settings
-
-    const nextDelaySeconds = clampNumber(el.autoNextDelaySecondsInput?.value, 0, 10, defaultSettings.autoNextDelayMs / 1000);
-    settings.autoNextDelayMs = Math.round(nextDelaySeconds * 1000);
-
-    const popupCloseSeconds = clampNumber(el.winnerPopupCloseSecondsInput?.value, 0.5, 15, defaultSettings.winnerPopupAutoCloseMs / 1000);
-    settings.winnerPopupAutoCloseMs = Math.round(popupCloseSeconds * 1000);
-    settings.autoNoticeEnabled = el.autoNoticeEnabledInput ? !!el.autoNoticeEnabledInput.checked : settings.autoNoticeEnabled !== false;
-
-    persistSettings();
-    applySettingsToUI();
-    closeSettings();
-    showToast("Settings saved", "success");
-  });
-
-  el.topLogoInput?.addEventListener("change", async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    settings.topLogo = await fileToDataUrl(file);
-    persistSettings();
-    applySettingsToUI();
-    showToast("Top logo updated", "success");
-  });
-
-  el.wheelLogoInput?.addEventListener("change", async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    settings.wheelLogo = await fileToDataUrl(file);
-    persistSettings();
-    applySettingsToUI();
-    showToast("Wheel logo updated", "success");
-  });
-
-  el.musicFileInput?.addEventListener("change", async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("audio/") && !file.name.toLowerCase().endsWith(".mp3")) {
-      showToast("Please choose an MP3/audio file", "error");
-      return;
-    }
-
-    const objectUrl = URL.createObjectURL(file);
-    if (el.bgMusicPlayer) {
-      el.bgMusicPlayer.src = objectUrl;
-      el.bgMusicPlayer.loop = true;
-    }
-
-    try {
-      if (file.size <= 4 * 1024 * 1024) {
-        settings.musicDataUrl = await fileToDataUrl(file);
-        persistSettings();
-      } else {
-        settings.musicDataUrl = "";
-        persistSettings();
-        showToast("Large MP3 loaded for this session only", "normal");
-      }
-      showToast("Music uploaded", "success");
-    } catch {
-      settings.musicDataUrl = "";
-      showToast("MP3 loaded for this session only", "normal");
-    }
-  });
-
-  el.musicOnBtn?.addEventListener("click", async () => {
-    if (!el.bgMusicPlayer || (!settings.musicDataUrl && !el.bgMusicPlayer.src)) {
-      showToast("Upload MP3 first", "error");
-      return;
-    }
-
-    try {
-      settings.musicOn = true;
-      persistSettings();
-      if (settings.musicDataUrl) el.bgMusicPlayer.src = settings.musicDataUrl;
-      el.bgMusicPlayer.loop = true;
-      await el.bgMusicPlayer.play();
-      showToast("Music ON", "success");
-    } catch {
-      showToast("Music play blocked", "error");
-    }
-  });
-
-  el.musicOffBtn?.addEventListener("click", () => {
-    settings.musicOn = false;
-    persistSettings();
-    el.bgMusicPlayer?.pause();
-    showToast("Music OFF", "success");
-  });
-
-  el.exportHistoryBtn?.addEventListener("click", () => {
-    exportHistoryCsv();
-    showToast("History exported", "success");
-  });
-
-  el.saveEventBtn?.addEventListener("click", handleSaveEventSettings);
-  el.backupExportBtn?.addEventListener("click", handleBackupExport);
-  el.backupRestoreBtn?.addEventListener("click", handleBackupRestore);
-
-  el.winnerPopupBackdrop?.addEventListener("click", hideWinnerPopup);
-  el.winnerPopupCloseBtn?.addEventListener("click", hideWinnerPopup);
-}
-
-(function resizeWheelCanvas() {
-  if (!el.wheelCanvas) return;
-  const size = 520;
-  el.wheelCanvas.width = size;
-  el.wheelCanvas.height = size;
-})();
-
-(async function init() {
-  applySettingsToUI();
-  bindTabs();
-  bindEvents();
-  bindSectionMenu();
-
-  showSection("wheel");
-
-  buildWheelPrizeSegments();
-  drawWheel();
-
-  try {
-    await firstLoad();
-  } catch (err) {
-    showToast(err.message || "Initial load failed", "error");
-  }
-})();
