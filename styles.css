@@ -1166,7 +1166,6 @@ h2 {
   cursor: pointer;
   text-decoration: none;
 }
-
 .cs-link-btn.primary {
   background: linear-gradient(90deg, #7b5cff, #18d2ff);
   color: white;
@@ -1470,4 +1469,26 @@ button.is-loading::after,
   .event-grid {
     display: grid;
   }
+}
+
+/* ===== PATCH v4.1: round timer + auto spin stop fix ===== */
+.field-label {
+  display: block;
+  margin: 10px 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.field-label-gap {
+  margin-top: 14px;
+}
+
+.auto-spin-btn.is-loading {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.auto-spin-btn.auto-running {
+  box-shadow: 0 0 0 4px rgba(255, 122, 89, 0.16), 0 14px 28px rgba(255, 122, 89, 0.22);
 }
