@@ -316,22 +316,39 @@ async function loadWinners() {
         game_phone: String(w.game_phone || ""),
         cs_note: String(w.cs_note || ""),
         cs_status: String(w.cs_status || ""),
+
         last_reply_text: String(w.last_reply_text || ""),
         last_reply_at: String(w.last_reply_at || ""),
+
         last_outbound_text: String(w.last_outbound_text || ""),
         last_outbound_at: String(w.last_outbound_at || ""),
+
+        message_count: Number(w.message_count || 0) || 0,
+        inbound_unread_count: Number(w.inbound_unread_count || 0) || 0,
+        last_message_text: String(w.last_message_text || ""),
+        last_message_at: String(w.last_message_at || ""),
+        last_message_direction: String(w.last_message_direction || ""),
+        last_read_at: String(w.last_read_at || ""),
       }))
     : [];
 
   applyFilter();
 }
-
 function filterMatch(w) {
   if (state.activeFilter === "pending") return !w.done;
   if (state.activeFilter === "done") return !!w.done;
   if (state.activeFilter === "notice_pending") return !w.notice_sent;
   if (state.activeFilter === "notice_sent") return !!w.notice_sent;
-  if (state.activeFilter === "replied") return !!String(w.last_reply_text || "").trim();
+
+  if (state.activeFilter === "replied") {
+    return (
+      Number(w.message_count || 0) > 0 ||
+      Number(w.inbound_unread_count || 0) > 0 ||
+      !!String(w.last_reply_text || "").trim() ||
+      !!String(w.last_message_text || "").trim()
+    );
+  }
+
   return true;
 }
 
@@ -352,12 +369,33 @@ function applyFilter() {
       w.prize,
       w.done ? "done" : "pending",
       w.notice_sent ? "notice sent" : "notice pending",
+      w.game_account,
+      w.game_phone,
+      w.cs_note,
+      w.last_reply_text,
+      w.last_outbound_text,
+      w.last_message_text,
+      w.last_message_direction,
     ]
       .join(" ")
       .toLowerCase();
 
     return blob.includes(q);
   });
+
+  if (state.activeFilter === "replied") {
+    state.filtered.sort((a, b) => {
+      const au = Number(a.inbound_unread_count || 0);
+      const bu = Number(b.inbound_unread_count || 0);
+
+      if (au !== bu) return bu - au;
+
+      const at = new Date(a.last_message_at || a.last_reply_at || a.at || 0).getTime() || 0;
+      const bt = new Date(b.last_message_at || b.last_reply_at || b.at || 0).getTime() || 0;
+
+      return bt - at;
+    });
+  }
 
   state.visibleCount = CONFIG.PAGE_SIZE;
 }
@@ -385,19 +423,50 @@ function renderStats() {
 function renderFilterButtons() {
   if (!el.filterRow) return;
 
+  const replyTotal = (state.winners || []).filter((w) => {
+    return (
+      Number(w.message_count || 0) > 0 ||
+      Number(w.inbound_unread_count || 0) > 0 ||
+      !!String(w.last_reply_text || "").trim() ||
+      !!String(w.last_message_text || "").trim()
+    );
+  }).length;
+
+  const unreadTotal = (state.winners || []).reduce(
+    (sum, w) => sum + (Number(w.inbound_unread_count || 0) || 0),
+    0
+  );
+
   const filters = [
     ["all", "All"],
     ["pending", "Pending"],
     ["done", "Done"],
     ["notice_pending", "Notice Pending"],
     ["notice_sent", "Notice Sent"],
-    ["replied", "User Reply"],
+    [
+      "replied",
+      `User Reply${unreadTotal ? ` ${unreadTotal}` : replyTotal ? ` ${replyTotal}` : ""}`,
+    ],
   ];
 
   el.filterRow.innerHTML = filters
     .map(([key, label]) => {
       const active = state.activeFilter === key ? "active" : "";
-      return `<button class="filter-btn ${active}" data-filter="${escapeAttr(key)}">${escapeHtml(label)}</button>`;
+      const badge =
+        key === "replied" && unreadTotal
+          ? `<span class="inbox-badge">${escapeHtml(unreadTotal)}</span>`
+          : "";
+
+      const cleanLabel =
+        key === "replied"
+          ? "User Reply"
+          : label;
+
+      return `
+        <button class="filter-btn ${active}" data-filter="${escapeAttr(key)}">
+          ${escapeHtml(cleanLabel)}${badge}
+        </button>
+      `;
     })
     .join("");
 
@@ -423,7 +492,8 @@ function renderLoadMore() {
 }
 
 function statusBadges(w) {
-  const reply = String(w.last_reply_text || "").trim();
+  const unread = Number(w.inbound_unread_count || 0) || 0;
+  const reply = String(w.last_reply_text || w.last_message_text || "").trim();
 
   const hasInfo =
     String(w.game_account || "").trim() ||
@@ -435,20 +505,100 @@ function statusBadges(w) {
       <span class="badge ${w.done ? "done" : "pending"}">${w.done ? "Done" : "Pending"}</span>
       <span class="badge ${w.notice_sent ? "done" : "pending"}">${w.notice_sent ? "Notice Sent" : "Notice Pending"}</span>
       ${reply ? `<span class="badge reply">User Replied</span>` : ""}
+      ${unread ? `<span class="badge reply">Unread ${escapeHtml(unread)}</span>` : ""}
       ${hasInfo ? `<span class="badge info">Info Saved</span>` : ""}
     </div>
   `;
 }
+function unreadBadgeHtml(w) {
+  const unread = Number(w.inbound_unread_count || 0) || 0;
+  if (!unread) return "";
+  return `<span class="inbox-badge">${escapeHtml(unread)}</span>`;
+}
 
+function inboxPreviewHtml(w) {
+  const text = String(
+    w.last_message_text ||
+    w.last_reply_text ||
+    w.last_outbound_text ||
+    ""
+  ).trim();
+
+  if (!text) return "";
+
+  const direction = String(w.last_message_direction || "").trim();
+
+  const role =
+    direction === "outbound"
+      ? "Last message by CS / Bot"
+      : "Last message by Customer";
+
+  const at =
+    w.last_message_at ||
+    w.last_reply_at ||
+    w.last_outbound_at ||
+    "";
+
+  return `
+    <div class="inbox-preview">
+      <div class="inbox-preview-top">
+        <div class="inbox-preview-role">${escapeHtml(role)}</div>
+        <div class="inbox-preview-time">${escapeHtml(formatTime(at))}</div>
+      </div>
+      <div class="inbox-preview-text">${escapeHtml(text)}</div>
+    </div>
+  `;
+}
+
+function inboxMetaHtml(w) {
+  return `
+    <div class="inbox-meta-grid">
+      <div class="inbox-meta-box">
+        <span>User ID</span>
+        <strong>${escapeHtml(w.user_id || "-")}</strong>
+      </div>
+
+      <div class="inbox-meta-box">
+        <span>Username</span>
+        <strong>${w.username ? "@" + escapeHtml(w.username) : "-"}</strong>
+      </div>
+
+      <div class="inbox-meta-box">
+        <span>Prize</span>
+        <strong>${escapeHtml(w.prize || "-")}</strong>
+      </div>
+
+      <div class="inbox-meta-box">
+        <span>Messages</span>
+        <strong>${escapeHtml(w.message_count || 0)}</strong>
+      </div>
+    </div>
+  `;
+}
 function buildWinnerCard(w) {
   const display = w.display || w.name || (w.username ? `@${w.username}` : w.user_id);
   const tgLink = w.username ? `https://t.me/${String(w.username).replace(/^@+/, "")}` : "";
+  const unread = Number(w.inbound_unread_count || 0) || 0;
+
+  const isInboxView = state.activeFilter === "replied";
+
+  const cardClass = [
+    "winner-card",
+    w.done ? "done-card" : "",
+    isInboxView ? "inbox-card" : "",
+    unread ? "unread" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return `
-    <article class="winner-card ${w.done ? "done-card" : ""}">
+    <article class="${cardClass}">
       <div class="winner-head">
         <div>
-          <div class="winner-title">#${escapeHtml(w.turn || "-")} • ${escapeHtml(display)}</div>
+          <div class="winner-title">
+            #${escapeHtml(w.turn || "-")} • ${escapeHtml(display)}
+            ${isInboxView ? unreadBadgeHtml(w) : ""}
+          </div>
 
           <div class="winner-sub">
             Role: <b>Winner</b><br />
@@ -466,9 +616,12 @@ function buildWinnerCard(w) {
         </div>
       </div>
 
+      ${isInboxView ? inboxPreviewHtml(w) : ""}
+      ${isInboxView ? inboxMetaHtml(w) : ""}
+
       <div class="action-row">
         <button class="cs-btn primary" data-open-reply-user="${escapeAttr(w.user_id)}">
-          Customer Reply
+          Customer Reply ${!isInboxView ? unreadBadgeHtml(w) : ""}
         </button>
 
         ${
@@ -823,10 +976,17 @@ function renderReplyModalContent(userId, messages) {
 
   el.replyModalBody.innerHTML = `
     <section class="role-section">
-      <div class="role-title">
-        <span>Winner Role / Customer Information</span>
-        <span class="role-tag">Winner</span>
-      </div>
+<div class="role-title">
+  <div class="role-title-left">
+    <span>Customer Reply / Message History</span>
+    ${
+      Number(w.inbound_unread_count || 0)
+        ? `<span class="reply-modal-unread">${escapeHtml(w.inbound_unread_count)}</span>`
+        : ""
+    }
+  </div>
+  <span class="role-tag">Customer Inbox</span>
+</div>
 
       <div class="saved-view">
 Winner: ${escapeHtml(display)}
@@ -1016,16 +1176,19 @@ async function openReplyModal(userId, showLoading = true) {
   }
 
   try {
-    const data = await api(`/winner/messages?user_id=${encodeURIComponent(uid)}`);
-    const messages = Array.isArray(data.messages) ? data.messages : [];
-    window.__lastReplyMessages = messages;
-    renderReplyModalContent(uid, messages);
-  } catch (err) {
-    window.__lastReplyMessages = [];
-    renderReplyModalContent(uid, []);
-    showToast(err.message || "Reply load failed", "error");
-  }
+const data = await api(`/winner/messages?user_id=${encodeURIComponent(uid)}&mark_read=1`);
+const messages = Array.isArray(data.messages) ? data.messages : [];
+window.__lastReplyMessages = messages;
+
+const w = state.winners.find((x) => String(x.user_id) === uid);
+if (w) {
+  w.inbound_unread_count = Number(data.unread_count || 0) || 0;
+  w.last_read_at = data.last_read_at || new Date().toISOString();
 }
+
+renderReplyModalContent(uid, messages);
+applyFilter();
+renderWinners();
 
 function closeReplyModal() {
   state.selectedUserId = "";
