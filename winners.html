@@ -102,6 +102,9 @@
         <button id="openBroadcastNavBtn" class="cs-nav-btn" type="button" title="Broadcast">
           📣
         </button>
+        <button id="openSimpleWinnerListBtn" class="cs-nav-btn" type="button" title="Winner List">
+          🏆
+        </button>
         <button id="openTemplatesNavBtn" class="cs-nav-btn" type="button" title="Templates">
           🧾
         </button>
@@ -433,6 +436,51 @@
       </div>
     </section>
   </div>
+
+<!-- ================= SIMPLE WINNER LIST MODAL ================= -->
+<div id="simpleWinnerModal" class="cs-modal" hidden>
+  <div class="cs-modal-backdrop" data-close-modal="simple-winner"></div>
+
+  <section class="cs-modal-card cs-simple-winner-card">
+    <header class="cs-modal-header">
+      <div>
+        <h2>Winner List</h2>
+        <p>Name • Username • User ID • Prize • Done / Undone</p>
+      </div>
+      <button id="closeSimpleWinnerBtn" type="button" class="cs-modal-close">×</button>
+    </header>
+
+    <div class="cs-simple-winner-toolbar">
+      <input
+        id="simpleWinnerSearch"
+        type="search"
+        placeholder="Search name, username, user id, prize..."
+      />
+
+      <select id="simpleWinnerStatusFilter">
+        <option value="all">All</option>
+        <option value="done">Done</option>
+        <option value="undone">Undone</option>
+      </select>
+
+      <button id="simpleWinnerRefreshBtn" type="button" class="cs-top-btn">
+        Refresh
+      </button>
+    </div>
+
+    <div class="cs-simple-winner-head">
+      <span>Name</span>
+      <span>Username</span>
+      <span>User ID</span>
+      <span>Prize</span>
+      <span>Status</span>
+    </div>
+
+    <div id="simpleWinnerList" class="cs-simple-winner-list">
+      <div class="cs-empty">No winners loaded.</div>
+    </div>
+  </section>
+</div>
 
   <!-- ================= REPLY MODAL / GENERIC MODAL PLACEHOLDER ================= -->
   <div id="replyModal" class="cs-modal" hidden>
