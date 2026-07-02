@@ -2,13 +2,14 @@
 
 /* =========================================================
    Lucky77 Winner Inbox
+   Clean stable version
    Respond-style CS Inbox + Media Chat + Broadcast
-   Free-safe frontend: manual refresh by default
+   Free-safe: manual refresh by default
 ========================================================= */
 
 const APP = {
   BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
-  CACHE_BUSTER: "winner-inbox-v1",
+  CACHE_BUSTER: "winner-inbox-clean-v2",
   STORAGE_KEY: "lucky77_admin_api_key",
   PAGE_SIZE: 60,
 };
@@ -34,6 +35,7 @@ const state = {
   campaigns: [],
   selectedFile: null,
   broadcastFile: null,
+  booted: false,
 };
 
 /* ================= DOM Helpers ================= */
@@ -140,23 +142,37 @@ function toast(text, type = "info") {
   }, 3200);
 }
 
-function setLoading(text = "Loading...") {
+function setBadge(text, mode = "online") {
   const badge = $("connectionBadge");
   if (!badge) return;
+
+  badge.classList.remove("is-offline", "is-online");
+
+  if (mode === "offline") {
+    badge.classList.add("is-offline");
+  } else {
+    badge.classList.add("is-online");
+  }
+
   badge.innerHTML = `<span></span>${esc(text)}`;
+}
+
+function setLoading(text = "Loading...") {
+  setBadge(text, "online");
 }
 
 function setOnline(text = "Online") {
-  const badge = $("connectionBadge");
-  if (!badge) return;
-  badge.innerHTML = `<span></span>${esc(text)}`;
+  setBadge(text, "online");
 }
 
 function setOffline(text = "Offline") {
-  const badge = $("connectionBadge");
-  if (!badge) return;
-  badge.innerHTML = `<span></span>${esc(text)}`;
-  badge.classList.add("is-offline");
+  setBadge(text, "offline");
+}
+
+function clearSelectionVisualBug() {
+  try {
+    window.getSelection()?.removeAllRanges();
+  } catch (_) {}
 }
 
 /* ================= API Helpers ================= */
@@ -216,6 +232,7 @@ async function loadWinners(force = false) {
   setLoading(force ? "Rebuilding..." : "Loading...");
 
   const data = await api(`/winners/cs${force ? "?force=1" : ""}`);
+
   state.winners = Array.isArray(data.winners) ? data.winners : [];
 
   applyFilter();
@@ -240,17 +257,19 @@ async function loadWinners(force = false) {
 
 async function rebuildCache() {
   setLoading("Rebuilding...");
+
   const data = await api("/cache/winners/rebuild", {
     method: "POST",
     body: {},
   });
 
   state.winners = Array.isArray(data.winners) ? data.winners : [];
+
   applyFilter();
   renderStats();
   renderWinnerList();
-  setOnline("Cache rebuilt");
 
+  setOnline("Cached");
   return data;
 }
 
@@ -266,8 +285,16 @@ async function loadMessages(userId, markRead = true) {
 
   if (markRead) {
     const w = state.winners.find((x) => String(x.user_id) === String(userId));
+
     if (w) {
       w.inbound_unread_count = 0;
+    }
+
+    if (
+      state.selectedWinner &&
+      String(state.selectedWinner.user_id) === String(userId)
+    ) {
+      state.selectedWinner.inbound_unread_count = 0;
     }
 
     applyFilter();
@@ -318,7 +345,9 @@ async function handleLogin(e) {
     await loadInitialData();
   } catch (err) {
     console.error(err);
-    if (error) error.textContent = "Admin code မှားနေပါတယ် / Backend connection failed.";
+    if (error) {
+      error.textContent = "Admin code မှားနေပါတယ် / Backend connection failed.";
+    }
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -326,12 +355,14 @@ async function handleLogin(e) {
 
 function logout() {
   localStorage.removeItem(APP.STORAGE_KEY);
+
   state.apiKey = "";
   state.winners = [];
   state.filtered = [];
   state.selectedUserId = "";
   state.selectedWinner = null;
   state.messages = [];
+
   showLogin();
 }
 
@@ -348,6 +379,9 @@ async function loadInitialData() {
 }
 
 async function boot() {
+  if (state.booted) return;
+  state.booted = true;
+
   bindEvents();
 
   const saved = localStorage.getItem(APP.STORAGE_KEY) || "";
@@ -392,6 +426,8 @@ function applyFilter() {
         w.user_id,
         w.prize,
         w.last_message_text,
+        w.last_reply_text,
+        w.last_outbound_text,
         w.cs_status,
         w.game_account,
         w.game_phone,
@@ -403,12 +439,30 @@ function applyFilter() {
     });
   }
 
+  arr.sort((a, b) => {
+    const au = Number(a.inbound_unread_count || 0);
+    const bu = Number(b.inbound_unread_count || 0);
+    if (au !== bu) return bu - au;
+
+    const ar =
+      Date.parse(a.last_reply_at || a.last_message_at || a.at || "") || 0;
+    const br =
+      Date.parse(b.last_reply_at || b.last_message_at || b.at || "") || 0;
+    if (ar !== br) return br - ar;
+
+    return Number(b.turn || 0) - Number(a.turn || 0);
+  });
+
   state.filtered = arr;
 }
 
 function getCounts() {
   const total = state.winners.length;
-  const unread = state.winners.filter((w) => Number(w.inbound_unread_count || 0) > 0).length;
+
+  const unread = state.winners.filter(
+    (w) => Number(w.inbound_unread_count || 0) > 0
+  ).length;
+
   const pending = state.winners.filter((w) => !w.done).length;
   const done = state.winners.filter((w) => !!w.done).length;
 
@@ -437,6 +491,7 @@ function renderStats() {
   if ($("doneCount")) $("doneCount").textContent = c.done;
   if ($("doneWinnerCount")) $("doneWinnerCount").textContent = `Done: ${c.done}`;
   if ($("doneAmount")) $("doneAmount").textContent = moneyText(c.doneAmount);
+
   if ($("footerText")) {
     $("footerText").textContent = `Showing ${Math.min(
       state.visibleCount,
@@ -446,20 +501,22 @@ function renderStats() {
 }
 /* ================= Winner List Render ================= */
 function getWinnerPreviewText(w) {
-  return (
+  const t =
     safeText(w.last_message_text) ||
     safeText(w.last_reply_text) ||
-    safeText(w.last_outbound_text) ||
-    "No message yet"
-  );
+    safeText(w.last_outbound_text);
+
+  if (t) return t;
+
+  return "No message yet";
 }
 
 function getStatusLabel(w) {
-  if (w.done) return "Done";
-  if (Number(w.inbound_unread_count || 0) > 0) return "Unread";
+  if (w.done) return "done";
+  if (Number(w.inbound_unread_count || 0) > 0) return "unread";
   if (w.cs_status) return w.cs_status;
-  if (w.notice_sent) return "Notice Sent";
-  return "Pending";
+  if (w.notice_sent) return "notice_sent";
+  return "pending";
 }
 
 function renderWinnerList() {
@@ -482,13 +539,13 @@ function renderWinnerList() {
       const status = getStatusLabel(w);
 
       return `
-        <button class="cs-winner-item ${selected ? "is-active" : ""}" data-user-id="${esc(w.user_id)}">
+        <button type="button" class="cs-winner-item ${selected ? "is-active" : ""} ${unread ? "has-unread" : ""}" data-user-id="${esc(w.user_id)}">
           <div class="cs-avatar">${esc(avatarText(w))}</div>
 
           <div class="cs-winner-main">
             <div class="cs-winner-title">
               <b>${esc(w.display || w.name || w.user_id)}</b>
-              <span>${esc(fmtDate(w.last_message_at || w.at))}</span>
+              <span>${esc(fmtDate(w.last_message_at || w.last_reply_at || w.at))}</span>
             </div>
 
             <div class="cs-winner-sub">
@@ -510,9 +567,11 @@ function renderWinnerList() {
     })
     .join("");
 
-  qsa(".cs-winner-item", box).forEach((btn) => {
-    btn.addEventListener("click", () => {
-      selectWinner(btn.dataset.userId);
+  box.querySelectorAll(".cs-winner-item").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      clearSelectionVisualBug();
+      await selectWinner(btn.dataset.userId);
     });
   });
 
@@ -531,6 +590,9 @@ async function selectWinner(userId) {
   state.selectedWinner = w;
   state.messages = [];
   state.selectedFile = null;
+
+  if ($("mediaInput")) $("mediaInput").value = "";
+  renderSelectedFile();
 
   renderWinnerList();
   renderChatHeader(w);
@@ -573,7 +635,13 @@ function renderMediaBubble(m) {
     return `<div class="cs-media-missing">[media unavailable]</div>`;
   }
 
-  if (m.message_type === "photo" || safeText(media.mime_type).startsWith("image/")) {
+  const mime = safeText(media.mime_type).toLowerCase();
+  const isImage =
+    m.message_type === "photo" ||
+    mime.startsWith("image/") ||
+    /\.(jpg|jpeg|png|webp|gif)$/i.test(media.file_name || "");
+
+  if (isImage) {
     return `
       <a class="cs-image-link" href="${esc(mediaUrl(fileId))}" target="_blank" rel="noopener">
         <img class="cs-chat-image" src="${esc(mediaUrl(fileId))}" alt="image message" loading="lazy" />
@@ -668,7 +736,7 @@ function renderDetails(w) {
   if ($("detailStatus")) $("detailStatus").textContent = getStatusLabel(w);
   if ($("detailPrize")) $("detailPrize").textContent = moneyText(w.prize);
   if ($("detailNotice")) $("detailNotice").textContent = w.notice_sent ? fmtDate(w.notice_at || w.at) : "Not sent";
-  if ($("detailCsStatus")) $("detailCsStatus").textContent = w.cs_status || "Pending";
+  if ($("detailCsStatus")) $("detailCsStatus").textContent = w.cs_status || "pending";
   if ($("detailLastReply")) $("detailLastReply").textContent = fmtDate(w.last_reply_at || w.last_message_at);
   if ($("detailDoneCheckbox")) $("detailDoneCheckbox").checked = !!w.done;
   if ($("detailNote")) $("detailNote").value = safeText(w.cs_note);
@@ -778,8 +846,10 @@ async function sendMediaMessage() {
     }
 
     state.selectedFile = null;
+
     if ($("mediaInput")) $("mediaInput").value = "";
     if ($("replyText")) $("replyText").value = "";
+
     renderSelectedFile();
 
     toast("Media sent", "success");
@@ -809,6 +879,8 @@ function renderSelectedFile() {
 }
 
 async function sendReply() {
+  clearSelectionVisualBug();
+
   if (state.selectedFile) {
     await sendMediaMessage();
     return;
@@ -843,7 +915,7 @@ async function sendNotice() {
     syncSelectedWinnerPatch({
       notice_sent: true,
       notice_at: new Date().toISOString(),
-      cs_status: "Notice Sent",
+      cs_status: "notice_sent",
     });
 
     toast("Notice sent", "success");
@@ -876,7 +948,7 @@ async function markDone() {
     syncSelectedWinnerPatch({
       done: next,
       done_at: next ? new Date().toISOString() : "",
-      cs_status: next ? "Done" : "Pending",
+      cs_status: next ? "done" : "pending",
     });
 
     toast(next ? "Marked done" : "Marked pending", "success");
@@ -936,27 +1008,530 @@ async function setDoneFromCheckbox() {
     syncSelectedWinnerPatch({
       done: checked,
       done_at: checked ? new Date().toISOString() : "",
-      cs_status: checked ? "Done" : "Pending",
+      cs_status: checked ? "done" : "pending",
     });
 
     toast("Done status updated", "success");
   } catch (err) {
     console.error(err);
     toast(`Done update failed: ${err.message}`, "error");
-    if ($("detailDoneCheckbox")) $("detailDoneCheckbox").checked = !checked;
+
+    if ($("detailDoneCheckbox")) {
+      $("detailDoneCheckbox").checked = !checked;
+    }
   }
 }
+/* ================= Broadcast Templates ================= */
+async function loadTemplates() {
+  try {
+    const data = await api("/broadcast/templates");
+
+    state.templates = Array.isArray(data.templates) ? data.templates : [];
+
+    renderTemplateOptions();
+    return state.templates;
+  } catch (err) {
+    console.warn("loadTemplates failed:", err);
+    return [];
+  }
+}
+
+function renderTemplateOptions() {
+  const sel = $("broadcastTemplateSelect");
+  if (!sel) return;
+
+  const current = sel.value || "";
+
+  sel.innerHTML = `
+    <option value="">No template / Custom message</option>
+    ${state.templates
+      .map(
+        (t) => `
+          <option value="${esc(t.id)}">
+            ${esc(t.name || "Untitled")} ${t.type === "photo" ? "🖼" : ""}
+          </option>
+        `
+      )
+      .join("")}
+  `;
+
+  if (current) sel.value = current;
+}
+
+function applySelectedTemplate() {
+  const id = $("broadcastTemplateSelect")?.value || "";
+  if (!id) return;
+
+  const t = state.templates.find((x) => String(x.id) === String(id));
+  if (!t) return;
+
+  if ($("broadcastText")) $("broadcastText").value = safeText(t.text);
+  if ($("broadcastCaption")) $("broadcastCaption").value = safeText(t.caption);
+
+  toast("Template loaded", "success");
+}
+
+async function saveTemplateFromBroadcastForm() {
+  const name =
+    safeText($("broadcastName")?.value).trim() || "Broadcast Template";
+
+  const text = safeText($("broadcastText")?.value).trim();
+  const caption = safeText($("broadcastCaption")?.value).trim();
+  const file = $("broadcastFile")?.files?.[0] || null;
+
+  try {
+    let data;
+
+    if (file) {
+      const fd = new FormData();
+
+      fd.append("name", name);
+      fd.append("text", text);
+      fd.append("caption", caption || text);
+      fd.append("file", file);
+
+      data = await api("/broadcast/templates/media", {
+        method: "POST",
+        body: fd,
+      });
+    } else {
+      if (!text && !caption) {
+        toast("Template message ထည့်ပါ။", "error");
+        return;
+      }
+
+      data = await api("/broadcast/templates", {
+        method: "POST",
+        body: {
+          name,
+          type: "text",
+          text,
+          caption,
+        },
+      });
+    }
+
+    if (data.template) {
+      const idx = state.templates.findIndex((x) => x.id === data.template.id);
+
+      if (idx >= 0) state.templates[idx] = data.template;
+      else state.templates.unshift(data.template);
+    }
+
+    renderTemplateOptions();
+    toast("Template saved", "success");
+  } catch (err) {
+    console.error(err);
+    toast(`Template save failed: ${err.message}`, "error");
+  }
+}
+
+/* ================= Broadcast Campaigns ================= */
+async function loadCampaigns() {
+  try {
+    const data = await api("/broadcast/campaigns");
+
+    state.campaigns = Array.isArray(data.campaigns) ? data.campaigns : [];
+
+    renderCampaigns();
+    return state.campaigns;
+  } catch (err) {
+    console.warn("loadCampaigns failed:", err);
+    return [];
+  }
+}
+
+function campaignStatusClass(status) {
+  const s = safeText(status).toLowerCase();
+
+  if (s === "completed") return "is-done";
+  if (s === "running") return "is-running";
+  if (s === "queued") return "is-queued";
+  if (s === "cancelled") return "is-cancelled";
+
+  return "";
+}
+
+function renderCampaigns() {
+  const box = $("broadcastCampaignList");
+  if (!box) return;
+
+  if (!state.campaigns.length) {
+    box.innerHTML = `<div class="cs-empty">No campaigns yet.</div>`;
+    return;
+  }
+
+  box.innerHTML = state.campaigns
+    .slice(0, 20)
+    .map((c) => {
+      const failed = Number(c.failed || 0);
+      const sent = Number(c.sent || 0);
+      const total = Number(c.total || 0);
+
+      return `
+        <div class="cs-campaign-item">
+          <div>
+            <b>${esc(c.name || "Broadcast")}</b>
+            <p>${esc(compactText(c.text || c.caption || c.type || "", 70))}</p>
+            <small>
+              ${esc(c.target || "all")} • ${esc(fmtDate(c.created_at))}
+              ${c.schedule_at ? ` • schedule ${esc(fmtDate(c.schedule_at))}` : ""}
+            </small>
+          </div>
+
+          <div class="cs-campaign-meta">
+            <span class="cs-mini-status ${campaignStatusClass(c.status)}">${esc(c.status || "draft")}</span>
+            <span>${sent}/${total}</span>
+            ${failed ? `<span class="cs-fail">${failed} failed</span>` : ""}
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+async function previewBroadcast() {
+  const target = $("broadcastTarget")?.value || "all";
+
+  const selectedIds =
+    target === "selected" && state.selectedWinner
+      ? [String(state.selectedWinner.user_id)]
+      : [];
+
+  try {
+    const data = await api("/broadcast/campaigns/preview", {
+      method: "POST",
+      body: {
+        target,
+        selected_user_ids: selectedIds,
+      },
+    });
+
+    if ($("broadcastPreviewCount")) {
+      $("broadcastPreviewCount").textContent = `Target: ${data.total || 0}`;
+    }
+
+    const box = $("broadcastPreviewList");
+
+    if (box) {
+      const sample = Array.isArray(data.sample) ? data.sample : [];
+
+      box.innerHTML = sample.length
+        ? sample
+            .map(
+              (w) => `
+                <div class="cs-preview-user">
+                  <b>${esc(w.display || w.name || w.user_id)}</b>
+                  <span>${esc(usernameText(w))}</span>
+                  <em>${esc(moneyText(w.prize))}</em>
+                </div>
+              `
+            )
+            .join("")
+        : `<div class="cs-empty">No target winners.</div>`;
+    }
+
+    toast(`Target count: ${data.total || 0}`, "success");
+    return data;
+  } catch (err) {
+    console.error(err);
+    toast(`Preview failed: ${err.message}`, "error");
+    return null;
+  }
+}
+
+function getBroadcastFormPayload(sendNow = false, schedule = false) {
+  const target = $("broadcastTarget")?.value || "all";
+
+  const selectedIds =
+    target === "selected" && state.selectedWinner
+      ? [String(state.selectedWinner.user_id)]
+      : [];
+
+  const name = safeText($("broadcastName")?.value).trim() || "Broadcast";
+  const text = safeText($("broadcastText")?.value).trim();
+  const caption = safeText($("broadcastCaption")?.value).trim();
+
+  const scheduleToggle = !!$("broadcastScheduleToggle")?.checked;
+  const scheduleAtLocal = $("broadcastScheduleAt")?.value || "";
+
+  let scheduleAt = "";
+
+  if (schedule || scheduleToggle) {
+    if (!scheduleAtLocal) {
+      throw new Error("Schedule date/time ရွေးပါ။");
+    }
+
+    scheduleAt = new Date(scheduleAtLocal).toISOString();
+  }
+
+  return {
+    name,
+    target,
+    selected_user_ids: selectedIds,
+    type: "text",
+    text,
+    caption,
+    schedule_at: scheduleAt,
+    timezone: "Asia/Yangon",
+    send_now: sendNow,
+  };
+}
+
+async function createTextBroadcast(sendNow = false, schedule = false) {
+  const payload = getBroadcastFormPayload(sendNow, schedule);
+
+  if (!payload.text && !payload.caption) {
+    throw new Error("Broadcast message ထည့်ပါ။");
+  }
+
+  const data = await api("/broadcast/campaigns", {
+    method: "POST",
+    body: payload,
+  });
+
+  await loadCampaigns();
+  return data;
+}
+
+async function createMediaBroadcast(sendNow = false, schedule = false) {
+  const payload = getBroadcastFormPayload(sendNow, schedule);
+  const file = $("broadcastFile")?.files?.[0] || null;
+
+  if (!file) {
+    throw new Error("Broadcast image/file ရွေးပါ။");
+  }
+
+  const fd = new FormData();
+
+  fd.append("name", payload.name);
+  fd.append("target", payload.target);
+  fd.append("selected_user_ids", JSON.stringify(payload.selected_user_ids || []));
+  fd.append("text", payload.text || "");
+  fd.append("caption", payload.caption || payload.text || "");
+  fd.append("schedule_at", payload.schedule_at || "");
+  fd.append("timezone", payload.timezone || "Asia/Yangon");
+  fd.append("send_now", sendNow ? "true" : "false");
+  fd.append("file", file);
+
+  const data = await api("/broadcast/campaigns/media", {
+    method: "POST",
+    body: fd,
+  });
+
+  await loadCampaigns();
+  return data;
+}
+
+async function sendBroadcastNow() {
+  const btn = $("sendBroadcastBtn");
+  const file = $("broadcastFile")?.files?.[0] || null;
+
+  const ok = window.confirm(
+    "Broadcast ကို ပို့မယ်။ Target filter သေချာစစ်ပြီးပြီလား?"
+  );
+
+  if (!ok) return;
+
+  try {
+    if (btn) btn.disabled = true;
+
+    toast("Broadcast sending...", "info");
+
+    const data = file
+      ? await createMediaBroadcast(true, false)
+      : await createTextBroadcast(true, false);
+
+    const result = data.result || {};
+
+    toast(
+      `Broadcast done: sent ${result.sent || 0}, failed ${result.failed || 0}`,
+      result.failed ? "info" : "success"
+    );
+
+    await loadWinners(false);
+  } catch (err) {
+    console.error(err);
+    toast(`Broadcast failed: ${err.message}`, "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function scheduleBroadcast() {
+  const btn = $("scheduleBroadcastBtn");
+  const file = $("broadcastFile")?.files?.[0] || null;
+
+  try {
+    if (btn) btn.disabled = true;
+
+    const data = file
+      ? await createMediaBroadcast(false, true)
+      : await createTextBroadcast(false, true);
+
+    toast(`Broadcast scheduled: ${data.campaign?.name || "campaign"}`, "success");
+
+    await loadCampaigns();
+  } catch (err) {
+    console.error(err);
+    toast(`Schedule failed: ${err.message}`, "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/* ================= Modal Helpers ================= */
+function openModal(id) {
+  const el = $(id);
+  if (!el) return;
+
+  setHidden(el, false);
+
+  if (id === "broadcastModal") {
+    loadTemplates();
+    loadCampaigns();
+    previewBroadcast().catch(() => {});
+  }
+}
+
+function closeModal(id) {
+  const el = $(id);
+  if (!el) return;
+
+  setHidden(el, true);
+}
+
+/* ================= Export / Backup ================= */
+function exportCurrentWinnersCsv() {
+  const rows = state.winners || [];
+
+  const headers = [
+    "turn",
+    "prize",
+    "user_id",
+    "display",
+    "name",
+    "username",
+    "done",
+    "notice_sent",
+    "cs_status",
+    "game_account",
+    "game_phone",
+    "message_count",
+    "inbound_unread_count",
+    "last_message_text",
+    "last_message_at",
+  ];
+
+  const csv = [
+    headers.join(","),
+    ...rows.map((w) =>
+      headers
+        .map((h) => {
+          const val = safeText(w[h]).replaceAll('"', '""');
+          return `"${val}"`;
+        })
+        .join(",")
+    ),
+  ].join("\n");
+
+  const blob = new Blob([csv], {
+    type: "text/csv;charset=utf-8",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+
+  a.href = url;
+  a.download = `lucky77_winners_${Date.now()}.csv`;
+
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  URL.revokeObjectURL(url);
+}
+
+async function sendBackupToOwner() {
+  const ok = window.confirm(
+    "Light backup ကို Owner Telegram ဆီပို့မယ်။ ဆက်လုပ်မလား?"
+  );
+
+  if (!ok) return;
+
+  try {
+    await api("/backup/send-owner", {
+      method: "POST",
+      body: {
+        mode: "light",
+      },
+    });
+
+    toast("Backup sent to owner Telegram", "success");
+  } catch (err) {
+    console.error(err);
+    toast(`Backup failed: ${err.message}`, "error");
+  }
+}
+
+/* ================= UI Small Actions ================= */
+function insertAccountRequest() {
+  const el = $("replyText");
+  if (!el) return;
+
+  const current = safeText(el.value).trim();
+
+  el.value = current
+    ? `${current}\n\n${ACCOUNT_REQUEST_TEXT}`
+    : ACCOUNT_REQUEST_TEXT;
+
+  el.focus();
+  clearSelectionVisualBug();
+}
+
+function updateTabActive() {
+  qsa(".cs-tab").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.filter === state.filter);
+  });
+}
+/* ================= Stable Layout Guard ================= */
+function initStableLayout() {
+  const grid = document.querySelector(".cs-grid");
+  if (!grid) return;
+
+  grid.style.gridTemplateColumns = "";
+  grid.dataset.resizableReady = "";
+
+  document
+    .querySelectorAll(".cs-grid-resizer")
+    .forEach((el) => el.remove());
+
+  localStorage.removeItem("lucky77_cs_left_width");
+  localStorage.removeItem("lucky77_cs_right_width");
+}
+
 /* ================= Event Binding ================= */
 function bindEvents() {
+  initStableLayout();
+
   const loginForm = $("adminLoginForm");
-  if (loginForm) loginForm.addEventListener("submit", handleLogin);
+  if (loginForm) {
+    loginForm.addEventListener("submit", handleLogin);
+  }
 
   const logoutBtn = $("logoutBtn");
-  if (logoutBtn) logoutBtn.addEventListener("click", logout);
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      logout();
+    });
+  }
 
   const refreshBtn = $("refreshBtn");
   if (refreshBtn) {
-    refreshBtn.addEventListener("click", async () => {
+    refreshBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+
       try {
         await loadWinners(false);
         toast("Refreshed", "success");
@@ -969,7 +1544,9 @@ function bindEvents() {
 
   const sidebarRefreshBtn = $("sidebarRefreshBtn");
   if (sidebarRefreshBtn) {
-    sidebarRefreshBtn.addEventListener("click", async () => {
+    sidebarRefreshBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+
       try {
         await loadWinners(false);
         toast("Refreshed", "success");
@@ -982,8 +1559,13 @@ function bindEvents() {
 
   const forceRebuildBtn = $("forceRebuildBtn");
   if (forceRebuildBtn) {
-    forceRebuildBtn.addEventListener("click", async () => {
-      const ok = window.confirm("Winner cache ကို force rebuild လုပ်မယ်။ ဆက်လုပ်မလား?");
+    forceRebuildBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+
+      const ok = window.confirm(
+        "Winner cache ကို force rebuild လုပ်မယ်။ ဆက်လုပ်မလား?"
+      );
+
       if (!ok) return;
 
       try {
@@ -1001,24 +1583,35 @@ function bindEvents() {
     searchInput.addEventListener("input", () => {
       state.search = searchInput.value || "";
       state.visibleCount = APP.PAGE_SIZE;
+
       applyFilter();
+      updateTabActive();
       renderWinnerList();
+      renderStats();
     });
   }
 
   qsa(".cs-tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
       state.filter = btn.dataset.filter || "all";
       state.visibleCount = APP.PAGE_SIZE;
+
       updateTabActive();
       applyFilter();
       renderWinnerList();
+      renderStats();
+      clearSelectionVisualBug();
     });
   });
 
   const loadMoreBtn = $("loadMoreBtn");
   if (loadMoreBtn) {
-    loadMoreBtn.addEventListener("click", () => {
+    loadMoreBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+
       state.visibleCount += APP.PAGE_SIZE;
       renderWinnerList();
     });
@@ -1026,7 +1619,10 @@ function bindEvents() {
 
   const sendReplyBtn = $("sendReplyBtn");
   if (sendReplyBtn) {
-    sendReplyBtn.addEventListener("click", sendReply);
+    sendReplyBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await sendReply();
+    });
   }
 
   const replyText = $("replyText");
@@ -1049,51 +1645,80 @@ function bindEvents() {
 
   const clearSelectedFileBtn = $("clearSelectedFileBtn");
   if (clearSelectedFileBtn) {
-    clearSelectedFileBtn.addEventListener("click", () => {
+    clearSelectedFileBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+
       state.selectedFile = null;
-      if ($("mediaInput")) $("mediaInput").value = "";
+
+      if ($("mediaInput")) {
+        $("mediaInput").value = "";
+      }
+
       renderSelectedFile();
     });
   }
 
   const quickAccountRequestBtn = $("quickAccountRequestBtn");
   if (quickAccountRequestBtn) {
-    quickAccountRequestBtn.addEventListener("click", insertAccountRequest);
+    quickAccountRequestBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      insertAccountRequest();
+    });
   }
 
   const sendNoticeBtn = $("sendNoticeBtn");
   if (sendNoticeBtn) {
-    sendNoticeBtn.addEventListener("click", sendNotice);
+    sendNoticeBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await sendNotice();
+    });
   }
 
   const markDoneBtn = $("markDoneBtn");
   if (markDoneBtn) {
-    markDoneBtn.addEventListener("click", markDone);
+    markDoneBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await markDone();
+    });
   }
 
   const saveNoteBtn = $("saveNoteBtn");
   if (saveNoteBtn) {
-    saveNoteBtn.addEventListener("click", saveWinnerNote);
+    saveNoteBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await saveWinnerNote();
+    });
   }
 
   const detailDoneCheckbox = $("detailDoneCheckbox");
   if (detailDoneCheckbox) {
-    detailDoneCheckbox.addEventListener("change", setDoneFromCheckbox);
+    detailDoneCheckbox.addEventListener("change", async () => {
+      await setDoneFromCheckbox();
+    });
   }
 
   const broadcastBtn = $("broadcastBtn");
   if (broadcastBtn) {
-    broadcastBtn.addEventListener("click", () => openModal("broadcastModal"));
+    broadcastBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      openModal("broadcastModal");
+    });
   }
 
   const openBroadcastNavBtn = $("openBroadcastNavBtn");
   if (openBroadcastNavBtn) {
-    openBroadcastNavBtn.addEventListener("click", () => openModal("broadcastModal"));
+    openBroadcastNavBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      openModal("broadcastModal");
+    });
   }
 
   const openTemplatesNavBtn = $("openTemplatesNavBtn");
   if (openTemplatesNavBtn) {
-    openTemplatesNavBtn.addEventListener("click", () => openModal("broadcastModal"));
+    openTemplatesNavBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      openModal("broadcastModal");
+    });
   }
 
   qsa("[data-close-modal]").forEach((el) => {
@@ -1118,6 +1743,7 @@ function bindEvents() {
   if (broadcastFile) {
     broadcastFile.addEventListener("change", () => {
       state.broadcastFile = broadcastFile.files?.[0] || null;
+
       if (state.broadcastFile) {
         toast(`Broadcast file selected: ${state.broadcastFile.name}`, "info");
       }
@@ -1126,27 +1752,41 @@ function bindEvents() {
 
   const previewBroadcastBtn = $("previewBroadcastBtn");
   if (previewBroadcastBtn) {
-    previewBroadcastBtn.addEventListener("click", previewBroadcast);
+    previewBroadcastBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await previewBroadcast();
+    });
   }
 
   const saveTemplateBtn = $("saveTemplateBtn");
   if (saveTemplateBtn) {
-    saveTemplateBtn.addEventListener("click", saveTemplateFromBroadcastForm);
+    saveTemplateBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await saveTemplateFromBroadcastForm();
+    });
   }
 
   const sendBroadcastBtn = $("sendBroadcastBtn");
   if (sendBroadcastBtn) {
-    sendBroadcastBtn.addEventListener("click", sendBroadcastNow);
+    sendBroadcastBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await sendBroadcastNow();
+    });
   }
 
   const scheduleBroadcastBtn = $("scheduleBroadcastBtn");
   if (scheduleBroadcastBtn) {
-    scheduleBroadcastBtn.addEventListener("click", scheduleBroadcast);
+    scheduleBroadcastBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await scheduleBroadcast();
+    });
   }
 
   const refreshCampaignsBtn = $("refreshCampaignsBtn");
   if (refreshCampaignsBtn) {
-    refreshCampaignsBtn.addEventListener("click", async () => {
+    refreshCampaignsBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+
       await loadCampaigns();
       toast("Campaigns refreshed", "success");
     });
@@ -1154,17 +1794,24 @@ function bindEvents() {
 
   const exportBtn = $("exportBtn");
   if (exportBtn) {
-    exportBtn.addEventListener("click", exportCurrentWinnersCsv);
+    exportBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      exportCurrentWinnersCsv();
+    });
   }
 
   const backupBtn = $("backupBtn");
   if (backupBtn) {
-    backupBtn.addEventListener("click", sendBackupToOwner);
+    backupBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await sendBackupToOwner();
+    });
   }
 
   const assignBtn = $("assignBtn");
   if (assignBtn) {
-    assignBtn.addEventListener("click", () => {
+    assignBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       toast("Assigned to CS Team", "success");
     });
   }
@@ -1184,6 +1831,11 @@ function bindEvents() {
       closeModal("broadcastModal");
       closeModal("replyModal");
     }
+  });
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (btn) clearSelectionVisualBug();
   });
 }
 
