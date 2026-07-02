@@ -398,9 +398,13 @@ async function handleLogin(event) {
 }
 
 function logout() {
+  stopNotificationWatcher();
+  document.title = notificationState.originalTitle;
+
   state.apiKey = "";
   state.account = "lucky77autospin";
-
+  
+  
   localStorage.removeItem(APP.STORAGE_KEY);
   localStorage.removeItem(APP.ACCOUNT_KEY);
 
@@ -436,6 +440,137 @@ async function boot() {
   showLogin();
 }
 
+
+/* ================= New Message Notification Sound ================= */
+const notificationState = {
+  audioCtx: null,
+  unlocked: false,
+  timer: null,
+  previousUnreadTotal: null,
+  originalTitle: document.title || "Lucky77 Winner Inbox",
+};
+
+function getUnreadTotal(list = state.winners) {
+  return list.reduce((sum, w) => sum + Number(w.unread || 0), 0);
+}
+
+function unlockNotificationSound() {
+  if (notificationState.unlocked) return;
+
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    notificationState.audioCtx = notificationState.audioCtx || new AudioContextClass();
+
+    if (notificationState.audioCtx.state === "suspended") {
+      notificationState.audioCtx.resume();
+    }
+
+    notificationState.unlocked = true;
+  } catch (_) {}
+}
+
+function playNotificationSound() {
+  if (!notificationState.unlocked || !notificationState.audioCtx) return;
+
+  try {
+    const ctx = notificationState.audioCtx;
+    const now = ctx.currentTime;
+
+    function beep(start, frequency) {
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, start);
+
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.22, start + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+
+      oscillator.start(start);
+      oscillator.stop(start + 0.2);
+    }
+
+    beep(now, 880);
+    beep(now + 0.22, 1175);
+  } catch (_) {}
+}
+
+function updateNotificationTitle() {
+  const unread = getUnreadTotal();
+
+  if (unread > 0) {
+    document.title = `(${unread}) ${notificationState.originalTitle}`;
+  } else {
+    document.title = notificationState.originalTitle;
+  }
+}
+
+async function pollNewMessagesForNotification() {
+  if (!state.apiKey) return;
+  if (!$("appView") || $("appView").hidden) return;
+
+  try {
+    const oldUnread = getUnreadTotal();
+
+    const data = await api(`/winners/cs?_=${Date.now()}`);
+    const nextWinners = Array.isArray(data.winners) ? data.winners : [];
+
+    const newUnread = getUnreadTotal(nextWinners);
+
+    state.winners = nextWinners;
+
+    if (state.selectedUserId) {
+      const selected = state.winners.find((w) => String(w.user_id) === String(state.selectedUserId));
+      if (selected) {
+        state.selectedWinner = selected;
+        renderChatHeader();
+        renderDetails();
+      }
+    }
+
+    applyFilter({ keepVisible: true });
+    renderStats();
+    updateNotificationTitle();
+
+    if (
+      notificationState.previousUnreadTotal !== null &&
+      newUnread > oldUnread &&
+      newUnread > notificationState.previousUnreadTotal
+    ) {
+      playNotificationSound();
+      toast(`New message received (${newUnread} unread)`, "info");
+    }
+
+    notificationState.previousUnreadTotal = newUnread;
+  } catch (err) {
+    console.warn("Notification poll failed", err);
+  }
+}
+
+function startNotificationWatcher() {
+  stopNotificationWatcher();
+
+  notificationState.previousUnreadTotal = getUnreadTotal();
+  updateNotificationTitle();
+
+  notificationState.timer = setInterval(() => {
+    pollNewMessagesForNotification();
+  }, 25000);
+}
+
+function stopNotificationWatcher() {
+  if (notificationState.timer) {
+    clearInterval(notificationState.timer);
+    notificationState.timer = null;
+  }
+}
+
 /* ================= Data Load ================= */
 async function loadInitialData() {
   if (!state.apiKey) {
@@ -454,6 +589,7 @@ async function loadInitialData() {
 
     setOnline("Online");
     state.booted = true;
+    startNotificationWatcher ();
   } catch (err) {
     console.error(err);
     setOffline("Error");
@@ -1715,9 +1851,11 @@ function initStableLayout() {
 
 /* ================= Event Binding ================= */
 function bindEvents() {
+  document.addEventListener("click", unlockNotificationSound, { once: true });
+  document.addEventListener("touchstart", unlockNotificationSound, { once: true });
+
   /* ---------- Login ---------- */
   $("loginForm")?.addEventListener("submit", handleLogin);
-
   $("togglePassBtn")?.addEventListener("click", () => {
     const input = $("apiPassInput");
     if (!input) return;
