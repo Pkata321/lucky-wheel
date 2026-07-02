@@ -1,1423 +1,1197 @@
-const CONFIG = {
+"use strict";
+
+/* =========================================================
+   Lucky77 Winner Inbox
+   Respond-style CS Inbox + Media Chat + Broadcast
+   Free-safe frontend: manual refresh by default
+========================================================= */
+
+const APP = {
   BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
-  API_KEY: "",
-  TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "cs-inbox-login-full-v4",
-  PAGE_SIZE: 40,
+  CACHE_BUSTER: "winner-inbox-v1",
+  STORAGE_KEY: "lucky77_admin_api_key",
+  PAGE_SIZE: 60,
 };
+
+const ACCOUNT_REQUEST_TEXT = [
+  "ဆုထုတ်ရန်အတွက် အောက်က information ၂ ခုကို ပြန်ပို့ပေးပါ။",
+  "",
+  "Account Name -",
+  "Telegram Number -",
+].join("\n");
 
 const state = {
+  apiKey: "",
   winners: [],
   filtered: [],
-  visibleCount: CONFIG.PAGE_SIZE,
-  loading: false,
-  activeFilter: "all",
   selectedUserId: "",
+  selectedWinner: null,
+  messages: [],
+  filter: "all",
+  search: "",
+  visibleCount: APP.PAGE_SIZE,
+  templates: [],
+  campaigns: [],
+  selectedFile: null,
+  broadcastFile: null,
 };
 
-const el = {
-  totalWinners: document.getElementById("totalWinners"),
-  doneCount: document.getElementById("doneCount"),
-  pendingCount: document.getElementById("pendingCount"),
-  doneWinnerCount: document.getElementById("doneWinnerCount"),
-  doneAmount: document.getElementById("doneAmount"),
+/* ================= DOM Helpers ================= */
+const $ = (id) => document.getElementById(id);
 
-  winnerList: document.getElementById("winnerList"),
-  searchInput: document.getElementById("searchInput"),
-  refreshBtn: document.getElementById("refreshBtn"),
-  exportBtn: document.getElementById("exportBtn"),
-  logoutBtn: document.getElementById("logoutBtn"),
-  footerText: document.getElementById("footerText"),
-  toast: document.getElementById("toast"),
-  loadMoreBtn: document.getElementById("loadMoreBtn"),
-  filterRow: document.getElementById("filterRow"),
-
-  replyModal: document.getElementById("replyModal"),
-  replyModalBackdrop: document.getElementById("replyModalBackdrop"),
-  replyModalClose: document.getElementById("replyModalClose"),
-  replyModalTitle: document.getElementById("replyModalTitle"),
-  replyModalSub: document.getElementById("replyModalSub"),
-  replyModalBody: document.getElementById("replyModalBody"),
-};
-
-const ADMIN_KEY_STORAGE = "lucky77_admin_api_key";
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+function qs(sel, root = document) {
+  return root.querySelector(sel);
 }
 
-function escapeAttr(value) {
-  return escapeHtml(value).replace(/'/g, "&#039;");
+function qsa(sel, root = document) {
+  return [...root.querySelectorAll(sel)];
 }
 
-function cssEscape(value) {
-  if (window.CSS && typeof window.CSS.escape === "function") {
-    return window.CSS.escape(String(value));
+function safeText(v) {
+  return String(v ?? "");
+}
+
+function esc(v) {
+  return safeText(v)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function compactText(v, max = 80) {
+  const s = safeText(v).replace(/\s+/g, " ").trim();
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}
+
+function moneyText(v) {
+  const raw = safeText(v).trim();
+  if (!raw) return "-";
+
+  const n = Number(raw.replace(/[^\d.-]/g, ""));
+  if (!Number.isFinite(n)) return raw;
+
+  return `${n.toLocaleString("en-US")} Ks`;
+}
+
+function fmtDate(v) {
+  if (!v) return "-";
+
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return safeText(v);
+
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function fmtTime(v) {
+  if (!v) return "";
+
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return safeText(v);
+
+  return d.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function avatarText(w) {
+  const name = safeText(w?.display || w?.name || w?.username || w?.user_id).trim();
+  if (!name) return "?";
+
+  const parts = name
+    .replace("@", "")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length >= 2) {
+    return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
   }
 
-  return String(value).replace(/["\\]/g, "\\$&");
+  return name.slice(0, 2).toUpperCase();
 }
 
-function formatTime(value) {
-  if (!value) return "-";
-
-  const d = new Date(value);
-
-  if (Number.isNaN(d.getTime())) return String(value);
-
-  return d.toLocaleString();
+function usernameText(w) {
+  const u = safeText(w?.username).replace(/^@+/, "");
+  return u ? `@${u}` : "-";
 }
 
-function parsePrizeAmount(prize) {
-  const text = String(prize || "");
-  const nums = text.match(/\d+/g);
-
-  if (!nums || !nums.length) return 0;
-
-  return Number(nums.join("")) || 0;
+function setHidden(el, hidden) {
+  if (!el) return;
+  el.classList.toggle("is-hidden", !!hidden);
 }
 
-function formatMoney(amount) {
-  return `${Number(amount || 0).toLocaleString()} Ks`;
+function toast(text, type = "info") {
+  const el = $("toast");
+  if (!el) return;
+
+  el.textContent = text;
+  el.className = `cs-toast ${type ? `is-${type}` : ""}`;
+
+  window.clearTimeout(toast._t);
+  toast._t = window.setTimeout(() => {
+    el.classList.add("is-hidden");
+  }, 3200);
 }
 
-function showToast(message, type = "normal") {
-  if (!el.toast) return;
+function setLoading(text = "Loading...") {
+  const badge = $("connectionBadge");
+  if (!badge) return;
+  badge.innerHTML = `<span></span>${esc(text)}`;
+}
 
-  el.toast.textContent = message;
-  el.toast.classList.remove("hidden");
+function setOnline(text = "Online") {
+  const badge = $("connectionBadge");
+  if (!badge) return;
+  badge.innerHTML = `<span></span>${esc(text)}`;
+}
 
-  if (type === "error") {
-    el.toast.style.background = "#991b1b";
-  } else if (type === "success") {
-    el.toast.style.background = "#065f46";
+function setOffline(text = "Offline") {
+  const badge = $("connectionBadge");
+  if (!badge) return;
+  badge.innerHTML = `<span></span>${esc(text)}`;
+  badge.classList.add("is-offline");
+}
+
+/* ================= API Helpers ================= */
+async function api(path, options = {}) {
+  const url = `${APP.BASE_URL}${path}`;
+
+  const headers = {
+    ...(options.headers || {}),
+  };
+
+  if (!(options.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (state.apiKey) {
+    headers["x-api-key"] = state.apiKey;
+  }
+
+  const resp = await fetch(url, {
+    method: options.method || "GET",
+    headers,
+    body:
+      options.body instanceof FormData
+        ? options.body
+        : typeof options.body === "undefined"
+          ? undefined
+          : JSON.stringify(options.body),
+  });
+
+  const contentType = resp.headers.get("content-type") || "";
+  let data;
+
+  if (contentType.includes("application/json")) {
+    data = await resp.json();
   } else {
-    el.toast.style.background = "#111827";
+    data = {
+      ok: resp.ok,
+      text: await resp.text(),
+    };
   }
 
-  clearTimeout(showToast.timer);
+  if (!resp.ok || data?.ok === false) {
+    const err = new Error(data?.error || data?.text || `HTTP ${resp.status}`);
+    err.data = data;
+    throw err;
+  }
 
-  showToast.timer = setTimeout(() => {
-    el.toast.classList.add("hidden");
-  }, 2400);
+  return data;
 }
 
-function getApiKey() {
-  return sessionStorage.getItem(ADMIN_KEY_STORAGE) || "";
+async function authCheck(apiKey) {
+  state.apiKey = apiKey;
+  return api("/auth/check");
 }
 
-function setApiKey(key) {
-  sessionStorage.setItem(ADMIN_KEY_STORAGE, String(key || "").trim());
+async function loadWinners(force = false) {
+  setLoading(force ? "Rebuilding..." : "Loading...");
+
+  const data = await api(`/winners/cs${force ? "?force=1" : ""}`);
+  state.winners = Array.isArray(data.winners) ? data.winners : [];
+
+  applyFilter();
+  renderStats();
+  renderWinnerList();
+
+  if (state.selectedUserId) {
+    const found = state.winners.find(
+      (x) => String(x.user_id) === String(state.selectedUserId)
+    );
+
+    if (found) {
+      state.selectedWinner = found;
+      renderDetails(found);
+      renderChatHeader(found);
+    }
+  }
+
+  setOnline(data.cached ? "Cached" : "Online");
+  return data;
 }
 
-function forgetApiKey() {
-  sessionStorage.removeItem(ADMIN_KEY_STORAGE);
-}
-
-function showLoginScreen(message = "") {
-  const login = document.getElementById("adminLoginScreen");
-  const app = document.getElementById("adminApp");
-  const error = document.getElementById("adminLoginError");
-
-  if (login) login.classList.remove("hidden");
-  if (app) app.classList.add("hidden");
-  if (error) error.textContent = message || "";
-}
-
-function showAdminApp() {
-  const login = document.getElementById("adminLoginScreen");
-  const app = document.getElementById("adminApp");
-  const error = document.getElementById("adminLoginError");
-
-  if (login) login.classList.add("hidden");
-  if (app) app.classList.remove("hidden");
-  if (error) error.textContent = "";
-}
-
-async function testAdminApiKey(key) {
-  const cleanKey = String(key || "").trim();
-
-  if (!cleanKey) return false;
-
-  const health = await fetch(`${CONFIG.BASE_URL}/health?_=${Date.now()}`, {
-    cache: "no-store",
+async function rebuildCache() {
+  setLoading("Rebuilding...");
+  const data = await api("/cache/winners/rebuild", {
+    method: "POST",
+    body: {},
   });
 
-  if (!health.ok) {
-    throw new Error("Backend connection failed");
-  }
+  state.winners = Array.isArray(data.winners) ? data.winners : [];
+  applyFilter();
+  renderStats();
+  renderWinnerList();
+  setOnline("Cache rebuilt");
 
-  const check = await fetch(`${CONFIG.BASE_URL}/winners/cs?_=${Date.now()}`, {
-    cache: "no-store",
-    headers: {
-      "x-api-key": cleanKey,
-      "Cache-Control": "no-cache",
-      Pragma: "no-cache",
-    },
-  });
-
-  if (check.status === 401) return false;
-
-  if (!check.ok) {
-    throw new Error("Login check failed");
-  }
-
-  const data = await check.json().catch(() => ({}));
-
-  return data.ok !== false;
+  return data;
 }
 
-async function handleAdminLogin() {
-  const input = document.getElementById("adminApiInput");
-  const btn = document.getElementById("adminLoginBtn");
-  const error = document.getElementById("adminLoginError");
+async function loadMessages(userId, markRead = true) {
+  const data = await api(
+    `/winner/messages?user_id=${encodeURIComponent(userId)}${
+      markRead ? "&mark_read=1" : ""
+    }`
+  );
 
-  const key = String(input?.value || "").trim();
+  state.messages = Array.isArray(data.messages) ? data.messages : [];
+  renderMessages();
+
+  if (markRead) {
+    const w = state.winners.find((x) => String(x.user_id) === String(userId));
+    if (w) {
+      w.inbound_unread_count = 0;
+    }
+
+    applyFilter();
+    renderStats();
+    renderWinnerList();
+  }
+
+  return data;
+}
+
+/* ================= Login ================= */
+function showLogin() {
+  setHidden($("adminLoginScreen"), false);
+  setHidden($("adminApp"), true);
+}
+
+function showApp() {
+  setHidden($("adminLoginScreen"), true);
+  setHidden($("adminApp"), false);
+}
+
+async function handleLogin(e) {
+  if (e) e.preventDefault();
+
+  const input = $("adminApiKey");
+  const error = $("adminLoginError");
+  const btn = $("adminLoginBtn");
+
+  const key = safeText(input?.value).trim();
 
   if (!key) {
-    if (error) error.textContent = "Admin Api Code ထည့်ပါ";
+    if (error) error.textContent = "Admin code ထည့်ပါ။";
     return;
   }
 
   try {
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = "Checking...";
-    }
+    if (btn) btn.disabled = true;
+    if (error) error.textContent = "Checking...";
+
+    await authCheck(key);
+
+    localStorage.setItem(APP.STORAGE_KEY, key);
+    state.apiKey = key;
 
     if (error) error.textContent = "";
 
-    const ok = await testAdminApiKey(key);
+    showApp();
+    await loadInitialData();
+  } catch (err) {
+    console.error(err);
+    if (error) error.textContent = "Admin code မှားနေပါတယ် / Backend connection failed.";
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
 
-    if (!ok) {
-      forgetApiKey();
+function logout() {
+  localStorage.removeItem(APP.STORAGE_KEY);
+  state.apiKey = "";
+  state.winners = [];
+  state.filtered = [];
+  state.selectedUserId = "";
+  state.selectedWinner = null;
+  state.messages = [];
+  showLogin();
+}
 
-      if (error) error.textContent = "Api Code မမှန်ပါ";
+/* ================= Initial Load ================= */
+async function loadInitialData() {
+  try {
+    await loadWinners(false);
+    await Promise.allSettled([loadTemplates(), loadCampaigns()]);
+  } catch (err) {
+    console.error(err);
+    toast(`Load failed: ${err.message}`, "error");
+    setOffline("Error");
+  }
+}
 
-      if (input) {
-        input.value = "";
-        input.focus();
-      }
+async function boot() {
+  bindEvents();
 
+  const saved = localStorage.getItem(APP.STORAGE_KEY) || "";
+
+  if (saved) {
+    try {
+      state.apiKey = saved;
+      await authCheck(saved);
+      showApp();
+      await loadInitialData();
       return;
-    }
-
-    setApiKey(key);
-    showAdminApp();
-    await refreshPage();
-  } catch (err) {
-    if (error) error.textContent = err.message || "Login failed";
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "Login";
+    } catch (err) {
+      console.warn("Saved login failed:", err);
+      localStorage.removeItem(APP.STORAGE_KEY);
     }
   }
+
+  showLogin();
 }
 
-function bindAdminLogin() {
-  const input = document.getElementById("adminApiInput");
-  const btn = document.getElementById("adminLoginBtn");
+/* ================= Filtering ================= */
+function applyFilter() {
+  const search = state.search.trim().toLowerCase();
+  const filter = state.filter;
 
-  if (!input || !btn) {
-    console.warn("Login input/button not found");
-    return;
+  let arr = [...state.winners];
+
+  if (filter === "unread") {
+    arr = arr.filter((w) => Number(w.inbound_unread_count || 0) > 0);
+  } else if (filter === "pending") {
+    arr = arr.filter((w) => !w.done);
+  } else if (filter === "done") {
+    arr = arr.filter((w) => !!w.done);
   }
 
-  btn.onclick = function () {
-    handleAdminLogin();
-  };
+  if (search) {
+    arr = arr.filter((w) => {
+      const hay = [
+        w.display,
+        w.name,
+        w.username,
+        w.user_id,
+        w.prize,
+        w.last_message_text,
+        w.cs_status,
+        w.game_account,
+        w.game_phone,
+      ]
+        .map((x) => safeText(x).toLowerCase())
+        .join(" ");
 
-  input.onkeydown = function (e) {
-    if (e.key === "Enter") {
-      handleAdminLogin();
-    }
-  };
-}
-
-async function requireAdminLoginBeforeLoad() {
-  const key = getApiKey();
-
-  if (!key) {
-    showLoginScreen();
-    return false;
-  }
-
-  try {
-    const ok = await testAdminApiKey(key);
-
-    if (!ok) {
-      forgetApiKey();
-      showLoginScreen("Api Code မမှန်ပါ");
-      return false;
-    }
-
-    showAdminApp();
-    return true;
-  } catch (_) {
-    showLoginScreen("Backend connection failed");
-    return false;
-  }
-}
-
-async function api(path, options = {}) {
-  const key = getApiKey();
-
-  if (!key) {
-    showLoginScreen();
-    throw new Error("Login required");
-  }
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
-
-  const separator = path.includes("?") ? "&" : "?";
-  const url = `${CONFIG.BASE_URL}${path}${separator}_=${Date.now()}&v=${encodeURIComponent(CONFIG.CACHE_BUSTER)}`;
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      cache: "no-store",
-      headers: {
-        "x-api-key": key,
-        "Cache-Control": "no-cache",
-        Pragma: "no-cache",
-        ...(options.method && options.method !== "GET"
-          ? { "Content-Type": "application/json" }
-          : {}),
-        ...(options.headers || {}),
-      },
-      signal: controller.signal,
+      return hay.includes(search);
     });
-
-    const data = await response.json().catch(() => ({}));
-
-    if (response.status === 401) {
-      forgetApiKey();
-      showLoginScreen("Api Code မမှန်ပါ");
-      throw new Error("Unauthorized");
-    }
-
-    if (!response.ok || data.ok === false) {
-      throw new Error(data.error || `HTTP ${response.status}`);
-    }
-
-    return data;
-  } catch (err) {
-    if (err?.name === "AbortError") {
-      throw new Error("Request timeout");
-    }
-
-    throw err;
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  state.filtered = arr;
 }
 
-function buildAccountRequestText(prize) {
-  const pz = String(prize || "").trim();
+function getCounts() {
+  const total = state.winners.length;
+  const unread = state.winners.filter((w) => Number(w.inbound_unread_count || 0) > 0).length;
+  const pending = state.winners.filter((w) => !w.done).length;
+  const done = state.winners.filter((w) => !!w.done).length;
 
+  const doneAmount = state.winners
+    .filter((w) => !!w.done)
+    .reduce((sum, w) => {
+      const n = Number(safeText(w.prize).replace(/[^\d.-]/g, ""));
+      return sum + (Number.isFinite(n) ? n : 0);
+    }, 0);
+
+  return {
+    total,
+    unread,
+    pending,
+    done,
+    doneAmount,
+  };
+}
+
+function renderStats() {
+  const c = getCounts();
+
+  if ($("totalWinners")) $("totalWinners").textContent = c.total;
+  if ($("unreadCount")) $("unreadCount").textContent = c.unread;
+  if ($("pendingCount")) $("pendingCount").textContent = c.pending;
+  if ($("doneCount")) $("doneCount").textContent = c.done;
+  if ($("doneWinnerCount")) $("doneWinnerCount").textContent = `Done: ${c.done}`;
+  if ($("doneAmount")) $("doneAmount").textContent = moneyText(c.doneAmount);
+  if ($("footerText")) {
+    $("footerText").textContent = `Showing ${Math.min(
+      state.visibleCount,
+      state.filtered.length
+    )} of ${state.filtered.length}`;
+  }
+}
+/* ================= Winner List Render ================= */
+function getWinnerPreviewText(w) {
   return (
-    `မဲပေါက်သည့်ယူနစ် ${pz || "—"} ထည့်သွင်းရန် ဂိမ်းအကောင့်လေးပေးပါရှင့်\n\n` +
-    `ပြန်ပို့ပေးရမည့်ပုံစံအား Copy ကူးရန်\n\n` +
-    `Account Name -\n` +
-    `Telegram Number -\n\n` +
-    `ဒီနှစ်ခုကို Copy ကူးပြီး ဂိမ်းအကောင့်လေးနဲ့ ဖုန်းနံပါတ်လေးထည့်ပြီး ပြန်ပို့ပေးထားတာနဲ့ ဆုကြေးငွေလေးထည့်ပေးသွားမှာပါနော်။`
+    safeText(w.last_message_text) ||
+    safeText(w.last_reply_text) ||
+    safeText(w.last_outbound_text) ||
+    "No message yet"
   );
 }
 
-async function loadWinners() {
-  const data = await api("/winners/cs");
-
-  state.winners = Array.isArray(data.winners)
-    ? data.winners.map((w) => ({
-        ...w,
-
-        game_account: String(w.game_account || ""),
-        game_phone: String(w.game_phone || ""),
-        cs_note: String(w.cs_note || ""),
-        cs_status: String(w.cs_status || ""),
-
-        last_reply_text: String(w.last_reply_text || ""),
-        last_reply_at: String(w.last_reply_at || ""),
-
-        last_outbound_text: String(w.last_outbound_text || ""),
-        last_outbound_at: String(w.last_outbound_at || ""),
-
-        message_count: Number(w.message_count || 0) || 0,
-        inbound_unread_count: Number(w.inbound_unread_count || 0) || 0,
-        last_message_text: String(w.last_message_text || ""),
-        last_message_at: String(w.last_message_at || ""),
-        last_message_direction: String(w.last_message_direction || ""),
-        last_read_at: String(w.last_read_at || ""),
-      }))
-    : [];
-
-  applyFilter();
+function getStatusLabel(w) {
+  if (w.done) return "Done";
+  if (Number(w.inbound_unread_count || 0) > 0) return "Unread";
+  if (w.cs_status) return w.cs_status;
+  if (w.notice_sent) return "Notice Sent";
+  return "Pending";
 }
 
-function filterMatch(w) {
-  if (state.activeFilter === "pending") return !w.done;
-  if (state.activeFilter === "done") return !!w.done;
-  if (state.activeFilter === "notice_pending") return !w.notice_sent;
-  if (state.activeFilter === "notice_sent") return !!w.notice_sent;
+function renderWinnerList() {
+  const box = $("winnerList");
+  if (!box) return;
 
-  if (state.activeFilter === "replied") {
-    return (
-      Number(w.message_count || 0) > 0 ||
-      Number(w.inbound_unread_count || 0) > 0 ||
-      !!String(w.last_reply_text || "").trim() ||
-      !!String(w.last_message_text || "").trim()
-    );
-  }
+  const visible = state.filtered.slice(0, state.visibleCount);
 
-  return true;
-}
-
-function applyFilter() {
-  const q = (el.searchInput?.value || "").trim().toLowerCase();
-
-  state.filtered = (state.winners || []).filter((w) => {
-    if (!filterMatch(w)) return false;
-
-    if (!q) return true;
-
-    const blob = [
-      w.turn,
-      w.user_id,
-      w.name,
-      w.username,
-      w.display,
-      w.prize,
-      w.done ? "done" : "pending",
-      w.notice_sent ? "notice sent" : "notice pending",
-      w.game_account,
-      w.game_phone,
-      w.cs_note,
-      w.last_reply_text,
-      w.last_outbound_text,
-      w.last_message_text,
-      w.last_message_direction,
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    return blob.includes(q);
-  });
-
-  if (state.activeFilter === "replied") {
-    state.filtered.sort((a, b) => {
-      const au = Number(a.inbound_unread_count || 0) || 0;
-      const bu = Number(b.inbound_unread_count || 0) || 0;
-
-      if (au !== bu) return bu - au;
-
-      const at =
-        new Date(a.last_message_at || a.last_reply_at || a.at || 0).getTime() ||
-        0;
-
-      const bt =
-        new Date(b.last_message_at || b.last_reply_at || b.at || 0).getTime() ||
-        0;
-
-      return bt - at;
-    });
-  }
-
-  state.visibleCount = CONFIG.PAGE_SIZE;
-}
-function renderStats() {
-  const all = state.winners || [];
-  const done = all.filter((x) => x.done).length;
-  const pending = all.filter((x) => !x.done).length;
-
-  const doneAmount = all
-    .filter((x) => x.done)
-    .reduce((sum, x) => sum + parsePrizeAmount(x.prize), 0);
-
-  if (el.totalWinners) el.totalWinners.textContent = String(all.length);
-  if (el.doneCount) el.doneCount.textContent = String(done);
-  if (el.pendingCount) el.pendingCount.textContent = String(pending);
-  if (el.doneWinnerCount) el.doneWinnerCount.textContent = String(done);
-  if (el.doneAmount) el.doneAmount.textContent = formatMoney(doneAmount);
-
-  if (el.footerText) {
-    el.footerText.textContent = `${Math.min(
-      state.visibleCount,
-      state.filtered.length
-    )} / ${state.filtered.length} item(s) shown`;
-  }
-}
-
-function renderFilterButtons() {
-  if (!el.filterRow) return;
-
-  const replyTotal = (state.winners || []).filter((w) => {
-    return (
-      Number(w.message_count || 0) > 0 ||
-      Number(w.inbound_unread_count || 0) > 0 ||
-      !!String(w.last_reply_text || "").trim() ||
-      !!String(w.last_message_text || "").trim()
-    );
-  }).length;
-
-  const unreadTotal = (state.winners || []).reduce((sum, w) => {
-    return sum + (Number(w.inbound_unread_count || 0) || 0);
-  }, 0);
-
-  const filters = [
-    ["all", "All"],
-    ["pending", "Pending"],
-    ["done", "Done"],
-    ["notice_pending", "Notice Pending"],
-    ["notice_sent", "Notice Sent"],
-    ["replied", "User Reply"],
-  ];
-
-  el.filterRow.innerHTML = filters
-    .map(([key, label]) => {
-      const active = state.activeFilter === key ? "active" : "";
-
-      const badge =
-        key === "replied" && unreadTotal
-          ? `<span class="inbox-badge">${escapeHtml(unreadTotal)}</span>`
-          : key === "replied" && replyTotal
-            ? `<span class="inbox-badge">${escapeHtml(replyTotal)}</span>`
-            : "";
-
-      return `
-        <button class="filter-btn ${active}" data-filter="${escapeAttr(key)}">
-          ${escapeHtml(label)}${badge}
-        </button>
-      `;
-    })
-    .join("");
-
-  el.filterRow.querySelectorAll("[data-filter]").forEach((btn) => {
-    btn.onclick = () => {
-      state.activeFilter = btn.getAttribute("data-filter") || "all";
-      applyFilter();
-      renderWinners();
-    };
-  });
-}
-
-function renderLoadMore() {
-  if (!el.loadMoreBtn) return;
-
-  if (state.filtered.length > state.visibleCount) {
-    el.loadMoreBtn.classList.remove("hidden");
-    el.loadMoreBtn.disabled = false;
-    el.loadMoreBtn.textContent = `Load More (${state.filtered.length - state.visibleCount} left)`;
-  } else {
-    el.loadMoreBtn.classList.add("hidden");
-  }
-}
-
-function statusBadges(w) {
-  const unread = Number(w.inbound_unread_count || 0) || 0;
-  const reply = String(w.last_reply_text || w.last_message_text || "").trim();
-
-  const hasInfo =
-    String(w.game_account || "").trim() ||
-    String(w.game_phone || "").trim() ||
-    String(w.cs_note || "").trim();
-
-  return `
-    <div class="badge-row">
-      <span class="badge ${w.done ? "done" : "pending"}">${w.done ? "Done" : "Pending"}</span>
-      <span class="badge ${w.notice_sent ? "done" : "pending"}">${w.notice_sent ? "Notice Sent" : "Notice Pending"}</span>
-      ${reply ? `<span class="badge reply">User Replied</span>` : ""}
-      ${unread ? `<span class="badge reply">Unread ${escapeHtml(unread)}</span>` : ""}
-      ${hasInfo ? `<span class="badge info">Info Saved</span>` : ""}
-    </div>
-  `;
-}
-
-function unreadBadgeHtml(w) {
-  const unread = Number(w.inbound_unread_count || 0) || 0;
-
-  if (!unread) return "";
-
-  return `<span class="inbox-badge">${escapeHtml(unread)}</span>`;
-}
-
-function inboxPreviewHtml(w) {
-  const text = String(
-    w.last_message_text ||
-    w.last_reply_text ||
-    w.last_outbound_text ||
-    ""
-  ).trim();
-
-  if (!text) return "";
-
-  const direction = String(w.last_message_direction || "").trim();
-
-  const role =
-    direction === "outbound"
-      ? "Last message by CS / Bot"
-      : "Last message by Customer";
-
-  const at =
-    w.last_message_at ||
-    w.last_reply_at ||
-    w.last_outbound_at ||
-    "";
-
-  return `
-    <div class="inbox-preview">
-      <div class="inbox-preview-top">
-        <div class="inbox-preview-role">${escapeHtml(role)}</div>
-        <div class="inbox-preview-time">${escapeHtml(formatTime(at))}</div>
-      </div>
-
-      <div class="inbox-preview-text">${escapeHtml(text)}</div>
-    </div>
-  `;
-}
-
-function inboxMetaHtml(w) {
-  return `
-    <div class="inbox-meta-grid">
-      <div class="inbox-meta-box">
-        <span>User ID</span>
-        <strong>${escapeHtml(w.user_id || "-")}</strong>
-      </div>
-
-      <div class="inbox-meta-box">
-        <span>Username</span>
-        <strong>${w.username ? "@" + escapeHtml(w.username) : "-"}</strong>
-      </div>
-
-      <div class="inbox-meta-box">
-        <span>Prize</span>
-        <strong>${escapeHtml(w.prize || "-")}</strong>
-      </div>
-
-      <div class="inbox-meta-box">
-        <span>Messages</span>
-        <strong>${escapeHtml(w.message_count || 0)}</strong>
-      </div>
-    </div>
-  `;
-}
-
-function buildWinnerCard(w) {
-  const display = w.display || w.name || (w.username ? `@${w.username}` : w.user_id);
-  const tgLink = w.username ? `https://t.me/${String(w.username).replace(/^@+/, "")}` : "";
-  const unread = Number(w.inbound_unread_count || 0) || 0;
-
-  const isInboxView = state.activeFilter === "replied";
-
-  const cardClass = [
-    "winner-card",
-    w.done ? "done-card" : "",
-    isInboxView ? "inbox-card" : "",
-    unread ? "unread" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  return `
-    <article class="${cardClass}">
-      <div class="winner-head">
-        <div>
-          <div class="winner-title">
-            #${escapeHtml(w.turn || "-")} • ${escapeHtml(display)}
-            ${isInboxView ? unreadBadgeHtml(w) : ""}
-          </div>
-
-          <div class="winner-sub">
-            Role: <b>Winner</b><br />
-            User ID: <b>${escapeHtml(w.user_id || "-")}</b><br />
-            Username: <b>${w.username ? "@" + escapeHtml(w.username) : "-"}</b><br />
-            Win Time: ${escapeHtml(formatTime(w.at))}
-          </div>
-
-          ${statusBadges(w)}
-        </div>
-
-        <div class="winner-prize">
-          <span>Prize Amount</span>
-          <strong>${escapeHtml(w.prize || "-")}</strong>
-        </div>
-      </div>
-
-      ${isInboxView ? inboxPreviewHtml(w) : ""}
-      ${isInboxView ? inboxMetaHtml(w) : ""}
-
-      <div class="action-row">
-        <button class="cs-btn primary" data-open-reply-user="${escapeAttr(w.user_id)}">
-          Customer Reply ${!isInboxView ? unreadBadgeHtml(w) : ""}
-        </button>
-
-        ${
-          tgLink
-            ? `<a class="cs-link-btn secondary" href="${escapeAttr(tgLink)}" target="_blank" rel="noopener">Open Telegram</a>`
-            : ""
-        }
-
-        <button class="cs-btn secondary" data-copy-id="${escapeAttr(w.user_id)}">
-          Copy ID
-        </button>
-      </div>
-    </article>
-  `;
-}
-
-function renderWinners() {
-  renderStats();
-  renderFilterButtons();
-
-  if (!el.winnerList) return;
-
-  const rows = state.filtered.slice(0, state.visibleCount);
-
-  if (!rows.length) {
-    el.winnerList.innerHTML = `<div class="cs-empty">Winner မရှိသေးပါ</div>`;
-    renderLoadMore();
+  if (!visible.length) {
+    box.innerHTML = `<div class="cs-empty">No winners found.</div>`;
+    renderStats();
     return;
   }
 
-  el.winnerList.innerHTML = rows.map(buildWinnerCard).join("");
-
-  bindActionButtons();
-  renderLoadMore();
-}
-
-async function toggleDone(userId, button) {
-  if (!userId || state.loading) return;
-
-  try {
-    state.loading = true;
-
-    if (button) {
-      button.disabled = true;
-      button.textContent = "Updating...";
-    }
-
-    await api("/winner/done", {
-      method: "POST",
-      body: JSON.stringify({
-        user_id: userId,
-        toggle: true,
-      }),
-    });
-
-    const row = state.winners.find((x) => String(x.user_id) === String(userId));
-
-    if (row) {
-      row.done = !row.done;
-      row.done_at = new Date().toISOString();
-      row.cs_status = row.done ? "done" : "pending";
-    }
-
-    applyFilter();
-    renderWinners();
-
-    if (state.selectedUserId) {
-      renderReplyModalContent(state.selectedUserId, window.__lastReplyMessages || []);
-    }
-
-    showToast("Done updated ✅", "success");
-  } catch (err) {
-    showToast(err.message || "Done update failed", "error");
-  } finally {
-    state.loading = false;
-  }
-}
-
-async function sendNotice(userId, prize, button) {
-  if (!userId || state.loading) return;
-
-  try {
-    state.loading = true;
-
-    if (button) {
-      button.disabled = true;
-      button.textContent = "Sending...";
-    }
-
-    const data = await api("/notice", {
-      method: "POST",
-      body: JSON.stringify({
-        user_id: userId,
-        prize,
-      }),
-    });
-
-    const row = state.winners.find((x) => String(x.user_id) === String(userId));
-
-    if (row && data.dm_ok !== false) {
-      row.notice_sent = true;
-      row.notice_at = new Date().toISOString();
-      row.cs_status = "notice_sent";
-    }
-
-    applyFilter();
-    renderWinners();
-
-    if (state.selectedUserId) {
-      await openReplyModal(state.selectedUserId, false);
-    }
-
-    if (data.dm_ok === false) {
-      showToast(data.dm_error || "DM failed", "error");
-      return;
-    }
-
-    showToast("Notice sent ✅", "success");
-  } catch (err) {
-    showToast(err.message || "Notice failed", "error");
-  } finally {
-    state.loading = false;
-  }
-}
-async function sendAccountRequest(userId, prize, button) {
-  const uid = String(userId || "");
-  const oldText = button ? button.textContent : "";
-
-  try {
-    if (button) {
-      button.disabled = true;
-      button.textContent = "Sending...";
-    }
-
-    const data = await api("/winner/message", {
-      method: "POST",
-      body: JSON.stringify({
-        user_id: uid,
-        prize,
-        mode: "account_request",
-      }),
-    });
-
-    if (data.dm_ok === false) {
-      showToast(data.dm_error || "DM failed", "error");
-      return;
-    }
-
-    const text = buildAccountRequestText(prize);
-    const w = state.winners.find((x) => String(x.user_id) === uid);
-
-    if (w) {
-      w.notice_sent = true;
-      w.notice_at = new Date().toISOString();
-      w.cs_status = "notice_sent";
-      w.last_outbound_text = text;
-      w.last_outbound_at = new Date().toISOString();
-      w.message_count = Number(w.message_count || 0) + 1;
-      w.last_message_text = text;
-      w.last_message_at = new Date().toISOString();
-      w.last_message_direction = "outbound";
-    }
-
-    applyFilter();
-    renderWinners();
-
-    if (state.selectedUserId) {
-      await openReplyModal(state.selectedUserId, false);
-    }
-
-    showToast("Account request ပို့ပြီးပါပြီ ✅", "success");
-  } catch (err) {
-    showToast(err.message || "Send failed", "error");
-  } finally {
-    if (button) {
-      button.disabled = false;
-      button.textContent = oldText || "Send Account Request";
-    }
-  }
-}
-
-async function saveWinnerInfo(userId, button) {
-  const uid = String(userId || "");
-
-  const accountInput = document.querySelector(`[data-modal-account="${cssEscape(uid)}"]`);
-  const phoneInput = document.querySelector(`[data-modal-phone="${cssEscape(uid)}"]`);
-  const noteInput = document.querySelector(`[data-modal-note="${cssEscape(uid)}"]`);
-
-  const game_account = accountInput ? accountInput.value.trim() : "";
-  const game_phone = phoneInput ? phoneInput.value.trim() : "";
-  const cs_note = noteInput ? noteInput.value.trim() : "";
-
-  const oldText = button ? button.textContent : "";
-
-  try {
-    if (button) {
-      button.disabled = true;
-      button.textContent = "Saving...";
-    }
-
-    const data = await api("/winner/update", {
-      method: "POST",
-      body: JSON.stringify({
-        user_id: uid,
-        game_account,
-        game_phone,
-        cs_note,
-      }),
-    });
-
-    if (!data.ok) {
-      throw new Error(data.error || "Save failed");
-    }
-
-    const w = state.winners.find((x) => String(x.user_id) === uid);
-
-    if (w) {
-      w.game_account = game_account;
-      w.game_phone = game_phone;
-      w.cs_note = cs_note;
-    }
-
-    renderReplyModalContent(uid, window.__lastReplyMessages || []);
-    applyFilter();
-    renderWinners();
-
-    showToast("Game account info saved ✅", "success");
-  } catch (err) {
-    showToast(err.message || "Save failed", "error");
-  } finally {
-    if (button) {
-      button.disabled = false;
-      button.textContent = oldText || "Save Game Acc Info";
-    }
-  }
-}
-
-async function sendModalCustomerMessage(userId, button) {
-  const uid = String(userId || "");
-  const w = state.winners.find((x) => String(x.user_id) === uid);
-  const box = document.querySelector(`[data-modal-message="${cssEscape(uid)}"]`);
-  const text = box ? box.value.trim() : "";
-
-  if (!text) {
-    showToast("Message ရေးပြီးမှ Send လုပ်ပါ", "error");
-    return;
-  }
-
-  const oldText = button ? button.textContent : "";
-
-  try {
-    if (button) {
-      button.disabled = true;
-      button.textContent = "Sending...";
-    }
-
-    const data = await api("/winner/message", {
-      method: "POST",
-      body: JSON.stringify({
-        user_id: uid,
-        prize: w?.prize || "",
-        text,
-        mode: "custom",
-      }),
-    });
-
-    if (data.dm_ok === false) {
-      showToast(data.dm_error || "DM failed", "error");
-      return;
-    }
-
-    if (w) {
-      w.notice_sent = true;
-      w.last_outbound_text = text;
-      w.last_outbound_at = new Date().toISOString();
-      w.message_count = Number(w.message_count || 0) + 1;
-      w.last_message_text = text;
-      w.last_message_at = new Date().toISOString();
-      w.last_message_direction = "outbound";
-    }
-
-    if (box) box.value = "";
-
-    await openReplyModal(uid, false);
-
-    applyFilter();
-    renderWinners();
-
-    showToast("Customer ဆီ message ပို့ပြီးပါပြီ ✅", "success");
-  } catch (err) {
-    showToast(err.message || "Send failed", "error");
-  } finally {
-    if (button) {
-      button.disabled = false;
-      button.textContent = oldText || "Send To Customer";
-    }
-  }
-}
-
-async function copyText(text) {
-  try {
-    await navigator.clipboard.writeText(String(text || ""));
-    showToast("Copied ✅", "success");
-  } catch (_) {
-    const ta = document.createElement("textarea");
-    ta.value = String(text || "");
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand("copy");
-    ta.remove();
-    showToast("Copied ✅", "success");
-  }
-}
-
-function savedAccountView(w) {
-  const account = String(w.game_account || "").trim();
-  const phone = String(w.game_phone || "").trim();
-  const note = String(w.cs_note || "").trim();
-
-  if (!account && !phone && !note) {
-    return `Saved Info: မရှိသေးပါ`;
-  }
-
-  return `Saved Info
-
-Account Name - ${account || "-"}
-Telegram Number - ${phone || "-"}
-CS Note - ${note || "-"}`;
-}
-
-function chatMessagesHtml(messages) {
-  if (!messages.length) {
-    return `<div class="cs-empty">Reply / Message history မရှိသေးပါ</div>`;
-  }
-
-  return messages
-    .map((m) => {
-      const direction = String(m.direction || "inbound");
-      const source = String(m.source || "");
-      const ok = m.ok === false ? "Failed" : "OK";
-      const role = direction === "outbound" ? "CS / Bot" : "Customer";
+  box.innerHTML = visible
+    .map((w) => {
+      const selected = String(w.user_id) === String(state.selectedUserId);
+      const unread = Number(w.inbound_unread_count || 0);
+      const preview = getWinnerPreviewText(w);
+      const status = getStatusLabel(w);
 
       return `
-        <div class="chat-row ${escapeAttr(direction)}">
-          <div class="chat-bubble">
-            ${escapeHtml(m.text || "")}
-            <div class="chat-meta">
-              Role: ${escapeHtml(role)} • ${escapeHtml(source || "-")} • ${escapeHtml(formatTime(m.at))} • ${escapeHtml(ok)}
+        <button class="cs-winner-item ${selected ? "is-active" : ""}" data-user-id="${esc(w.user_id)}">
+          <div class="cs-avatar">${esc(avatarText(w))}</div>
+
+          <div class="cs-winner-main">
+            <div class="cs-winner-title">
+              <b>${esc(w.display || w.name || w.user_id)}</b>
+              <span>${esc(fmtDate(w.last_message_at || w.at))}</span>
+            </div>
+
+            <div class="cs-winner-sub">
+              ${esc(usernameText(w))}
+            </div>
+
+            <div class="cs-winner-preview">
+              ${esc(compactText(preview, 58))}
             </div>
           </div>
-        </div>
+
+          <div class="cs-winner-side">
+            <span class="cs-prize-badge">${esc(moneyText(w.prize))}</span>
+            ${unread ? `<span class="cs-unread-badge">${unread}</span>` : ""}
+            <span class="cs-mini-status ${w.done ? "is-done" : ""}">${esc(status)}</span>
+          </div>
+        </button>
       `;
     })
     .join("");
+
+  qsa(".cs-winner-item", box).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectWinner(btn.dataset.userId);
+    });
+  });
+
+  renderStats();
 }
 
-function renderReplyModalContent(userId, messages) {
-  const uid = String(userId || "");
-  const w = state.winners.find((x) => String(x.user_id) === uid);
+async function selectWinner(userId) {
+  const w = state.winners.find((x) => String(x.user_id) === String(userId));
 
-  if (!w || !el.replyModalBody) return;
-
-  const display = w.display || w.name || (w.username ? `@${w.username}` : uid);
-  const unread = Number(w.inbound_unread_count || 0) || 0;
-
-  el.replyModalBody.innerHTML = `
-    <section class="role-section">
-      <div class="role-title">
-        <div class="role-title-left">
-          <span>Winner Role / Customer Information</span>
-          ${
-            unread
-              ? `<span class="reply-modal-unread">${escapeHtml(unread)}</span>`
-              : ""
-          }
-        </div>
-        <span class="role-tag">Winner</span>
-      </div>
-
-      <div class="saved-view">
-Winner: ${escapeHtml(display)}
-User ID: ${escapeHtml(uid)}
-Username: ${w.username ? "@" + escapeHtml(w.username) : "-"}
-Prize: ${escapeHtml(w.prize || "-")}
-Win Time: ${escapeHtml(formatTime(w.at))}
-Status: ${w.done ? "Done" : "Pending"}
-Messages: ${escapeHtml(w.message_count || messages.length || 0)}
-Unread: ${escapeHtml(unread)}
-Last Read: ${escapeHtml(formatTime(w.last_read_at))}
-      </div>
-
-      <div class="action-row">
-        <button class="cs-btn ${w.done ? "danger" : "green"}" data-modal-done="${escapeAttr(uid)}">
-          ${w.done ? "Undo Done" : "Mark Done"}
-        </button>
-
-        <button
-          class="cs-btn secondary"
-          data-modal-notice="${escapeAttr(uid)}"
-          data-prize="${escapeAttr(w.prize || "")}"
-        >
-          Notice
-        </button>
-
-        <button
-          class="cs-btn orange"
-          data-modal-send-template="${escapeAttr(uid)}"
-          data-prize="${escapeAttr(w.prize || "")}"
-        >
-          Send Account Request
-        </button>
-      </div>
-    </section>
-
-    <section class="role-section">
-      <div class="role-title">
-        <span>Winner Game Account Information</span>
-        <span class="role-tag">CS Save</span>
-      </div>
-
-      <div class="info-grid">
-        <div class="field">
-          <label>Account Name / Game Account</label>
-          <input
-            data-modal-account="${escapeAttr(uid)}"
-            value="${escapeAttr(w.game_account || "")}"
-            placeholder="Account Name -"
-          />
-        </div>
-
-        <div class="field">
-          <label>Telegram Number</label>
-          <input
-            data-modal-phone="${escapeAttr(uid)}"
-            value="${escapeAttr(w.game_phone || "")}"
-            placeholder="Telegram Number -"
-          />
-        </div>
-
-        <div class="field full">
-          <label>CS Note</label>
-          <textarea
-            data-modal-note="${escapeAttr(uid)}"
-            placeholder="Winner account info / payment note / CS remark..."
-          >${escapeHtml(w.cs_note || "")}</textarea>
-        </div>
-      </div>
-
-      <div class="saved-view">${escapeHtml(savedAccountView(w))}</div>
-
-      <div class="action-row">
-        <button class="cs-btn green" data-modal-save="${escapeAttr(uid)}">
-          Save Game Acc Info
-        </button>
-
-        <button class="cs-btn secondary" data-copy-template="${escapeAttr(uid)}">
-          Copy Account Template
-        </button>
-      </div>
-    </section>
-
-    <section class="role-section">
-      <div class="role-title">
-        <span>CS Message To Customer</span>
-        <span class="role-tag">CS / Bot</span>
-      </div>
-
-      <div class="field full">
-        <label>Message</label>
-        <textarea
-          data-modal-message="${escapeAttr(uid)}"
-          placeholder="CS message ရေးပြီး Send To Customer နှိပ်ပါ..."
-        ></textarea>
-      </div>
-
-      <div class="action-row">
-        <button class="cs-btn orange" data-modal-fill-template="${escapeAttr(uid)}">
-          Fill Account Template
-        </button>
-
-        <button class="cs-btn dark" data-modal-send-message="${escapeAttr(uid)}">
-          Send To Customer
-        </button>
-      </div>
-    </section>
-
-    <section class="role-section">
-      <div class="role-title">
-        <div class="role-title-left">
-          <span>Customer Reply / Message History</span>
-          ${
-            unread
-              ? `<span class="reply-modal-unread">${escapeHtml(unread)}</span>`
-              : ""
-          }
-        </div>
-        <span class="role-tag">Customer Inbox</span>
-      </div>
-
-      <div class="chat-list">
-        ${chatMessagesHtml(messages)}
-      </div>
-    </section>
-  `;
-
-  bindModalButtons(uid);
-}
-
-function bindModalButtons(uid) {
-  const saveBtn = document.querySelector(`[data-modal-save="${cssEscape(uid)}"]`);
-  const copyBtn = document.querySelector(`[data-copy-template="${cssEscape(uid)}"]`);
-  const fillBtn = document.querySelector(`[data-modal-fill-template="${cssEscape(uid)}"]`);
-  const sendBtn = document.querySelector(`[data-modal-send-message="${cssEscape(uid)}"]`);
-  const doneBtn = document.querySelector(`[data-modal-done="${cssEscape(uid)}"]`);
-  const noticeBtn = document.querySelector(`[data-modal-notice="${cssEscape(uid)}"]`);
-  const sendTemplateBtn = document.querySelector(`[data-modal-send-template="${cssEscape(uid)}"]`);
-
-  if (saveBtn) saveBtn.onclick = () => saveWinnerInfo(uid, saveBtn);
-
-  if (copyBtn) {
-    copyBtn.onclick = () => {
-      const w = state.winners.find((x) => String(x.user_id) === String(uid));
-      copyText(buildAccountRequestText(w?.prize || ""));
-    };
+  if (!w) {
+    toast("Winner not found", "error");
+    return;
   }
 
-  if (fillBtn) {
-    fillBtn.onclick = () => {
-      const w = state.winners.find((x) => String(x.user_id) === String(uid));
-      const box = document.querySelector(`[data-modal-message="${cssEscape(uid)}"]`);
+  state.selectedUserId = String(userId);
+  state.selectedWinner = w;
+  state.messages = [];
+  state.selectedFile = null;
 
-      if (box) {
-        box.value = buildAccountRequestText(w?.prize || "");
-        box.focus();
-        showToast("Template ဖြည့်ပြီးပါပြီ ✅", "success");
-      }
-    };
+  renderWinnerList();
+  renderChatHeader(w);
+  renderDetails(w);
+
+  setHidden($("chatEmptyState"), true);
+  setHidden($("chatActivePanel"), false);
+
+  if ($("chatMessages")) {
+    $("chatMessages").innerHTML = `<div class="cs-empty">Loading messages...</div>`;
   }
 
-  if (sendBtn) sendBtn.onclick = () => sendModalCustomerMessage(uid, sendBtn);
-  if (doneBtn) doneBtn.onclick = () => toggleDone(uid, doneBtn);
-
-  if (noticeBtn) {
-    const w = state.winners.find((x) => String(x.user_id) === String(uid));
-    noticeBtn.onclick = () => sendNotice(uid, w?.prize || "", noticeBtn);
-  }
-
-  if (sendTemplateBtn) {
-    const w = state.winners.find((x) => String(x.user_id) === String(uid));
-    sendTemplateBtn.onclick = () => sendAccountRequest(uid, w?.prize || "", sendTemplateBtn);
+  try {
+    await loadMessages(userId, true);
+  } catch (err) {
+    console.error(err);
+    toast(`Messages failed: ${err.message}`, "error");
   }
 }
 
-async function openReplyModal(userId, showLoading = true) {
-  const uid = String(userId || "");
-  state.selectedUserId = uid;
+/* ================= Chat Render ================= */
+function renderChatHeader(w) {
+  if (!w) return;
 
-  const w = state.winners.find((x) => String(x.user_id) === uid);
+  if ($("activeAvatar")) $("activeAvatar").textContent = avatarText(w);
+  if ($("activeName")) $("activeName").textContent = w.display || w.name || w.user_id;
+  if ($("activeUsername")) $("activeUsername").textContent = usernameText(w);
+  if ($("activeUserId")) $("activeUserId").textContent = `User ID: ${w.user_id}`;
+}
 
-  if (!w || !el.replyModal || !el.replyModalBody) return;
+function mediaUrl(fileId) {
+  return `${APP.BASE_URL}/winner/media/${encodeURIComponent(fileId)}?api_key=${encodeURIComponent(state.apiKey)}`;
+}
 
-  el.replyModal.classList.remove("hidden");
-  el.replyModalBackdrop?.classList.remove("hidden");
+function renderMediaBubble(m) {
+  const media = m.media || {};
+  const fileId = media.file_id || "";
 
-  const unreadBeforeOpen = Number(w.inbound_unread_count || 0) || 0;
+  if (!fileId) {
+    return `<div class="cs-media-missing">[media unavailable]</div>`;
+  }
 
-  if (el.replyModalTitle) {
-    el.replyModalTitle.innerHTML = `
-      Customer Reply - ${escapeHtml(w.display || uid)}
-      ${
-        unreadBeforeOpen
-          ? `<span class="reply-modal-unread">${escapeHtml(unreadBeforeOpen)}</span>`
-          : ""
-      }
+  if (m.message_type === "photo" || safeText(media.mime_type).startsWith("image/")) {
+    return `
+      <a class="cs-image-link" href="${esc(mediaUrl(fileId))}" target="_blank" rel="noopener">
+        <img class="cs-chat-image" src="${esc(mediaUrl(fileId))}" alt="image message" loading="lazy" />
+      </a>
     `;
   }
 
-  if (el.replyModalSub) {
-    el.replyModalSub.textContent = `User ID: ${uid} • Prize: ${w.prize || "-"} • Role: Winner`;
+  return `
+    <a class="cs-file-link" href="${esc(mediaUrl(fileId))}" target="_blank" rel="noopener">
+      📎 ${esc(media.file_name || m.message_type || "file")}
+    </a>
+  `;
+}
+
+function renderMessages() {
+  const box = $("chatMessages");
+  if (!box) return;
+
+  if (!state.selectedWinner) {
+    box.innerHTML = `<div class="cs-empty">Select a winner.</div>`;
+    return;
   }
 
-  if (showLoading) {
-    el.replyModalBody.innerHTML = `<div class="cs-empty">Loading customer reply...</div>`;
+  if (!state.messages.length) {
+    box.innerHTML = `
+      <div class="cs-date-separator">No messages yet</div>
+      <div class="cs-empty">Send notice or reply to start conversation.</div>
+    `;
+    return;
   }
+
+  let lastDate = "";
+
+  box.innerHTML = state.messages
+    .map((m) => {
+      const dateKey = safeText(m.at).slice(0, 10);
+      let sep = "";
+
+      if (dateKey && dateKey !== lastDate) {
+        lastDate = dateKey;
+        sep = `<div class="cs-date-separator">${esc(dateKey)}</div>`;
+      }
+
+      const outbound = m.direction === "outbound";
+      const text = m.text || m.caption || "";
+      const hasMedia = m.media && m.media.file_id;
+
+      return `
+        ${sep}
+        <div class="cs-message-row ${outbound ? "is-outbound" : "is-inbound"}">
+          ${!outbound ? `<div class="cs-message-avatar">${esc(avatarText(state.selectedWinner))}</div>` : ""}
+
+          <div class="cs-message-bubble">
+            ${hasMedia ? renderMediaBubble(m) : ""}
+            ${text ? `<div class="cs-message-text">${esc(text).replaceAll("\n", "<br>")}</div>` : ""}
+            <div class="cs-message-meta">
+              ${esc(fmtTime(m.at))}
+              ${outbound ? " ✓✓" : ""}
+            </div>
+          </div>
+
+          ${outbound ? `<div class="cs-message-avatar is-cs">CS</div>` : ""}
+        </div>
+      `;
+    })
+    .join("");
+
+  box.scrollTop = box.scrollHeight;
+}
+
+/* ================= Details Render ================= */
+function renderDetails(w) {
+  if (!w) {
+    if ($("detailName")) $("detailName").textContent = "-";
+    if ($("detailUsername")) $("detailUsername").textContent = "-";
+    if ($("detailUserId")) $("detailUserId").textContent = "-";
+    if ($("detailStatus")) $("detailStatus").textContent = "-";
+    if ($("detailPrize")) $("detailPrize").textContent = "-";
+    if ($("detailNotice")) $("detailNotice").textContent = "-";
+    if ($("detailCsStatus")) $("detailCsStatus").textContent = "-";
+    if ($("detailLastReply")) $("detailLastReply").textContent = "-";
+    if ($("detailDoneCheckbox")) $("detailDoneCheckbox").checked = false;
+    if ($("detailNote")) $("detailNote").value = "";
+    if ($("detailGameAccount")) $("detailGameAccount").value = "";
+    if ($("detailGamePhone")) $("detailGamePhone").value = "";
+    return;
+  }
+
+  if ($("detailName")) $("detailName").textContent = w.display || w.name || "-";
+  if ($("detailUsername")) $("detailUsername").textContent = usernameText(w);
+  if ($("detailUserId")) $("detailUserId").textContent = w.user_id || "-";
+  if ($("detailStatus")) $("detailStatus").textContent = getStatusLabel(w);
+  if ($("detailPrize")) $("detailPrize").textContent = moneyText(w.prize);
+  if ($("detailNotice")) $("detailNotice").textContent = w.notice_sent ? fmtDate(w.notice_at || w.at) : "Not sent";
+  if ($("detailCsStatus")) $("detailCsStatus").textContent = w.cs_status || "Pending";
+  if ($("detailLastReply")) $("detailLastReply").textContent = fmtDate(w.last_reply_at || w.last_message_at);
+  if ($("detailDoneCheckbox")) $("detailDoneCheckbox").checked = !!w.done;
+  if ($("detailNote")) $("detailNote").value = safeText(w.cs_note);
+  if ($("detailGameAccount")) $("detailGameAccount").value = safeText(w.game_account);
+  if ($("detailGamePhone")) $("detailGamePhone").value = safeText(w.game_phone);
+}
+
+function syncSelectedWinnerPatch(patch) {
+  if (!state.selectedWinner) return;
+
+  Object.assign(state.selectedWinner, patch);
+
+  const idx = state.winners.findIndex(
+    (x) => String(x.user_id) === String(state.selectedWinner.user_id)
+  );
+
+  if (idx >= 0) {
+    Object.assign(state.winners[idx], patch);
+  }
+
+  applyFilter();
+  renderStats();
+  renderWinnerList();
+  renderDetails(state.selectedWinner);
+}
+
+/* ================= CS Actions ================= */
+async function sendTextMessage(text) {
+  if (!state.selectedWinner) {
+    toast("Winner select လုပ်ပါ။", "error");
+    return;
+  }
+
+  const clean = safeText(text).trim();
+
+  if (!clean) {
+    toast("Message text ထည့်ပါ။", "error");
+    return;
+  }
+
+  const btn = $("sendReplyBtn");
 
   try {
-    const data = await api(`/winner/messages?user_id=${encodeURIComponent(uid)}&mark_read=1`);
-    const messages = Array.isArray(data.messages) ? data.messages : [];
+    if (btn) btn.disabled = true;
 
-    window.__lastReplyMessages = messages;
+    const data = await api("/winner/message", {
+      method: "POST",
+      body: {
+        user_id: state.selectedWinner.user_id,
+        text: clean,
+      },
+    });
 
-    const row = state.winners.find((x) => String(x.user_id) === uid);
-
-    if (row) {
-      row.inbound_unread_count = Number(data.unread_count || 0) || 0;
-      row.last_read_at = data.last_read_at || new Date().toISOString();
-      row.message_count = Number(row.message_count || messages.length || 0) || 0;
+    if (data.log) {
+      state.messages.push(data.log);
+      renderMessages();
+    } else {
+      await loadMessages(state.selectedWinner.user_id, false);
     }
 
-    renderReplyModalContent(uid, messages);
-    applyFilter();
-    renderWinners();
+    if ($("replyText")) $("replyText").value = "";
+
+    toast("Message sent", "success");
+    await loadWinners(false);
   } catch (err) {
-    window.__lastReplyMessages = [];
-    renderReplyModalContent(uid, []);
-    showToast(err.message || "Reply load failed", "error");
-  }
-}
-
-function closeReplyModal() {
-  state.selectedUserId = "";
-  el.replyModal?.classList.add("hidden");
-  el.replyModalBackdrop?.classList.add("hidden");
-}
-
-function bindActionButtons() {
-  document.querySelectorAll("[data-open-reply-user]").forEach((btn) => {
-    btn.onclick = () => {
-      openReplyModal(btn.getAttribute("data-open-reply-user"));
-    };
-  });
-
-  document.querySelectorAll("[data-copy-id]").forEach((btn) => {
-    btn.onclick = () => {
-      copyText(btn.getAttribute("data-copy-id") || "");
-    };
-  });
-}
-
-function exportCsv() {
-  const headers = [
-    "Turn",
-    "Prize",
-    "User ID",
-    "Display",
-    "Name",
-    "Username",
-    "Done",
-    "Notice Sent",
-    "Game Account",
-    "Telegram Number",
-    "CS Note",
-    "Message Count",
-    "Unread Count",
-    "Last Message",
-    "Last Message At",
-    "Last Message Direction",
-    "Last Reply",
-    "Last Reply At",
-    "Last Sent",
-    "Last Sent At",
-    "Win Time",
-  ];
-
-  const rows = (state.winners || []).map((w) => [
-    w.turn || "",
-    w.prize || "",
-    w.user_id || "",
-    w.display || "",
-    w.name || "",
-    w.username || "",
-    w.done ? "YES" : "NO",
-    w.notice_sent ? "YES" : "NO",
-    w.game_account || "",
-    w.game_phone || "",
-    w.cs_note || "",
-    w.message_count || 0,
-    w.inbound_unread_count || 0,
-    w.last_message_text || "",
-    w.last_message_at || "",
-    w.last_message_direction || "",
-    w.last_reply_text || "",
-    w.last_reply_at || "",
-    w.last_outbound_text || "",
-    w.last_outbound_at || "",
-    w.at || "",
-  ]);
-
-  const csv = [headers, ...rows]
-    .map((row) =>
-      row
-        .map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`)
-        .join(",")
-    )
-    .join("\n");
-
-  const blob = new Blob(["\uFEFF" + csv], {
-    type: "text/csv;charset=utf-8;",
-  });
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-
-  a.href = url;
-  a.download = `lucky77-cs-winners-${Date.now()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-
-  URL.revokeObjectURL(url);
-}
-
-async function refreshPage() {
-  try {
-    if (el.refreshBtn) {
-      el.refreshBtn.disabled = true;
-      el.refreshBtn.textContent = "Loading...";
-    }
-
-    await loadWinners();
-    renderWinners();
-    showToast("Refreshed ✅", "success");
-  } catch (err) {
-    showToast(err.message || "Load failed", "error");
-
-    if (el.winnerList) {
-      el.winnerList.innerHTML = `<div class="cs-empty">${escapeHtml(err.message || "Load failed")}</div>`;
-    }
+    console.error(err);
+    toast(`Send failed: ${err.message}`, "error");
   } finally {
-    if (el.refreshBtn) {
-      el.refreshBtn.disabled = false;
-      el.refreshBtn.textContent = "Refresh";
-    }
+    if (btn) btn.disabled = false;
   }
 }
 
+async function sendMediaMessage() {
+  if (!state.selectedWinner) {
+    toast("Winner select လုပ်ပါ။", "error");
+    return;
+  }
+
+  if (!state.selectedFile) {
+    toast("Image/File ရွေးပါ။", "error");
+    return;
+  }
+
+  const caption = safeText($("replyText")?.value).trim();
+  const fd = new FormData();
+
+  fd.append("user_id", state.selectedWinner.user_id);
+  fd.append("caption", caption);
+  fd.append("kind", state.selectedFile.type?.startsWith("image/") ? "photo" : "document");
+  fd.append("file", state.selectedFile);
+
+  const btn = $("sendReplyBtn");
+
+  try {
+    if (btn) btn.disabled = true;
+
+    const data = await api("/winner/message/media", {
+      method: "POST",
+      body: fd,
+    });
+
+    if (data.log) {
+      state.messages.push(data.log);
+      renderMessages();
+    } else {
+      await loadMessages(state.selectedWinner.user_id, false);
+    }
+
+    state.selectedFile = null;
+    if ($("mediaInput")) $("mediaInput").value = "";
+    if ($("replyText")) $("replyText").value = "";
+    renderSelectedFile();
+
+    toast("Media sent", "success");
+    await loadWinners(false);
+  } catch (err) {
+    console.error(err);
+    toast(`Media failed: ${err.message}`, "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function renderSelectedFile() {
+  const box = $("selectedFilePreview");
+  const name = $("selectedFileName");
+
+  if (!box || !name) return;
+
+  if (!state.selectedFile) {
+    setHidden(box, true);
+    name.textContent = "";
+    return;
+  }
+
+  name.textContent = `${state.selectedFile.name} (${Math.round(state.selectedFile.size / 1024)} KB)`;
+  setHidden(box, false);
+}
+
+async function sendReply() {
+  if (state.selectedFile) {
+    await sendMediaMessage();
+    return;
+  }
+
+  await sendTextMessage($("replyText")?.value || "");
+}
+
+async function sendNotice() {
+  if (!state.selectedWinner) {
+    toast("Winner select လုပ်ပါ။", "error");
+    return;
+  }
+
+  const btn = $("sendNoticeBtn");
+
+  try {
+    if (btn) btn.disabled = true;
+
+    const data = await api("/notice", {
+      method: "POST",
+      body: {
+        user_id: state.selectedWinner.user_id,
+      },
+    });
+
+    if (data.log) {
+      state.messages.push(data.log);
+      renderMessages();
+    }
+
+    syncSelectedWinnerPatch({
+      notice_sent: true,
+      notice_at: new Date().toISOString(),
+      cs_status: "Notice Sent",
+    });
+
+    toast("Notice sent", "success");
+    await loadWinners(false);
+  } catch (err) {
+    console.error(err);
+    toast(`Notice failed: ${err.message}`, "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function markDone() {
+  if (!state.selectedWinner) {
+    toast("Winner select လုပ်ပါ။", "error");
+    return;
+  }
+
+  const next = !state.selectedWinner.done;
+
+  try {
+    await api("/winner/done", {
+      method: "POST",
+      body: {
+        user_id: state.selectedWinner.user_id,
+        done: next ? "1" : "0",
+      },
+    });
+
+    syncSelectedWinnerPatch({
+      done: next,
+      done_at: next ? new Date().toISOString() : "",
+      cs_status: next ? "Done" : "Pending",
+    });
+
+    toast(next ? "Marked done" : "Marked pending", "success");
+    await loadWinners(false);
+  } catch (err) {
+    console.error(err);
+    toast(`Update failed: ${err.message}`, "error");
+  }
+}
+
+async function saveWinnerNote() {
+  if (!state.selectedWinner) {
+    toast("Winner select လုပ်ပါ။", "error");
+    return;
+  }
+
+  const patch = {
+    user_id: state.selectedWinner.user_id,
+    cs_note: $("detailNote")?.value || "",
+    game_account: $("detailGameAccount")?.value || "",
+    game_phone: $("detailGamePhone")?.value || "",
+  };
+
+  try {
+    await api("/winner/update", {
+      method: "POST",
+      body: patch,
+    });
+
+    syncSelectedWinnerPatch({
+      cs_note: patch.cs_note,
+      game_account: patch.game_account,
+      game_phone: patch.game_phone,
+    });
+
+    toast("Saved", "success");
+  } catch (err) {
+    console.error(err);
+    toast(`Save failed: ${err.message}`, "error");
+  }
+}
+
+async function setDoneFromCheckbox() {
+  if (!state.selectedWinner) return;
+
+  const checked = !!$("detailDoneCheckbox")?.checked;
+
+  try {
+    await api("/winner/update", {
+      method: "POST",
+      body: {
+        user_id: state.selectedWinner.user_id,
+        done: checked ? "1" : "0",
+      },
+    });
+
+    syncSelectedWinnerPatch({
+      done: checked,
+      done_at: checked ? new Date().toISOString() : "",
+      cs_status: checked ? "Done" : "Pending",
+    });
+
+    toast("Done status updated", "success");
+  } catch (err) {
+    console.error(err);
+    toast(`Done update failed: ${err.message}`, "error");
+    if ($("detailDoneCheckbox")) $("detailDoneCheckbox").checked = !checked;
+  }
+}
+/* ================= Event Binding ================= */
 function bindEvents() {
-  el.refreshBtn?.addEventListener("click", refreshPage);
-  el.exportBtn?.addEventListener("click", exportCsv);
+  const loginForm = $("adminLoginForm");
+  if (loginForm) loginForm.addEventListener("submit", handleLogin);
 
-  el.logoutBtn?.addEventListener("click", () => {
-    forgetApiKey();
-    location.reload();
+  const logoutBtn = $("logoutBtn");
+  if (logoutBtn) logoutBtn.addEventListener("click", logout);
+
+  const refreshBtn = $("refreshBtn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", async () => {
+      try {
+        await loadWinners(false);
+        toast("Refreshed", "success");
+      } catch (err) {
+        console.error(err);
+        toast(`Refresh failed: ${err.message}`, "error");
+      }
+    });
+  }
+
+  const sidebarRefreshBtn = $("sidebarRefreshBtn");
+  if (sidebarRefreshBtn) {
+    sidebarRefreshBtn.addEventListener("click", async () => {
+      try {
+        await loadWinners(false);
+        toast("Refreshed", "success");
+      } catch (err) {
+        console.error(err);
+        toast(`Refresh failed: ${err.message}`, "error");
+      }
+    });
+  }
+
+  const forceRebuildBtn = $("forceRebuildBtn");
+  if (forceRebuildBtn) {
+    forceRebuildBtn.addEventListener("click", async () => {
+      const ok = window.confirm("Winner cache ကို force rebuild လုပ်မယ်။ ဆက်လုပ်မလား?");
+      if (!ok) return;
+
+      try {
+        await rebuildCache();
+        toast("Cache rebuilt", "success");
+      } catch (err) {
+        console.error(err);
+        toast(`Rebuild failed: ${err.message}`, "error");
+      }
+    });
+  }
+
+  const searchInput = $("searchInput");
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      state.search = searchInput.value || "";
+      state.visibleCount = APP.PAGE_SIZE;
+      applyFilter();
+      renderWinnerList();
+    });
+  }
+
+  qsa(".cs-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.filter = btn.dataset.filter || "all";
+      state.visibleCount = APP.PAGE_SIZE;
+      updateTabActive();
+      applyFilter();
+      renderWinnerList();
+    });
   });
 
-  el.searchInput?.addEventListener("input", () => {
-    applyFilter();
-    renderWinners();
+  const loadMoreBtn = $("loadMoreBtn");
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener("click", () => {
+      state.visibleCount += APP.PAGE_SIZE;
+      renderWinnerList();
+    });
+  }
+
+  const sendReplyBtn = $("sendReplyBtn");
+  if (sendReplyBtn) {
+    sendReplyBtn.addEventListener("click", sendReply);
+  }
+
+  const replyText = $("replyText");
+  if (replyText) {
+    replyText.addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        sendReply();
+      }
+    });
+  }
+
+  const mediaInput = $("mediaInput");
+  if (mediaInput) {
+    mediaInput.addEventListener("change", () => {
+      state.selectedFile = mediaInput.files?.[0] || null;
+      renderSelectedFile();
+    });
+  }
+
+  const clearSelectedFileBtn = $("clearSelectedFileBtn");
+  if (clearSelectedFileBtn) {
+    clearSelectedFileBtn.addEventListener("click", () => {
+      state.selectedFile = null;
+      if ($("mediaInput")) $("mediaInput").value = "";
+      renderSelectedFile();
+    });
+  }
+
+  const quickAccountRequestBtn = $("quickAccountRequestBtn");
+  if (quickAccountRequestBtn) {
+    quickAccountRequestBtn.addEventListener("click", insertAccountRequest);
+  }
+
+  const sendNoticeBtn = $("sendNoticeBtn");
+  if (sendNoticeBtn) {
+    sendNoticeBtn.addEventListener("click", sendNotice);
+  }
+
+  const markDoneBtn = $("markDoneBtn");
+  if (markDoneBtn) {
+    markDoneBtn.addEventListener("click", markDone);
+  }
+
+  const saveNoteBtn = $("saveNoteBtn");
+  if (saveNoteBtn) {
+    saveNoteBtn.addEventListener("click", saveWinnerNote);
+  }
+
+  const detailDoneCheckbox = $("detailDoneCheckbox");
+  if (detailDoneCheckbox) {
+    detailDoneCheckbox.addEventListener("change", setDoneFromCheckbox);
+  }
+
+  const broadcastBtn = $("broadcastBtn");
+  if (broadcastBtn) {
+    broadcastBtn.addEventListener("click", () => openModal("broadcastModal"));
+  }
+
+  const openBroadcastNavBtn = $("openBroadcastNavBtn");
+  if (openBroadcastNavBtn) {
+    openBroadcastNavBtn.addEventListener("click", () => openModal("broadcastModal"));
+  }
+
+  const openTemplatesNavBtn = $("openTemplatesNavBtn");
+  if (openTemplatesNavBtn) {
+    openTemplatesNavBtn.addEventListener("click", () => openModal("broadcastModal"));
+  }
+
+  qsa("[data-close-modal]").forEach((el) => {
+    el.addEventListener("click", () => {
+      closeModal(el.dataset.closeModal);
+    });
   });
 
-  el.loadMoreBtn?.addEventListener("click", () => {
-    state.visibleCount += CONFIG.PAGE_SIZE;
-    renderWinners();
-  });
+  const broadcastTemplateSelect = $("broadcastTemplateSelect");
+  if (broadcastTemplateSelect) {
+    broadcastTemplateSelect.addEventListener("change", applySelectedTemplate);
+  }
 
-  el.replyModalClose?.addEventListener("click", closeReplyModal);
-  el.replyModalBackdrop?.addEventListener("click", closeReplyModal);
+  const broadcastTarget = $("broadcastTarget");
+  if (broadcastTarget) {
+    broadcastTarget.addEventListener("change", () => {
+      previewBroadcast().catch(() => {});
+    });
+  }
+
+  const broadcastFile = $("broadcastFile");
+  if (broadcastFile) {
+    broadcastFile.addEventListener("change", () => {
+      state.broadcastFile = broadcastFile.files?.[0] || null;
+      if (state.broadcastFile) {
+        toast(`Broadcast file selected: ${state.broadcastFile.name}`, "info");
+      }
+    });
+  }
+
+  const previewBroadcastBtn = $("previewBroadcastBtn");
+  if (previewBroadcastBtn) {
+    previewBroadcastBtn.addEventListener("click", previewBroadcast);
+  }
+
+  const saveTemplateBtn = $("saveTemplateBtn");
+  if (saveTemplateBtn) {
+    saveTemplateBtn.addEventListener("click", saveTemplateFromBroadcastForm);
+  }
+
+  const sendBroadcastBtn = $("sendBroadcastBtn");
+  if (sendBroadcastBtn) {
+    sendBroadcastBtn.addEventListener("click", sendBroadcastNow);
+  }
+
+  const scheduleBroadcastBtn = $("scheduleBroadcastBtn");
+  if (scheduleBroadcastBtn) {
+    scheduleBroadcastBtn.addEventListener("click", scheduleBroadcast);
+  }
+
+  const refreshCampaignsBtn = $("refreshCampaignsBtn");
+  if (refreshCampaignsBtn) {
+    refreshCampaignsBtn.addEventListener("click", async () => {
+      await loadCampaigns();
+      toast("Campaigns refreshed", "success");
+    });
+  }
+
+  const exportBtn = $("exportBtn");
+  if (exportBtn) {
+    exportBtn.addEventListener("click", exportCurrentWinnersCsv);
+  }
+
+  const backupBtn = $("backupBtn");
+  if (backupBtn) {
+    backupBtn.addEventListener("click", sendBackupToOwner);
+  }
+
+  const assignBtn = $("assignBtn");
+  if (assignBtn) {
+    assignBtn.addEventListener("click", () => {
+      toast("Assigned to CS Team", "success");
+    });
+  }
+
+  const replyModalClose = $("replyModalClose");
+  if (replyModalClose) {
+    replyModalClose.addEventListener("click", () => closeModal("replyModal"));
+  }
+
+  const replyModalBackdrop = $("replyModalBackdrop");
+  if (replyModalBackdrop) {
+    replyModalBackdrop.addEventListener("click", () => closeModal("replyModal"));
+  }
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeReplyModal();
+    if (e.key === "Escape") {
+      closeModal("broadcastModal");
+      closeModal("replyModal");
+    }
   });
 }
 
-function startCsPage() {
-  bindEvents();
-  bindAdminLogin();
-
-  requireAdminLoginBeforeLoad().then((ok) => {
-    if (ok) refreshPage();
+/* ================= Final Boot ================= */
+document.addEventListener("DOMContentLoaded", () => {
+  boot().catch((err) => {
+    console.error("Boot failed:", err);
+    toast(`Boot failed: ${err.message}`, "error");
+    showLogin();
   });
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", startCsPage);
-} else {
-  startCsPage();
-}
+});
