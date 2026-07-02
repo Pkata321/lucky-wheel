@@ -6309,4 +6309,193 @@ body.cs-inbox-body [hidden] {
     opacity: 0.55 !important;
   }
 }
+/* =========================================================
+   Simple Winner List Modal Add-on
+========================================================= */
+.cs-simple-winner-card {
+  width: min(1080px, calc(100vw - 36px)) !important;
+  height: calc(100vh - 36px) !important;
+  max-height: calc(100vh - 36px) !important;
+}
 
+.cs-simple-winner-toolbar {
+  flex: 0 0 auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 150px auto !important;
+  gap: 10px !important;
+  padding: 14px 16px !important;
+  border-bottom: 1px solid #edf2fa !important;
+  background: #ffffff !important;
+}
+
+.cs-simple-winner-toolbar input,
+.cs-simple-winner-toolbar select {
+  width: 100% !important;
+  height: 42px !important;
+  border: 1px solid #dbe6f5 !important;
+  border-radius: 14px !important;
+  padding: 0 12px !important;
+  outline: none !important;
+  background: #fbfdff !important;
+  color: #142033 !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+}
+
+.cs-simple-winner-toolbar input:focus,
+.cs-simple-winner-toolbar select:focus {
+  border-color: #2374ff !important;
+  box-shadow: 0 0 0 4px rgba(35, 116, 255, 0.12) !important;
+  background: #ffffff !important;
+}
+
+.cs-simple-winner-head {
+  flex: 0 0 auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(220px, 1.25fr) minmax(160px, 0.9fr) minmax(150px, 0.8fr) minmax(120px, 0.7fr) 120px !important;
+  gap: 10px !important;
+  padding: 12px 16px !important;
+  background: #f3f7fd !important;
+  border-bottom: 1px solid #e1ebf8 !important;
+  color: #65748c !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+}
+
+.cs-simple-winner-list {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: auto !important;
+  padding: 10px 12px 16px !important;
+  background: #f8fbff !important;
+}
+
+.cs-simple-winner-list::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.cs-simple-winner-list::-webkit-scrollbar-thumb {
+  background: #c7d4e8 !important;
+  border-radius: 999px !important;
+}
+
+.cs-simple-winner-row {
+  min-width: 820px !important;
+  display: grid !important;
+  grid-template-columns: minmax(220px, 1.25fr) minmax(160px, 0.9fr) minmax(150px, 0.8fr) minmax(120px, 0.7fr) 120px !important;
+  gap: 10px !important;
+  align-items: center !important;
+  min-height: 62px !important;
+  margin-bottom: 8px !important;
+  padding: 10px 12px !important;
+  border: 1px solid #e3ebf7 !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  cursor: pointer !important;
+  box-shadow: 0 8px 20px rgba(39, 57, 92, 0.045) !important;
+  transition: 0.14s ease !important;
+}
+
+.cs-simple-winner-row:hover {
+  transform: translateY(-1px) !important;
+  border-color: #cfe1ff !important;
+  background: #f8fbff !important;
+}
+
+.cs-simple-name {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 4px !important;
+}
+
+.cs-simple-name b {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  color: #142033 !important;
+  font-size: 14px !important;
+  font-weight: 1000 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.cs-simple-name small {
+  color: #7a879d !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+}
+
+.cs-simple-username,
+.cs-simple-prize {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  color: #34445f !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.cs-simple-prize {
+  color: #6550d6 !important;
+  font-weight: 1000 !important;
+}
+
+.cs-copy-id-btn {
+  max-width: 100% !important;
+  min-height: 34px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  padding: 0 10px !important;
+  background: #edf4ff !important;
+  color: #176aff !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.cs-simple-status-btn {
+  width: 100% !important;
+  height: 36px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  transition: 0.14s ease !important;
+}
+
+.cs-simple-status-btn:hover {
+  transform: translateY(-1px) !important;
+}
+
+.cs-simple-status-btn.is-done {
+  background: #e8fbf2 !important;
+  color: #0c8a55 !important;
+  border: 1px solid #bfead7 !important;
+}
+
+.cs-simple-status-btn.is-undone {
+  background: #fff5e5 !important;
+  color: #b56f00 !important;
+  border: 1px solid #ffe0a8 !important;
+}
+
+@media (max-width: 760px) {
+  .cs-simple-winner-card {
+    width: calc(100vw - 20px) !important;
+    height: calc(100vh - 20px) !important;
+    max-height: calc(100vh - 20px) !important;
+  }
+
+  .cs-simple-winner-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .cs-simple-winner-head {
+    min-width: 820px !important;
+  }
+}
