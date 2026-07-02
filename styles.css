@@ -4000,3 +4000,95 @@ button.is-loading::after,
   }
 }
 
+/* ================= Broadcast Modal Scroll Fix ================= */
+.cs-modal {
+  align-items: center !important;
+  justify-items: center !important;
+  overflow: auto !important;
+  padding: 18px !important;
+}
+
+.cs-modal-card {
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: calc(100vh - 36px) !important;
+  overflow: hidden !important;
+}
+
+.cs-modal-header {
+  flex: 0 0 auto !important;
+}
+
+.cs-broadcast-card {
+  height: calc(100vh - 36px) !important;
+  max-height: calc(100vh - 36px) !important;
+}
+
+.cs-broadcast-grid {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 330px !important;
+}
+
+.cs-broadcast-form {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 16px 18px 28px !important;
+}
+
+.cs-broadcast-side {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 16px 18px 28px !important;
+}
+
+.cs-broadcast-form::-webkit-scrollbar,
+.cs-broadcast-side::-webkit-scrollbar {
+  width: 8px !important;
+}
+
+.cs-broadcast-form::-webkit-scrollbar-thumb,
+.cs-broadcast-side::-webkit-scrollbar-thumb {
+  background: #c7d2e4 !important;
+  border-radius: 999px !important;
+}
+
+.cs-broadcast-actions {
+  position: sticky !important;
+  bottom: -1px !important;
+  z-index: 30 !important;
+  padding: 12px 0 0 !important;
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0),
+    rgba(255,255,255,0.96) 28%,
+    rgba(255,255,255,1)
+  ) !important;
+}
+
+#broadcastCaption {
+  min-height: 90px !important;
+}
+
+@media (max-width: 980px) {
+  .cs-broadcast-card {
+    height: calc(100vh - 24px) !important;
+    max-height: calc(100vh - 24px) !important;
+  }
+
+  .cs-broadcast-grid {
+    grid-template-columns: 1fr !important;
+    overflow-y: auto !important;
+  }
+
+  .cs-broadcast-form,
+  .cs-broadcast-side {
+    overflow: visible !important;
+  }
+}
+
