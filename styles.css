@@ -3368,3 +3368,635 @@ button.is-loading::after,
 .cs-inbox-body ::selection {
   background: rgba(36, 109, 255, 0.18);
 }
+
+/* =========================================================
+   Lucky77 Winner Inbox — Clean Stable Override v2
+   Paste at the very bottom of styles.css
+========================================================= */
+
+/* ---------- Base page ---------- */
+.cs-inbox-body {
+  overflow: hidden !important;
+  background: #edf3fb !important;
+}
+
+.cs-inbox-body button {
+  user-select: none !important;
+}
+
+.cs-inbox-body button,
+.cs-inbox-body input,
+.cs-inbox-body textarea,
+.cs-inbox-body select,
+.cs-inbox-body label {
+  pointer-events: auto !important;
+}
+
+/* ---------- Remove broken resizer layer ---------- */
+.cs-grid-resizer {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.cs-is-resizing,
+.cs-is-resizing * {
+  cursor: default !important;
+  user-select: auto !important;
+}
+
+/* ---------- App layout stable ---------- */
+.cs-app {
+  width: 100vw !important;
+  height: 100vh !important;
+  overflow: hidden !important;
+  grid-template-columns: 72px minmax(0, 1fr) !important;
+}
+
+.cs-shell {
+  height: 100vh !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  grid-template-rows: 78px minmax(0, 1fr) !important;
+  padding: 12px 14px 14px !important;
+  gap: 10px !important;
+}
+
+.cs-topbar {
+  min-height: 78px !important;
+  max-height: 78px !important;
+  border-radius: 22px !important;
+  padding: 12px 16px !important;
+  overflow: hidden !important;
+}
+
+.cs-topbar h1 {
+  font-size: 22px !important;
+}
+
+.cs-topbar p {
+  font-size: 12px !important;
+}
+
+.cs-top-actions {
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+.cs-user-chip {
+  flex-shrink: 0 !important;
+}
+
+/* ---------- Main 3 column layout ---------- */
+.cs-grid {
+  position: relative !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-columns: 340px minmax(520px, 1fr) 300px !important;
+  gap: 10px !important;
+}
+
+.cs-list-panel,
+.cs-chat-panel,
+.cs-detail-panel {
+  min-height: 0 !important;
+  height: 100% !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+}
+
+/* ---------- Sidebar ---------- */
+.cs-sidebar {
+  width: 72px !important;
+  padding: 14px 10px !important;
+}
+
+.cs-brand-mark {
+  width: 48px !important;
+  height: 48px !important;
+}
+
+.cs-nav-btn {
+  width: 48px !important;
+  height: 48px !important;
+  position: relative !important;
+  z-index: 20 !important;
+}
+
+/* ---------- Top buttons ---------- */
+.cs-top-btn,
+.cs-primary-btn,
+.cs-small-btn,
+.cs-send-btn {
+  position: relative !important;
+  z-index: 15 !important;
+}
+
+.cs-top-btn {
+  height: 36px !important;
+  padding: 0 12px !important;
+}
+
+.cs-primary-btn {
+  height: 38px !important;
+  padding: 0 14px !important;
+}
+
+#broadcastBtn {
+  min-width: 118px !important;
+}
+
+#exportBtn {
+  min-width: 74px !important;
+}
+
+/* ---------- Status badge fixed green/red ---------- */
+.cs-status-badge {
+  flex-shrink: 0 !important;
+  height: 36px !important;
+  min-width: 88px !important;
+  background: #eefbf5 !important;
+  color: #087346 !important;
+  border-color: #c9efdf !important;
+}
+
+.cs-status-badge span {
+  background: #20c073 !important;
+  box-shadow: 0 0 0 4px rgba(32, 192, 115, 0.14) !important;
+}
+
+.cs-status-badge.is-offline {
+  background: #fff1f1 !important;
+  color: #bd2a2a !important;
+  border-color: #ffd1d1 !important;
+}
+
+.cs-status-badge.is-offline span {
+  background: #e54848 !important;
+  box-shadow: 0 0 0 4px rgba(229, 72, 72, 0.14) !important;
+}
+
+/* ---------- Winner list stable ---------- */
+.cs-list-panel {
+  display: grid !important;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto !important;
+}
+
+.cs-tabs {
+  padding: 10px 10px 8px !important;
+  gap: 6px !important;
+}
+
+.cs-tab {
+  position: relative !important;
+  z-index: 12 !important;
+  min-height: 42px !important;
+  padding: 8px 5px !important;
+  cursor: pointer !important;
+}
+
+.cs-search-row {
+  padding: 0 10px 9px !important;
+}
+
+.cs-winner-list {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 2px 9px 9px !important;
+}
+
+.cs-winner-item {
+  position: relative !important;
+  z-index: 4 !important;
+  min-height: 88px !important;
+  grid-template-columns: 42px minmax(0, 1fr) auto !important;
+  padding: 10px !important;
+  margin-bottom: 7px !important;
+  border-radius: 18px !important;
+}
+
+.cs-winner-item.has-unread,
+.cs-winner-item:has(.cs-unread-badge) {
+  background: #f2f7ff !important;
+}
+
+.cs-winner-item.has-unread .cs-winner-title b,
+.cs-winner-item:has(.cs-unread-badge) .cs-winner-title b {
+  color: #0f52c9 !important;
+}
+
+.cs-winner-title b {
+  font-size: 13px !important;
+}
+
+.cs-winner-title span {
+  font-size: 10px !important;
+}
+
+.cs-winner-sub,
+.cs-winner-preview {
+  font-size: 12px !important;
+}
+
+.cs-winner-preview {
+  font-weight: 700 !important;
+}
+
+.cs-prize-badge {
+  max-width: 92px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.cs-list-footer {
+  min-height: 50px !important;
+}
+
+/* ---------- Chat panel stable ---------- */
+.cs-chat-panel {
+  min-width: 0 !important;
+  display: grid !important;
+}
+
+.cs-chat-active {
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: 76px minmax(0, 1fr) auto !important;
+}
+
+.cs-chat-header {
+  min-height: 76px !important;
+  max-height: 76px !important;
+  padding: 12px 14px !important;
+  overflow: hidden !important;
+  gap: 10px !important;
+}
+
+.cs-chat-person {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+.cs-chat-person h2 {
+  max-width: 240px !important;
+  font-size: 17px !important;
+}
+
+.cs-chat-person p {
+  max-width: 300px !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+}
+
+.cs-chat-actions {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+.cs-chat-actions .cs-top-btn {
+  height: 34px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+}
+
+.cs-chat-actions .cs-primary-btn,
+#sendNoticeBtn {
+  height: 34px !important;
+  min-width: 112px !important;
+  padding: 0 11px !important;
+  font-size: 12px !important;
+}
+
+.cs-chat-messages {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 16px !important;
+}
+
+.cs-message-bubble {
+  max-width: min(72%, 560px) !important;
+}
+
+.cs-message-text {
+  font-size: 14px !important;
+}
+
+.cs-chat-image {
+  width: min(340px, 100%) !important;
+  max-height: 330px !important;
+  border-radius: 14px !important;
+}
+
+/* ---------- Composer / send button visible ---------- */
+.cs-composer {
+  position: relative !important;
+  z-index: 10 !important;
+  min-width: 0 !important;
+  padding: 10px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+}
+
+.cs-composer textarea {
+  min-height: 70px !important;
+  max-height: 150px !important;
+  resize: vertical !important;
+}
+
+.cs-composer-actions {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+}
+
+.cs-attach-btn {
+  flex: 0 0 40px !important;
+  width: 40px !important;
+  height: 38px !important;
+}
+
+#quickAccountRequestBtn {
+  flex: 0 0 auto !important;
+  min-width: 132px !important;
+  height: 38px !important;
+  position: relative !important;
+  z-index: 20 !important;
+}
+
+#sendReplyBtn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 104px !important;
+  min-width: 104px !important;
+  height: 38px !important;
+  margin-left: auto !important;
+  position: relative !important;
+  z-index: 20 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* ---------- Detail panel stable ---------- */
+.cs-detail-panel {
+  padding: 10px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  gap: 10px !important;
+}
+
+.cs-detail-card {
+  padding: 12px !important;
+  border-radius: 18px !important;
+}
+
+.cs-detail-card h3 {
+  font-size: 14px !important;
+}
+
+.cs-detail-row {
+  padding: 8px 0 !important;
+}
+
+.cs-detail-row span,
+.cs-detail-row b {
+  font-size: 12px !important;
+}
+
+.cs-detail-row b {
+  max-width: 148px !important;
+}
+
+#saveNoteBtn,
+#detailDoneCheckbox,
+#markDoneBtn,
+#sendNoticeBtn {
+  position: relative !important;
+  z-index: 20 !important;
+  pointer-events: auto !important;
+}
+
+/* ---------- Broadcast modal stable ---------- */
+.cs-modal {
+  z-index: 1000 !important;
+}
+
+.cs-modal-card {
+  max-height: 90vh !important;
+}
+
+.cs-broadcast-card {
+  width: min(1080px, calc(100vw - 34px)) !important;
+}
+
+.cs-broadcast-grid {
+  max-height: calc(90vh - 74px) !important;
+  grid-template-columns: minmax(0, 1fr) 330px !important;
+}
+
+.cs-broadcast-form,
+.cs-broadcast-side {
+  overflow-y: auto !important;
+}
+
+.cs-broadcast-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+#previewBroadcastBtn,
+#saveTemplateBtn,
+#scheduleBroadcastBtn,
+#sendBroadcastBtn,
+#broadcastTemplateSelect,
+#broadcastTarget,
+#broadcastFile,
+#broadcastText,
+#broadcastCaption,
+#broadcastName,
+#broadcastScheduleToggle,
+#broadcastScheduleAt {
+  position: relative !important;
+  z-index: 20 !important;
+  pointer-events: auto !important;
+}
+
+/* ---------- Better visual polish ---------- */
+.cs-list-panel,
+.cs-chat-panel,
+.cs-detail-panel,
+.cs-topbar {
+  box-shadow: 0 14px 36px rgba(31, 48, 82, 0.08) !important;
+  border-color: rgba(214, 223, 239, 0.98) !important;
+}
+
+.cs-avatar {
+  box-shadow: 0 8px 18px rgba(63, 91, 255, 0.20) !important;
+}
+
+.cs-primary-btn,
+.cs-send-btn {
+  box-shadow: 0 10px 20px rgba(54, 105, 255, 0.20) !important;
+}
+
+.cs-empty {
+  color: #718096 !important;
+}
+
+/* ---------- 13-inch / old Mac fitting ---------- */
+@media (max-width: 1280px) {
+  .cs-grid {
+    grid-template-columns: 320px minmax(460px, 1fr) 280px !important;
+    gap: 9px !important;
+  }
+
+  .cs-shell {
+    padding: 10px !important;
+  }
+
+  .cs-chat-person h2 {
+    max-width: 205px !important;
+  }
+
+  #sendNoticeBtn {
+    min-width: 104px !important;
+  }
+
+  #quickAccountRequestBtn {
+    min-width: 124px !important;
+  }
+
+  #sendReplyBtn {
+    flex-basis: 98px !important;
+    min-width: 98px !important;
+  }
+
+  .cs-user-chip {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .cs-grid {
+    grid-template-columns: 300px minmax(420px, 1fr) 260px !important;
+  }
+
+  .cs-top-actions {
+    gap: 6px !important;
+  }
+
+  .cs-top-btn,
+  .cs-primary-btn {
+    padding: 0 10px !important;
+    font-size: 12px !important;
+  }
+
+  .cs-chat-actions .cs-top-btn {
+    padding: 0 8px !important;
+  }
+
+  .cs-chat-actions .cs-primary-btn,
+  #sendNoticeBtn {
+    min-width: 98px !important;
+    padding: 0 9px !important;
+  }
+}
+
+/* ---------- Tablet/mobile fallback ---------- */
+@media (max-width: 980px) {
+  .cs-inbox-body {
+    overflow: auto !important;
+  }
+
+  .cs-app {
+    height: auto !important;
+    min-height: 100vh !important;
+    grid-template-columns: 1fr !important;
+    overflow: visible !important;
+  }
+
+  .cs-sidebar {
+    position: sticky !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 64px !important;
+    flex-direction: row !important;
+    z-index: 100 !important;
+    overflow-x: auto !important;
+  }
+
+  .cs-sidebar-spacer {
+    flex: 1 0 12px !important;
+  }
+
+  .cs-shell {
+    height: auto !important;
+    min-height: calc(100vh - 64px) !important;
+    overflow: visible !important;
+    grid-template-rows: auto auto !important;
+  }
+
+  .cs-topbar {
+    min-height: auto !important;
+    max-height: none !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .cs-top-actions {
+    flex-wrap: wrap !important;
+    width: 100% !important;
+  }
+
+  .cs-grid {
+    height: auto !important;
+    overflow: visible !important;
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "list"
+      "chat"
+      "detail" !important;
+  }
+
+  .cs-list-panel {
+    grid-area: list !important;
+    height: 560px !important;
+  }
+
+  .cs-chat-panel {
+    grid-area: chat !important;
+    height: 620px !important;
+  }
+
+  .cs-detail-panel {
+    grid-area: detail !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .cs-chat-actions {
+    flex-wrap: wrap !important;
+  }
+
+  .cs-broadcast-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .cs-broadcast-side {
+    border-left: 0 !important;
+    border-top: 1px solid #edf1f8 !important;
+  }
+}
+
