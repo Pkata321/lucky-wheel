@@ -4092,3 +4092,2221 @@ button.is-loading::after,
   }
 }
 
+/* =========================================================
+   Lucky77 Dashboard Login + CS Inbox Final Override v3.1.0
+   Paste at the VERY BOTTOM of styles.css
+   Do not remove old wheel CSS.
+========================================================= */
+
+/* ================= Global CS Page Lock ================= */
+body.cs-inbox-body {
+  margin: 0 !important;
+  width: 100vw !important;
+  min-height: 100vh !important;
+  overflow: hidden !important;
+  background: #edf4ff !important;
+  color: #142033 !important;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+}
+
+body.cs-inbox-body *,
+body.cs-inbox-body *::before,
+body.cs-inbox-body *::after {
+  box-sizing: border-box !important;
+}
+
+body.cs-inbox-body button,
+body.cs-inbox-body input,
+body.cs-inbox-body textarea,
+body.cs-inbox-body select,
+body.cs-inbox-body label {
+  font-family: inherit !important;
+  pointer-events: auto !important;
+}
+
+body.cs-inbox-body button {
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+body.cs-inbox-body [hidden] {
+  display: none !important;
+}
+
+/* =========================================================
+   New Login UI
+========================================================= */
+.lw-login-view {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 5000 !important;
+  overflow: auto !important;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(37, 116, 255, 0.32), transparent 28%),
+    radial-gradient(circle at 88% 16%, rgba(71, 216, 255, 0.30), transparent 25%),
+    radial-gradient(circle at 55% 100%, rgba(46, 115, 255, 0.22), transparent 36%),
+    linear-gradient(135deg, #eaf5ff 0%, #ffffff 42%, #dff2ff 100%) !important;
+}
+
+.lw-login-bg {
+  position: relative !important;
+  min-height: 100vh !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 26px !important;
+  overflow: hidden !important;
+}
+
+.lw-login-bg::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: -40px !important;
+  background-image:
+    radial-gradient(circle, rgba(16, 83, 200, 0.13) 2px, transparent 2px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.72) 2px, transparent 2px) !important;
+  background-size: 34px 34px, 52px 52px !important;
+  background-position: 0 0, 18px 16px !important;
+  opacity: 0.72 !important;
+  pointer-events: none !important;
+}
+
+.lw-login-bg::after {
+  content: "" !important;
+  position: absolute !important;
+  width: min(720px, 92vw) !important;
+  aspect-ratio: 1 !important;
+  border-radius: 999px !important;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.92), rgba(235, 247, 255, 0.64) 48%, transparent 70%) !important;
+  filter: blur(1px) !important;
+  opacity: 0.72 !important;
+  pointer-events: none !important;
+}
+
+.lw-doodle {
+  position: absolute !important;
+  z-index: 1 !important;
+  color: #ffffff !important;
+  text-shadow:
+    0 3px 0 #1e65df,
+    0 8px 18px rgba(16, 78, 180, 0.22) !important;
+  font-weight: 1000 !important;
+  line-height: 1 !important;
+  pointer-events: none !important;
+}
+
+.lw-doodle-1 {
+  left: 8% !important;
+  top: 12% !important;
+  font-size: 42px !important;
+  transform: rotate(-12deg) !important;
+}
+
+.lw-doodle-2 {
+  right: 10% !important;
+  top: 14% !important;
+  font-size: 48px !important;
+  transform: rotate(10deg) !important;
+}
+
+.lw-doodle-3 {
+  left: 11% !important;
+  bottom: 16% !important;
+  font-size: 52px !important;
+  transform: rotate(9deg) !important;
+}
+
+.lw-doodle-4 {
+  right: 13% !important;
+  bottom: 18% !important;
+  font-size: 56px !important;
+  transform: rotate(-9deg) !important;
+}
+
+.lw-login-shell {
+  position: relative !important;
+  z-index: 2 !important;
+  width: min(520px, 100%) !important;
+  text-align: center !important;
+}
+
+.lw-login-head {
+  margin-bottom: 14px !important;
+}
+
+.lw-login-head h1 {
+  margin: 0 !important;
+  color: #ffffff !important;
+  font-size: clamp(34px, 6vw, 54px) !important;
+  line-height: 0.96 !important;
+  font-weight: 1000 !important;
+  letter-spacing: -0.06em !important;
+  text-shadow:
+    0 4px 0 #1749b8,
+    0 8px 0 #ffffff,
+    0 18px 34px rgba(21, 76, 180, 0.28) !important;
+  -webkit-text-stroke: 1.8px #1557cf !important;
+}
+
+.lw-login-head p {
+  width: fit-content !important;
+  margin: 14px auto 0 !important;
+  padding: 9px 18px !important;
+  border-radius: 999px !important;
+  color: #1358cc !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  border: 2px solid rgba(23, 100, 224, 0.20) !important;
+  box-shadow: 0 12px 26px rgba(32, 92, 188, 0.16) !important;
+  font-size: 13px !important;
+  font-weight: 1000 !important;
+}
+
+.lw-login-card {
+  position: relative !important;
+  overflow: hidden !important;
+  width: min(460px, 100%) !important;
+  margin: 0 auto !important;
+  padding: 26px 24px 22px !important;
+  border-radius: 34px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 250, 255, 0.96)) !important;
+  border: 4px solid #ffffff !important;
+  outline: 3px solid rgba(25, 103, 228, 0.32) !important;
+  box-shadow:
+    0 30px 80px rgba(22, 72, 156, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+}
+
+.lw-login-card::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(37, 123, 255, 0.10), transparent 34%),
+    radial-gradient(circle at 88% 24%, rgba(35, 198, 255, 0.10), transparent 30%) !important;
+  pointer-events: none !important;
+}
+
+.lw-logo-wrap,
+.lw-login-form {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.lw-logo-wrap {
+  display: grid !important;
+  place-items: center !important;
+  margin: 2px 0 18px !important;
+}
+
+.lw-logo-mark {
+  width: 148px !important;
+  height: 96px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 32px !important;
+  background:
+    radial-gradient(circle at 35% 22%, #ffffff 0 7%, transparent 8%),
+    linear-gradient(145deg, #143071, #145dcc 46%, #1ad5ff) !important;
+  color: #ffffff !important;
+  border: 4px solid #ffffff !important;
+  outline: 3px solid #0a3eaa !important;
+  box-shadow:
+    0 16px 34px rgba(20, 83, 184, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+  transform: rotate(-1deg) !important;
+}
+
+.lw-logo-mm {
+  display: block !important;
+  margin-bottom: -10px !important;
+  color: #ffe763 !important;
+  font-size: 20px !important;
+  font-weight: 1000 !important;
+  text-shadow: 0 3px 0 #06245f !important;
+}
+
+.lw-logo-mark strong {
+  display: block !important;
+  color: #ffffff !important;
+  font-size: 48px !important;
+  line-height: 0.9 !important;
+  font-weight: 1000 !important;
+  letter-spacing: -0.08em !important;
+  text-shadow: 0 4px 0 #071d58 !important;
+}
+
+.lw-login-form {
+  display: grid !important;
+  gap: 13px !important;
+}
+
+.lw-field-row {
+  min-height: 72px !important;
+  display: grid !important;
+  grid-template-columns: 50px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  align-items: center !important;
+  padding: 10px !important;
+  border-radius: 22px !important;
+  background: #f3f8ff !important;
+  border: 2px solid #d7e7ff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.90) !important;
+}
+
+.lw-field-icon {
+  width: 48px !important;
+  height: 48px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 17px !important;
+  background: linear-gradient(145deg, #1f73ff, #28c4ff) !important;
+  color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 10px 22px rgba(28, 108, 225, 0.22) !important;
+  font-size: 20px !important;
+}
+
+.lw-field {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 6px !important;
+  text-align: left !important;
+}
+
+.lw-field span {
+  color: #13284f !important;
+  font-size: 13px !important;
+  font-weight: 1000 !important;
+}
+
+.lw-field input {
+  width: 100% !important;
+  height: 36px !important;
+  border: 0 !important;
+  outline: none !important;
+  background: #ffffff !important;
+  color: #122442 !important;
+  padding: 0 12px !important;
+  border-radius: 13px !important;
+  box-shadow: inset 0 0 0 1px #d8e5f7 !important;
+  font-size: 14px !important;
+  font-weight: 850 !important;
+}
+
+.lw-field input:focus {
+  box-shadow:
+    inset 0 0 0 2px #2374ff,
+    0 0 0 4px rgba(35, 116, 255, 0.13) !important;
+}
+
+.lw-pass-wrap {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.lw-pass-wrap input {
+  padding-right: 42px !important;
+}
+
+.lw-eye-btn {
+  position: absolute !important;
+  right: 4px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 32px !important;
+  height: 28px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: #e9f2ff !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+}
+
+.lw-login-error {
+  min-height: 32px !important;
+  padding: 8px 12px !important;
+  border-radius: 14px !important;
+  background: #fff0f0 !important;
+  color: #bd2a2a !important;
+  border: 1px solid #ffd2d2 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  text-align: center !important;
+}
+
+.lw-login-btn {
+  width: 100% !important;
+  height: 54px !important;
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) 42px !important;
+  align-items: center !important;
+  border: 0 !important;
+  border-radius: 20px !important;
+  cursor: pointer !important;
+  color: #ffffff !important;
+  background: linear-gradient(145deg, #125eff, #1bbcff) !important;
+  box-shadow:
+    0 16px 28px rgba(27, 112, 255, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32) !important;
+  font-size: 16px !important;
+  font-weight: 1000 !important;
+  transition: 0.14s ease !important;
+}
+
+.lw-login-btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow:
+    0 20px 36px rgba(27, 112, 255, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32) !important;
+}
+
+.lw-login-btn:disabled {
+  opacity: 0.68 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+.lw-login-btn span,
+.lw-login-btn b {
+  width: 34px !important;
+  height: 34px !important;
+  display: grid !important;
+  place-items: center !important;
+  justify-self: center !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+.lw-login-links {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 9px !important;
+  color: #6c7b94 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+}
+
+.lw-login-links button {
+  border: 0 !important;
+  background: transparent !important;
+  color: #1667d9 !important;
+  cursor: pointer !important;
+  padding: 4px 2px !important;
+  font-size: 13px !important;
+  font-weight: 1000 !important;
+}
+
+.lw-login-note {
+  min-height: 40px !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 8px 12px !important;
+  border-radius: 16px !important;
+  color: #1259c8 !important;
+  background: #edf6ff !important;
+  border: 1px solid #cfe6ff !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+}
+
+/* =========================================================
+   CS App Layout Final
+========================================================= */
+.cs-app {
+  width: 100vw !important;
+  height: 100vh !important;
+  display: grid !important;
+  grid-template-columns: 72px minmax(0, 1fr) !important;
+  overflow: hidden !important;
+  background: #edf4ff !important;
+}
+
+.cs-sidebar {
+  width: 72px !important;
+  height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 14px 10px !important;
+  background: linear-gradient(180deg, #0d1a3a, #081126) !important;
+  box-shadow: 10px 0 30px rgba(8, 17, 38, 0.20) !important;
+  z-index: 50 !important;
+}
+
+.cs-brand-mark {
+  width: 48px !important;
+  height: 48px !important;
+  display: grid !important;
+  place-items: center !important;
+  margin: 0 0 12px !important;
+  border-radius: 18px !important;
+  background: linear-gradient(145deg, #196eff, #20c9ff) !important;
+  color: #ffffff !important;
+  border: 2px solid rgba(255, 255, 255, 0.20) !important;
+  box-shadow: 0 14px 28px rgba(31, 105, 255, 0.30) !important;
+  font-size: 18px !important;
+  font-weight: 1000 !important;
+}
+
+.cs-nav {
+  display: grid !important;
+  gap: 8px !important;
+}
+
+.cs-nav-btn {
+  position: relative !important;
+  z-index: 60 !important;
+  width: 48px !important;
+  height: 48px !important;
+  display: grid !important;
+  place-items: center !important;
+  border: 0 !important;
+  border-radius: 17px !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  color: #dce7ff !important;
+  font-size: 19px !important;
+  transition: 0.14s ease !important;
+}
+
+.cs-nav-btn:hover,
+.cs-nav-btn.is-active {
+  background: rgba(74, 132, 255, 0.22) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+
+.cs-danger-nav:hover {
+  background: rgba(255, 73, 92, 0.22) !important;
+}
+
+.cs-sidebar-spacer {
+  flex: 1 1 auto !important;
+}
+
+.cs-shell {
+  width: 100% !important;
+  height: 100vh !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: 78px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  padding: 12px 14px 14px !important;
+  overflow: hidden !important;
+}
+
+.cs-topbar {
+  min-height: 78px !important;
+  max-height: 78px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  padding: 12px 16px !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(211, 223, 242, 0.96) !important;
+  box-shadow: 0 14px 38px rgba(32, 54, 94, 0.08) !important;
+}
+
+.cs-title-group {
+  min-width: 0 !important;
+}
+
+.cs-title-group h1,
+.cs-topbar h1 {
+  margin: 0 !important;
+  color: #142033 !important;
+  font-size: 22px !important;
+  line-height: 1.05 !important;
+  font-weight: 1000 !important;
+  letter-spacing: -0.04em !important;
+}
+
+.cs-title-group p,
+.cs-topbar p {
+  margin: 5px 0 0 !important;
+  color: #66748d !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+}
+
+.cs-top-actions {
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+}
+
+.cs-status-badge {
+  flex: 0 0 auto !important;
+  min-width: 88px !important;
+  height: 36px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 12px !important;
+  border-radius: 999px !important;
+  background: #eefbf5 !important;
+  color: #087346 !important;
+  border: 1px solid #c9efdf !important;
+  font-size: 13px !important;
+  font-weight: 950 !important;
+}
+
+.cs-status-badge span {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 999px !important;
+  background: #20c073 !important;
+  box-shadow: 0 0 0 4px rgba(32, 192, 115, 0.14) !important;
+}
+
+.cs-status-badge.is-offline {
+  background: #fff1f1 !important;
+  color: #bd2a2a !important;
+  border-color: #ffd1d1 !important;
+}
+
+.cs-status-badge.is-offline span {
+  background: #e54848 !important;
+  box-shadow: 0 0 0 4px rgba(229, 72, 72, 0.14) !important;
+}
+
+.cs-user-chip {
+  flex: 0 0 auto !important;
+  min-width: 138px !important;
+  height: 42px !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 1px !important;
+  align-content: center !important;
+  padding: 5px 12px !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  border: 1px solid #dbe5f4 !important;
+}
+
+.cs-user-chip small {
+  display: block !important;
+  color: #7a879d !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+}
+
+.cs-user-chip b {
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  background: transparent !important;
+  color: #142033 !important;
+  border-radius: 0 !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  line-height: 1.2 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.cs-top-btn,
+.cs-primary-btn,
+.cs-small-btn,
+.cs-send-btn {
+  position: relative !important;
+  z-index: 30 !important;
+  border: 0 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  transition: 0.14s ease !important;
+}
+
+.cs-top-btn,
+.cs-small-btn {
+  height: 36px !important;
+  min-width: max-content !important;
+  padding: 0 12px !important;
+  border-radius: 12px !important;
+  background: #f2f6fc !important;
+  color: #273653 !important;
+  border: 1px solid #dce6f5 !important;
+  font-size: 13px !important;
+  font-weight: 950 !important;
+}
+
+.cs-primary-btn,
+.cs-send-btn {
+  height: 38px !important;
+  min-width: max-content !important;
+  padding: 0 14px !important;
+  border-radius: 13px !important;
+  color: #ffffff !important;
+  background: linear-gradient(145deg, #176aff, #1ac2ff) !important;
+  box-shadow: 0 12px 22px rgba(28, 105, 255, 0.22) !important;
+  font-size: 13px !important;
+  font-weight: 1000 !important;
+}
+
+.cs-top-btn:hover,
+.cs-primary-btn:hover,
+.cs-small-btn:hover,
+.cs-send-btn:hover {
+  transform: translateY(-1px) !important;
+}
+
+.cs-top-btn:disabled,
+.cs-primary-btn:disabled,
+.cs-small-btn:disabled,
+.cs-send-btn:disabled {
+  opacity: 0.58 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+/* =========================================================
+   CS Main Grid / Panels
+========================================================= */
+.cs-grid {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 340px minmax(520px, 1fr) 300px !important;
+  gap: 10px !important;
+  overflow: hidden !important;
+}
+
+.cs-grid-resizer {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.cs-list-panel,
+.cs-chat-panel,
+.cs-detail-panel {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(211, 223, 242, 0.96) !important;
+  box-shadow: 0 14px 38px rgba(32, 54, 94, 0.08) !important;
+}
+
+/* =========================================================
+   Winner List Panel
+========================================================= */
+.cs-list-panel {
+  display: grid !important;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto !important;
+}
+
+.cs-list-head {
+  min-height: 62px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  padding: 13px 14px 10px !important;
+  border-bottom: 1px solid #edf2fa !important;
+}
+
+.cs-list-head h2 {
+  margin: 0 !important;
+  color: #142033 !important;
+  font-size: 18px !important;
+  line-height: 1.1 !important;
+  font-weight: 1000 !important;
+  letter-spacing: -0.03em !important;
+}
+
+.cs-list-head p {
+  margin: 5px 0 0 !important;
+  color: #718096 !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+}
+
+#listCount {
+  min-width: 40px !important;
+  height: 34px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 13px !important;
+  background: #edf4ff !important;
+  color: #176aff !important;
+  font-size: 14px !important;
+  font-weight: 1000 !important;
+}
+
+.cs-stats {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  padding: 10px 10px 8px !important;
+}
+
+.cs-stats div {
+  min-width: 0 !important;
+  min-height: 52px !important;
+  display: grid !important;
+  align-content: center !important;
+  gap: 3px !important;
+  padding: 8px 6px !important;
+  border-radius: 15px !important;
+  background: #f5f8fd !important;
+  border: 1px solid #e5edf8 !important;
+  text-align: center !important;
+}
+
+.cs-stats span {
+  color: #7a879d !important;
+  font-size: 10px !important;
+  font-weight: 950 !important;
+}
+
+.cs-stats b {
+  color: #142033 !important;
+  font-size: 15px !important;
+  font-weight: 1000 !important;
+}
+
+.cs-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  padding: 0 10px 9px !important;
+}
+
+.cs-tab {
+  position: relative !important;
+  z-index: 20 !important;
+  min-height: 40px !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  padding: 8px 5px !important;
+  cursor: pointer !important;
+  background: #f2f6fc !important;
+  color: #65748c !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  transition: 0.14s ease !important;
+}
+
+.cs-tab:hover {
+  background: #eaf2ff !important;
+  color: #176aff !important;
+}
+
+.cs-tab.is-active {
+  background: linear-gradient(145deg, #eaf3ff, #f7fbff) !important;
+  color: #176aff !important;
+  box-shadow: inset 0 0 0 1px #cfe1ff !important;
+}
+
+.cs-search-row {
+  display: block !important;
+  padding: 0 10px 10px !important;
+}
+
+.cs-search-row input {
+  width: 100% !important;
+  height: 42px !important;
+  border: 1px solid #dbe6f5 !important;
+  border-radius: 15px !important;
+  padding: 0 13px !important;
+  outline: none !important;
+  background: #fbfdff !important;
+  color: #142033 !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+.cs-search-row input:focus {
+  border-color: #2374ff !important;
+  box-shadow: 0 0 0 4px rgba(35, 116, 255, 0.12) !important;
+  background: #ffffff !important;
+}
+
+.cs-winner-list {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 2px 9px 9px !important;
+  scroll-behavior: smooth !important;
+}
+
+.cs-winner-list::-webkit-scrollbar,
+.cs-chat-messages::-webkit-scrollbar,
+.cs-detail-panel::-webkit-scrollbar,
+.cs-broadcast-form::-webkit-scrollbar,
+.cs-broadcast-side::-webkit-scrollbar,
+.cs-campaign-list::-webkit-scrollbar {
+  width: 8px !important;
+}
+
+.cs-winner-list::-webkit-scrollbar-thumb,
+.cs-chat-messages::-webkit-scrollbar-thumb,
+.cs-detail-panel::-webkit-scrollbar-thumb,
+.cs-broadcast-form::-webkit-scrollbar-thumb,
+.cs-broadcast-side::-webkit-scrollbar-thumb,
+.cs-campaign-list::-webkit-scrollbar-thumb {
+  background: #c7d4e8 !important;
+  border-radius: 999px !important;
+}
+
+.cs-winner-item {
+  position: relative !important;
+  z-index: 4 !important;
+  width: 100% !important;
+  min-height: 88px !important;
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+  align-items: start !important;
+  margin: 0 0 7px !important;
+  padding: 10px !important;
+  border: 1px solid transparent !important;
+  border-radius: 18px !important;
+  background: transparent !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition: 0.14s ease !important;
+}
+
+.cs-winner-item:hover {
+  background: #f6f9ff !important;
+  border-color: #e5edf8 !important;
+}
+
+.cs-winner-item.is-active {
+  background: #eaf3ff !important;
+  border-color: #c6ddff !important;
+  box-shadow: inset 4px 0 0 #176aff !important;
+}
+
+.cs-winner-item.has-unread {
+  background: #f2f7ff !important;
+  border-color: #d4e4ff !important;
+}
+
+.cs-winner-item.has-unread .cs-winner-title b {
+  color: #0f52c9 !important;
+}
+
+.cs-avatar,
+.cs-chat-avatar {
+  width: 42px !important;
+  height: 42px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 15px !important;
+  color: #ffffff !important;
+  background: linear-gradient(145deg, #176aff, #1bc6ff) !important;
+  box-shadow: 0 8px 18px rgba(31, 105, 255, 0.20) !important;
+  font-size: 13px !important;
+  font-weight: 1000 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.cs-winner-main {
+  min-width: 0 !important;
+}
+
+.cs-winner-title {
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+}
+
+.cs-winner-title b {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  overflow: hidden !important;
+  color: #142033 !important;
+  font-size: 13px !important;
+  font-weight: 1000 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.cs-unread-badge {
+  flex: 0 0 auto !important;
+  min-width: 22px !important;
+  height: 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 7px !important;
+  border-radius: 999px !important;
+  background: #176aff !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 1000 !important;
+}
+
+.cs-winner-sub {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  margin-top: 4px !important;
+  color: #65748c !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.cs-winner-preview {
+  margin-top: 7px !important;
+  color: #34445f !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  font-weight: 750 !important;
+}
+
+.cs-winner-side {
+  min-width: 74px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  gap: 6px !important;
+}
+
+.cs-prize-badge,
+.cs-mini-status {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 999px !important;
+  white-space: nowrap !important;
+  font-weight: 1000 !important;
+}
+
+.cs-prize-badge {
+  max-width: 92px !important;
+  min-height: 24px !important;
+  padding: 0 9px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  background: #f0edff !important;
+  color: #6550d6 !important;
+  font-size: 11px !important;
+}
+
+.cs-mini-status {
+  min-height: 22px !important;
+  padding: 0 8px !important;
+  background: #edf2fa !important;
+  color: #65748c !important;
+  font-size: 10px !important;
+}
+
+.cs-mini-status.is-done {
+  background: #e8fbf2 !important;
+  color: #0c8a55 !important;
+}
+
+.cs-mini-status.is-pending {
+  background: #fff5e5 !important;
+  color: #b56f00 !important;
+}
+
+.cs-winner-side small {
+  color: #8491a6 !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+}
+
+.cs-list-footer {
+  min-height: 50px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 9px 10px !important;
+  border-top: 1px solid #edf2fa !important;
+}
+
+.cs-empty {
+  padding: 18px !important;
+  color: #718096 !important;
+  text-align: center !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+/* =========================================================
+   Chat Panel
+========================================================= */
+.cs-chat-panel {
+  position: relative !important;
+  display: grid !important;
+  min-width: 0 !important;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.88)),
+    radial-gradient(circle at top right, rgba(35, 116, 255, 0.08), transparent 36%),
+    radial-gradient(circle at bottom left, rgba(31, 198, 255, 0.10), transparent 34%) !important;
+}
+
+.cs-chat-empty {
+  width: 100% !important;
+  height: 100% !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 32px !important;
+  text-align: center !important;
+}
+
+.cs-chat-empty div {
+  max-width: 430px !important;
+  display: grid !important;
+  place-items: center !important;
+  gap: 8px !important;
+}
+
+.cs-chat-empty span {
+  width: 74px !important;
+  height: 74px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 26px !important;
+  background: #edf4ff !important;
+  font-size: 34px !important;
+  box-shadow: inset 0 0 0 1px #d8e7ff !important;
+}
+
+.cs-chat-empty h2 {
+  margin: 6px 0 0 !important;
+  color: #142033 !important;
+  font-size: 24px !important;
+  font-weight: 1000 !important;
+  letter-spacing: -0.04em !important;
+}
+
+.cs-chat-empty p {
+  margin: 0 !important;
+  color: #6a758b !important;
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+  font-weight: 700 !important;
+}
+
+.cs-chat-active {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: 76px minmax(0, 1fr) auto !important;
+}
+
+.cs-chat-header {
+  min-height: 76px !important;
+  max-height: 76px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 12px 14px !important;
+  overflow: hidden !important;
+  border-bottom: 1px solid #edf2fa !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+}
+
+.cs-chat-person {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+.cs-chat-person h2 {
+  max-width: 240px !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  color: #142033 !important;
+  font-size: 17px !important;
+  line-height: 1.1 !important;
+  font-weight: 1000 !important;
+  letter-spacing: -0.03em !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.cs-chat-person p {
+  max-width: 300px !important;
+  margin: 5px 0 0 !important;
+  overflow: hidden !important;
+  color: #65748c !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.cs-chat-actions {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+#quickAccountRequestBtn {
+  flex: 0 0 auto !important;
+  min-width: 132px !important;
+  height: 38px !important;
+  position: relative !important;
+  z-index: 40 !important;
+}
+
+#sendNoticeBtn {
+  min-width: 112px !important;
+  height: 34px !important;
+  position: relative !important;
+  z-index: 40 !important;
+}
+
+#markDoneBtn {
+  position: relative !important;
+  z-index: 40 !important;
+}
+
+.cs-chat-messages {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 16px !important;
+  background:
+    radial-gradient(circle at top left, rgba(35, 116, 255, 0.05), transparent 36%),
+    linear-gradient(180deg, #fbfdff 0%, #f5f9ff 100%) !important;
+  scroll-behavior: smooth !important;
+}
+
+.cs-message-row {
+  display: flex !important;
+  align-items: flex-end !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+
+.cs-message-row.is-out,
+.cs-message-row.is-outbound {
+  justify-content: flex-end !important;
+}
+
+.cs-message-row.is-in,
+.cs-message-row.is-inbound {
+  justify-content: flex-start !important;
+}
+
+.cs-message-bubble {
+  max-width: min(72%, 560px) !important;
+  padding: 11px 12px 8px !important;
+  overflow: hidden !important;
+  border-radius: 18px !important;
+  box-shadow: 0 8px 18px rgba(39, 57, 92, 0.06) !important;
+}
+
+.cs-message-row.is-in .cs-message-bubble,
+.cs-message-row.is-inbound .cs-message-bubble {
+  border-bottom-left-radius: 7px !important;
+  background: #ffffff !important;
+  color: #142033 !important;
+  border: 1px solid #e5edf8 !important;
+}
+
+.cs-message-row.is-out .cs-message-bubble,
+.cs-message-row.is-outbound .cs-message-bubble {
+  border-bottom-right-radius: 7px !important;
+  background: linear-gradient(145deg, #176aff, #1ac2ff) !important;
+  color: #ffffff !important;
+}
+
+.cs-message-text {
+  white-space: normal !important;
+  word-break: break-word !important;
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+  font-weight: 750 !important;
+}
+
+.cs-message-meta {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  margin-top: 6px !important;
+  opacity: 0.76 !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+}
+
+.cs-message-media {
+  margin-bottom: 8px !important;
+}
+
+.cs-chat-image {
+  display: block !important;
+  width: min(340px, 100%) !important;
+  max-height: 330px !important;
+  object-fit: cover !important;
+  border-radius: 14px !important;
+  background: #e9eef7 !important;
+}
+
+.cs-chat-video {
+  display: block !important;
+  width: min(360px, 100%) !important;
+  max-height: 330px !important;
+  border-radius: 14px !important;
+  background: #111827 !important;
+}
+
+.cs-file-link {
+  display: inline-flex !important;
+  max-width: 280px !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 10px 12px !important;
+  border-radius: 13px !important;
+  color: inherit !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  text-decoration: none !important;
+  font-weight: 950 !important;
+  word-break: break-word !important;
+}
+
+.cs-message-row.is-in .cs-file-link {
+  background: #f0f4fb !important;
+  color: #24314a !important;
+}
+
+/* =========================================================
+   Composer
+========================================================= */
+.cs-composer {
+  position: relative !important;
+  z-index: 20 !important;
+  min-width: 0 !important;
+  padding: 10px !important;
+  border-top: 1px solid #edf2fa !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+}
+
+.cs-composer textarea {
+  width: 100% !important;
+  min-height: 70px !important;
+  max-height: 150px !important;
+  resize: vertical !important;
+  border: 1px solid #dbe6f5 !important;
+  border-radius: 16px !important;
+  padding: 12px 13px !important;
+  outline: none !important;
+  color: #142033 !important;
+  background: #fbfdff !important;
+  line-height: 1.45 !important;
+  font-size: 14px !important;
+  font-weight: 750 !important;
+}
+
+.cs-composer textarea:focus {
+  border-color: #2374ff !important;
+  box-shadow: 0 0 0 4px rgba(35, 116, 255, 0.12) !important;
+  background: #ffffff !important;
+}
+
+.cs-file-preview {
+  min-height: 34px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin-top: 8px !important;
+  padding: 7px 9px 7px 12px !important;
+  border-radius: 13px !important;
+  background: #edf4ff !important;
+  color: #2454a6 !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+}
+
+.cs-file-preview button {
+  width: 24px !important;
+  height: 24px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  cursor: pointer !important;
+  background: #d8e6ff !important;
+  color: #234b93 !important;
+  font-weight: 1000 !important;
+}
+
+.cs-composer-actions {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+  margin-top: 9px !important;
+}
+
+.cs-attach-btn {
+  flex: 0 0 40px !important;
+  width: 40px !important;
+  height: 38px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 13px !important;
+  background: #f2f6fc !important;
+  border: 1px solid #dce6f5 !important;
+  cursor: pointer !important;
+  font-size: 17px !important;
+}
+
+#sendReplyBtn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 104px !important;
+  min-width: 104px !important;
+  height: 38px !important;
+  margin-left: auto !important;
+  position: relative !important;
+  z-index: 40 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* =========================================================
+   Detail Panel
+========================================================= */
+.cs-detail-panel {
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  padding: 10px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.cs-detail-card {
+  flex: 0 0 auto !important;
+  padding: 12px !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  border: 1px solid #e5edf8 !important;
+  box-shadow: 0 8px 22px rgba(39, 57, 92, 0.05) !important;
+}
+
+.cs-detail-card h3 {
+  margin: 0 0 12px !important;
+  color: #142033 !important;
+  font-size: 14px !important;
+  font-weight: 1000 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.cs-detail-row {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 8px 0 !important;
+  border-bottom: 1px solid #f0f4fa !important;
+}
+
+.cs-detail-row:last-child {
+  border-bottom: 0 !important;
+}
+
+.cs-detail-row span {
+  color: #6c778d !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.cs-detail-row b {
+  max-width: 148px !important;
+  color: #142033 !important;
+  text-align: right !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  word-break: break-word !important;
+}
+
+.cs-check-row,
+.cs-checkbox-row {
+  margin-top: 12px !important;
+  min-height: 42px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  padding: 0 12px !important;
+  border-radius: 15px !important;
+  border: 1px solid #e5edf8 !important;
+  background: #f8fbff !important;
+  color: #26324a !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-weight: 1000 !important;
+}
+
+.cs-check-row input,
+.cs-checkbox-row input {
+  width: 17px !important;
+  height: 17px !important;
+  cursor: pointer !important;
+}
+
+#detailNote {
+  width: 100% !important;
+  min-height: 110px !important;
+  resize: vertical !important;
+  border: 1px solid #dbe6f5 !important;
+  border-radius: 14px !important;
+  padding: 10px 11px !important;
+  outline: none !important;
+  background: #fbfdff !important;
+  color: #142033 !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  font-weight: 750 !important;
+}
+
+#detailNote:focus {
+  border-color: #2374ff !important;
+  box-shadow: 0 0 0 4px rgba(35, 116, 255, 0.12) !important;
+  background: #ffffff !important;
+}
+
+#saveNoteBtn {
+  width: 100% !important;
+  margin-top: 10px !important;
+}
+
+.cs-muted {
+  margin: 0 0 12px !important;
+  color: #718096 !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  font-weight: 750 !important;
+}
+
+#assignBtn,
+#detailDoneCheckbox,
+#markDoneBtn,
+#sendNoticeBtn,
+#saveNoteBtn {
+  position: relative !important;
+  z-index: 40 !important;
+  pointer-events: auto !important;
+}
+
+/* =========================================================
+   Broadcast Modal
+========================================================= */
+.cs-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 6000 !important;
+  display: grid !important;
+  align-items: center !important;
+  justify-items: center !important;
+  padding: 18px !important;
+  overflow: auto !important;
+}
+
+.cs-modal-backdrop {
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(8, 17, 38, 0.56) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+.cs-modal-card {
+  position: relative !important;
+  z-index: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: min(760px, calc(100vw - 36px)) !important;
+  max-height: calc(100vh - 36px) !important;
+  overflow: hidden !important;
+  border-radius: 26px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(226, 232, 244, 0.96) !important;
+  box-shadow: 0 30px 90px rgba(7, 13, 28, 0.35) !important;
+}
+
+.cs-broadcast-card {
+  width: min(1080px, calc(100vw - 36px)) !important;
+  height: calc(100vh - 36px) !important;
+  max-height: calc(100vh - 36px) !important;
+}
+
+.cs-modal-header {
+  flex: 0 0 auto !important;
+  min-height: 74px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  padding: 16px 18px !important;
+  border-bottom: 1px solid #edf2fa !important;
+  background: #ffffff !important;
+}
+
+.cs-modal-header h2 {
+  margin: 0 !important;
+  color: #142033 !important;
+  font-size: 20px !important;
+  font-weight: 1000 !important;
+  letter-spacing: -0.035em !important;
+}
+
+.cs-modal-header p {
+  margin: 5px 0 0 !important;
+  color: #6b768d !important;
+  font-size: 13px !important;
+  font-weight: 750 !important;
+}
+
+.cs-modal-close {
+  flex: 0 0 auto !important;
+  width: 38px !important;
+  height: 38px !important;
+  border: 0 !important;
+  border-radius: 13px !important;
+  cursor: pointer !important;
+  background: #f2f6fc !important;
+  color: #26324a !important;
+  font-size: 24px !important;
+  line-height: 1 !important;
+  font-weight: 800 !important;
+}
+
+.cs-broadcast-grid {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 330px !important;
+  overflow: hidden !important;
+  max-height: none !important;
+}
+
+.cs-broadcast-form {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 16px 18px 28px !important;
+}
+
+.cs-broadcast-side {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 16px 18px 28px !important;
+  border-left: 1px solid #edf2fa !important;
+  background: #f8fbff !important;
+}
+
+.cs-form-field {
+  display: grid !important;
+  gap: 7px !important;
+  margin-bottom: 12px !important;
+}
+
+.cs-form-field span,
+.cs-broadcast-form label > span {
+  color: #4d5b73 !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+}
+
+.cs-broadcast-form input,
+.cs-broadcast-form select,
+.cs-broadcast-form textarea {
+  width: 100% !important;
+  border: 1px solid #dbe6f5 !important;
+  border-radius: 14px !important;
+  padding: 10px 12px !important;
+  outline: none !important;
+  background: #fbfdff !important;
+  color: #142033 !important;
+  font-size: 13px !important;
+  font-weight: 750 !important;
+}
+
+.cs-broadcast-form textarea {
+  resize: vertical !important;
+  line-height: 1.5 !important;
+}
+
+#broadcastText {
+  min-height: 120px !important;
+}
+
+#broadcastCaption {
+  min-height: 90px !important;
+}
+
+.cs-broadcast-form input:focus,
+.cs-broadcast-form select:focus,
+.cs-broadcast-form textarea:focus {
+  border-color: #2374ff !important;
+  box-shadow: 0 0 0 4px rgba(35, 116, 255, 0.12) !important;
+  background: #ffffff !important;
+}
+
+.cs-schedule-row {
+  display: grid !important;
+  grid-template-columns: auto auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin-top: 12px !important;
+  padding: 12px !important;
+  border: 1px solid #e5edf8 !important;
+  border-radius: 16px !important;
+  background: #f8fbff !important;
+  color: #26324a !important;
+  font-size: 13px !important;
+  font-weight: 1000 !important;
+}
+
+.cs-schedule-row input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.cs-schedule-row input[type="datetime-local"] {
+  min-width: 0 !important;
+}
+
+.cs-broadcast-actions {
+  position: sticky !important;
+  bottom: -1px !important;
+  z-index: 40 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-top: 14px !important;
+  padding: 12px 0 0 !important;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,0),
+      rgba(255,255,255,0.96) 28%,
+      rgba(255,255,255,1)
+    ) !important;
+}
+
+#previewBroadcastBtn,
+#saveTemplateBtn,
+#scheduleBroadcastBtn,
+#sendBroadcastBtn,
+#broadcastTemplateSelect,
+#broadcastTarget,
+#broadcastFile,
+#broadcastText,
+#broadcastCaption,
+#broadcastName,
+#broadcastScheduleToggle,
+#broadcastScheduleAt {
+  position: relative !important;
+  z-index: 45 !important;
+  pointer-events: auto !important;
+}
+
+/* =========================================================
+   Broadcast Preview / History
+========================================================= */
+.cs-preview-card {
+  padding: 12px !important;
+  margin-bottom: 12px !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  border: 1px solid #e3ebf7 !important;
+  box-shadow: 0 8px 22px rgba(39, 57, 92, 0.04) !important;
+}
+
+.cs-preview-card h3 {
+  margin: 0 0 10px !important;
+  color: #142033 !important;
+  font-size: 14px !important;
+  font-weight: 1000 !important;
+}
+
+#broadcastPreviewTarget {
+  margin: 0 0 10px !important;
+  width: fit-content !important;
+  padding: 7px 12px !important;
+  border-radius: 999px !important;
+  color: #176aff !important;
+  background: #eaf3ff !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+}
+
+.cs-preview-list,
+.cs-campaign-list {
+  display: grid !important;
+  gap: 8px !important;
+}
+
+.cs-preview-user {
+  display: grid !important;
+  gap: 3px !important;
+  padding: 10px !important;
+  border-radius: 14px !important;
+  background: #f2f6fd !important;
+  border: 1px solid #e3ebf7 !important;
+}
+
+.cs-preview-user b {
+  color: #142033 !important;
+  font-size: 13px !important;
+  font-weight: 1000 !important;
+}
+
+.cs-preview-user span {
+  color: #65748c !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
+
+.cs-preview-user strong {
+  color: #6550d6 !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+}
+
+.cs-card-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  margin-bottom: 10px !important;
+}
+
+.cs-card-head h3 {
+  margin: 0 !important;
+}
+
+.cs-card-head button {
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 6px 10px !important;
+  cursor: pointer !important;
+  background: #eaf3ff !important;
+  color: #176aff !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+}
+
+.cs-campaign-list {
+  max-height: 390px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-right: 2px !important;
+}
+
+.cs-campaign-item {
+  display: grid !important;
+  gap: 4px !important;
+  padding: 11px !important;
+  border-radius: 15px !important;
+  background: #ffffff !important;
+  border: 1px solid #e3ebf7 !important;
+}
+
+.cs-campaign-item b {
+  display: block !important;
+  color: #142033 !important;
+  font-size: 13px !important;
+  line-height: 1.25 !important;
+  font-weight: 1000 !important;
+}
+
+.cs-campaign-item span {
+  color: #526078 !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  font-weight: 900 !important;
+}
+
+.cs-campaign-item small {
+  color: #7a879d !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+}
+
+/* =========================================================
+   Reply Modal / Toast
+========================================================= */
+.cs-mini-modal {
+  width: min(460px, calc(100vw - 36px)) !important;
+}
+
+.cs-mini-modal-body,
+#replyModalBody {
+  max-height: calc(88vh - 76px) !important;
+  overflow-y: auto !important;
+  padding: 16px !important;
+  color: #142033 !important;
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+}
+
+.cs-toast {
+  position: fixed !important;
+  right: 18px !important;
+  bottom: 18px !important;
+  z-index: 7000 !important;
+  max-width: min(420px, calc(100vw - 36px)) !important;
+  padding: 13px 15px !important;
+  border-radius: 16px !important;
+  color: #142033 !important;
+  background: #ffffff !important;
+  border: 1px solid #dfe8f5 !important;
+  box-shadow: 0 18px 50px rgba(12, 22, 44, 0.22) !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+}
+
+.cs-toast.is-success {
+  color: #067145 !important;
+  background: #ecfbf4 !important;
+  border-color: #c8eedc !important;
+}
+
+.cs-toast.is-error {
+  color: #be2d2d !important;
+  background: #fff0f0 !important;
+  border-color: #ffd0d0 !important;
+}
+
+.cs-toast.is-info {
+  color: #2454a6 !important;
+  background: #edf4ff !important;
+  border-color: #cfe0ff !important;
+}
+
+/* =========================================================
+   Responsive / iPhone / iPad
+========================================================= */
+@media (max-width: 1280px) {
+  .cs-grid {
+    grid-template-columns: 320px minmax(460px, 1fr) 280px !important;
+    gap: 9px !important;
+  }
+
+  .cs-shell {
+    padding: 10px !important;
+  }
+
+  .cs-chat-person h2 {
+    max-width: 205px !important;
+  }
+
+  #sendNoticeBtn {
+    min-width: 104px !important;
+  }
+
+  #quickAccountRequestBtn {
+    min-width: 124px !important;
+  }
+
+  #sendReplyBtn {
+    flex-basis: 98px !important;
+    min-width: 98px !important;
+  }
+
+  .cs-user-chip {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .cs-grid {
+    grid-template-columns: 300px minmax(420px, 1fr) 260px !important;
+  }
+
+  .cs-top-actions {
+    gap: 6px !important;
+  }
+
+  .cs-top-btn,
+  .cs-primary-btn {
+    padding: 0 10px !important;
+    font-size: 12px !important;
+  }
+
+  .cs-chat-actions .cs-top-btn {
+    padding: 0 8px !important;
+  }
+
+  .cs-chat-actions .cs-primary-btn,
+  #sendNoticeBtn {
+    min-width: 98px !important;
+    padding: 0 9px !important;
+  }
+}
+
+@media (max-width: 980px) {
+  body.cs-inbox-body {
+    overflow: auto !important;
+  }
+
+  .cs-app {
+    height: auto !important;
+    min-height: 100vh !important;
+    grid-template-columns: 1fr !important;
+    overflow: visible !important;
+  }
+
+  .cs-sidebar {
+    position: sticky !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 64px !important;
+    flex-direction: row !important;
+    z-index: 100 !important;
+    overflow-x: auto !important;
+  }
+
+  .cs-brand-mark {
+    width: 44px !important;
+    height: 44px !important;
+    margin: 0 6px 0 0 !important;
+  }
+
+  .cs-nav {
+    display: flex !important;
+    gap: 8px !important;
+  }
+
+  .cs-nav-btn {
+    width: 44px !important;
+    height: 44px !important;
+    flex: 0 0 auto !important;
+  }
+
+  .cs-sidebar-spacer {
+    flex: 1 0 12px !important;
+  }
+
+  .cs-shell {
+    height: auto !important;
+    min-height: calc(100vh - 64px) !important;
+    overflow: visible !important;
+    grid-template-rows: auto auto !important;
+    padding: 10px !important;
+  }
+
+  .cs-topbar {
+    min-height: auto !important;
+    max-height: none !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    border-radius: 20px !important;
+  }
+
+  .cs-top-actions {
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  .cs-grid {
+    height: auto !important;
+    overflow: visible !important;
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "list"
+      "chat"
+      "detail" !important;
+  }
+
+  .cs-list-panel {
+    grid-area: list !important;
+    height: 560px !important;
+  }
+
+  .cs-chat-panel {
+    grid-area: chat !important;
+    height: 620px !important;
+  }
+
+  .cs-detail-panel {
+    grid-area: detail !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .cs-chat-header {
+    min-height: auto !important;
+    max-height: none !important;
+    flex-wrap: wrap !important;
+  }
+
+  .cs-chat-actions {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+
+  .cs-message-bubble {
+    max-width: 82% !important;
+  }
+
+  .cs-broadcast-card {
+    width: calc(100vw - 24px) !important;
+    height: calc(100vh - 24px) !important;
+    max-height: calc(100vh - 24px) !important;
+  }
+
+  .cs-broadcast-grid {
+    grid-template-columns: 1fr !important;
+    overflow-y: auto !important;
+  }
+
+  .cs-broadcast-form,
+  .cs-broadcast-side {
+    overflow: visible !important;
+  }
+
+  .cs-broadcast-side {
+    border-left: 0 !important;
+    border-top: 1px solid #edf2fa !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .lw-login-bg {
+    padding: 14px !important;
+  }
+
+  .lw-login-head h1 {
+    font-size: 34px !important;
+    -webkit-text-stroke: 1.2px #1557cf !important;
+    text-shadow:
+      0 3px 0 #1749b8,
+      0 6px 0 #ffffff,
+      0 14px 28px rgba(21, 76, 180, 0.24) !important;
+  }
+
+  .lw-login-card {
+    padding: 22px 16px 18px !important;
+    border-radius: 28px !important;
+  }
+
+  .lw-logo-mark {
+    width: 130px !important;
+    height: 84px !important;
+    border-radius: 28px !important;
+  }
+
+  .lw-logo-mm {
+    font-size: 17px !important;
+  }
+
+  .lw-logo-mark strong {
+    font-size: 42px !important;
+  }
+
+  .lw-field-row {
+    grid-template-columns: 44px minmax(0, 1fr) !important;
+    padding: 9px !important;
+  }
+
+  .lw-field-icon {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 15px !important;
+  }
+
+  .cs-shell {
+    padding: 8px !important;
+  }
+
+  .cs-top-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .cs-top-actions > * {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .cs-list-panel,
+  .cs-chat-panel {
+    min-height: 560px !important;
+  }
+
+  .cs-winner-item {
+    grid-template-columns: 42px minmax(0, 1fr) !important;
+  }
+
+  .cs-winner-side {
+    grid-column: 2 !important;
+    min-width: 0 !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+
+  .cs-composer-actions {
+    flex-wrap: nowrap !important;
+  }
+
+  #quickAccountRequestBtn {
+    min-width: 120px !important;
+  }
+
+  #sendReplyBtn {
+    flex: 0 0 86px !important;
+    min-width: 86px !important;
+  }
+
+  .cs-message-bubble {
+    max-width: 88% !important;
+  }
+
+  .cs-detail-row {
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+
+  .cs-detail-row b {
+    max-width: 100% !important;
+    text-align: left !important;
+  }
+
+  .cs-broadcast-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .cs-broadcast-actions button {
+    width: 100% !important;
+  }
+
+  .lw-doodle {
+    opacity: 0.55 !important;
+  }
+}
+
