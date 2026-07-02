@@ -1484,6 +1484,211 @@ function clearBroadcastFile() {
   if (input) input.value = "";
 }
 
+
+/* ================= Simple Winner List Modal ================= */
+const simpleWinnerState = {
+  search: "",
+  status: "all",
+};
+
+function openSimpleWinnerList() {
+  setHidden($("simpleWinnerModal"), false);
+  renderSimpleWinnerList();
+
+  setTimeout(() => {
+    $("simpleWinnerSearch")?.focus?.();
+  }, 50);
+}
+
+function closeSimpleWinnerList() {
+  setHidden($("simpleWinnerModal"), true);
+}
+
+function simpleWinnerFilteredList() {
+  const term = safeText(simpleWinnerState.search).trim().toLowerCase();
+  const status = safeText(simpleWinnerState.status || "all");
+
+  let list = [...state.winners];
+
+  if (status === "done") {
+    list = list.filter((w) => safeText(w.cs_status) === "done");
+  }
+
+  if (status === "undone") {
+    list = list.filter((w) => safeText(w.cs_status || "pending") !== "done");
+  }
+
+  if (term) {
+    list = list.filter((w) => {
+      const text = [
+        w.name,
+        w.display,
+        w.username,
+        w.user_id,
+        w.prize,
+        w.cs_status,
+      ]
+        .map(safeText)
+        .join(" ")
+        .toLowerCase();
+
+      return text.includes(term);
+    });
+  }
+
+  list.sort((a, b) => {
+    const adone = safeText(a.cs_status) === "done" ? 1 : 0;
+    const bdone = safeText(b.cs_status) === "done" ? 1 : 0;
+
+    if (adone !== bdone) return adone - bdone;
+
+    return Number(a.turn || 0) - Number(b.turn || 0);
+  });
+
+  return list;
+}
+
+function renderSimpleWinnerList() {
+  const box = $("simpleWinnerList");
+  if (!box) return;
+
+  const list = simpleWinnerFilteredList();
+
+  if (!list.length) {
+    box.innerHTML = `<div class="cs-empty">No winners found.</div>`;
+    return;
+  }
+
+  box.innerHTML = list
+    .map((w) => {
+      const done = safeText(w.cs_status) === "done";
+      const name = w.name || w.display || "-";
+      const username = usernameText(w.username);
+      const userId = w.user_id || "-";
+      const prize = moneyText(w.prize);
+
+      return `
+        <div class="cs-simple-winner-row" data-user-id="${esc(userId)}">
+          <div class="cs-simple-name">
+            <b>${esc(name)}</b>
+            <small>Turn ${esc(w.turn || "-")}</small>
+          </div>
+
+          <div class="cs-simple-username">${esc(username)}</div>
+
+          <div class="cs-simple-userid">
+            <button
+              type="button"
+              class="cs-copy-id-btn"
+              data-copy-user-id="${esc(userId)}"
+              title="Copy User ID"
+            >
+              ${esc(userId)}
+            </button>
+          </div>
+
+          <div class="cs-simple-prize">${esc(prize)}</div>
+
+          <div class="cs-simple-status">
+            <button
+              type="button"
+              class="cs-simple-status-btn ${done ? "is-done" : "is-undone"}"
+              data-toggle-user-id="${esc(userId)}"
+              data-next-status="${done ? "pending" : "done"}"
+            >
+              ${done ? "Done" : "Undone"}
+            </button>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  qsa("[data-toggle-user-id]", box).forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+
+      const userId = btn.dataset.toggleUserId;
+      const nextStatus = btn.dataset.nextStatus || "pending";
+
+      await toggleSimpleWinnerStatus(userId, nextStatus);
+    });
+  });
+
+  qsa("[data-copy-user-id]", box).forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+
+      const userId = btn.dataset.copyUserId || "";
+      try {
+        await navigator.clipboard.writeText(userId);
+        toast("User ID copied", "success");
+      } catch (_) {
+        toast(userId, "info");
+      }
+    });
+  });
+
+  qsa(".cs-simple-winner-row", box).forEach((row) => {
+    row.addEventListener("click", async () => {
+      const userId = row.dataset.userId;
+      closeSimpleWinnerList();
+
+      if (userId) {
+        await selectWinner(userId);
+      }
+    });
+  });
+}
+
+async function toggleSimpleWinnerStatus(userId, nextStatus) {
+  const uid = safeText(userId).trim();
+  const status = nextStatus === "done" ? "done" : "pending";
+
+  if (!uid) return;
+
+  setLoading(true, "Saving");
+
+  try {
+    await api("/winner/status", {
+      method: "POST",
+      body: {
+        user_id: uid,
+        status,
+      },
+    });
+
+    state.winners = state.winners.map((w) => {
+      if (String(w.user_id) !== String(uid)) return w;
+
+      return {
+        ...w,
+        cs_status: status,
+        unread: status === "done" ? 0 : Number(w.unread || 0),
+      };
+    });
+
+    if (String(state.selectedUserId) === String(uid)) {
+      syncSelectedWinnerPatch({
+        cs_status: status,
+        unread: status === "done" ? 0 : Number(state.selectedWinner?.unread || 0),
+      });
+
+      renderDetails();
+    }
+
+    applyFilter({ keepVisible: true });
+    renderStats();
+    renderSimpleWinnerList();
+
+    toast(status === "done" ? "Marked Done" : "Marked Undone", "success");
+  } catch (err) {
+    toast(err.message || "Status update failed", "error");
+  } finally {
+    setLoading(false);
+  }
+}
+
 /* ================= Modal Helpers ================= */
 function openReplyModal(html) {
   const body = $("replyModalBody");
@@ -1557,7 +1762,27 @@ function bindEvents() {
   $("openTemplatesNavBtn")?.addEventListener("click", openBroadcastModal);
   $("exportBtn")?.addEventListener("click", exportCsv);
   $("backupOwnerBtn")?.addEventListener("click", sendBackupOwner);
+$("openSimpleWinnerListBtn")?.addEventListener("click", openSimpleWinnerList);
+$("closeSimpleWinnerBtn")?.addEventListener("click", closeSimpleWinnerList);
 
+qsa("[data-close-modal='simple-winner']").forEach((el) => {
+  el.addEventListener("click", closeSimpleWinnerList);
+});
+
+$("simpleWinnerSearch")?.addEventListener("input", (e) => {
+  simpleWinnerState.search = e.target.value || "";
+  renderSimpleWinnerList();
+});
+
+$("simpleWinnerStatusFilter")?.addEventListener("change", (e) => {
+  simpleWinnerState.status = e.target.value || "all";
+  renderSimpleWinnerList();
+});
+
+$("simpleWinnerRefreshBtn")?.addEventListener("click", async () => {
+  await loadWinners(false);
+  renderSimpleWinnerList();
+});
   /* ---------- Search / tabs ---------- */
   $("searchInput")?.addEventListener("input", (e) => {
     state.search = e.target.value || "";
@@ -1655,11 +1880,12 @@ function bindEvents() {
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closeBroadcastModal();
-      closeReplyModal();
-    }
-  });
+  if (e.key === "Escape") {
+    closeBroadcastModal();
+    closeSimpleWinnerList();
+    closeReplyModal();
+  }
+});
 }
 
 /* ================= Start ================= */
