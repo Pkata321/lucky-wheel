@@ -1,1507 +1,625 @@
-const CONFIG = {
-  BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
-  API_KEY: "",
-  TIMEOUT_MS: 60000,
-  CACHE_BUSTER: "admin-login-spin-v1",
-};
+"use strict";
 
-const SETTINGS_KEY = "lucky77_premium_settings_full_v1";
-
-const defaultSettings = {
-  theme: "white",
-  bannerTitle: "Lucky77 Event",
-  bannerSub: "Spin & Win premium prizes",
-  topLogo: "",
-  wheelLogo: "",
-  musicDataUrl: "",
-  musicOn: false,
-  bgColor: "#f6f7fb",
-  cardColor: "#ffffff",
-  accent1: "#7b5cff",
-  accent2: "#18d2ff",
-  arrowColor: "#ffe6a8",
-  spinDurationMs: 5600,
+const PLAYER = {
+  API_BASE: "https://lucky77-wheel-bot-548i.onrender.com",
+  DEMO: new URLSearchParams(location.search).get("demo") === "1",
+  SOUND_KEY: "lucky77_player_sound_v5",
 };
 
 const state = {
-  health: null,
-  members: [],
-  winners: [],
-  history: [],
-  pool: { count: 0, ids: [] },
-  scan: { status: "idle", summary: null, last_scan_at: "" },
+  event: null,
+  counts: { registered: 0, winners: 0, prizes_left: 0 },
+  recent: [],
+  wheelPrizes: ["5,000 Ks", "10,000 Ks", "20,000 Ks", "30,000 Ks", "50,000 Ks", "100,000 Ks", "Bonus", "Jackpot"],
+  user: null,
+  initData: "",
+  channel: { joined: false },
+  registered: false,
+  preregistered: false,
+  spun: false,
+  result: null,
+  rotation: 0,
   spinning: false,
-  autoSpinning: false,
-  autoSpinStopRequested: false,
-  wheelDeg: 0,
-  spinLoopTimer: null,
-  tickTimer: null,
-  audioCtx: null,
-  autoCloseTimer: null,
-  spinLoopDegStep: 18,
-  prizes: [],
-  currentSection: "wheel",
+  sound: localStorage.getItem(PLAYER.SOUND_KEY) !== "off",
 };
 
-const el = {
-  serverTimeText: document.getElementById("serverTimeText"),
-  healthBadge: document.getElementById("healthBadge"),
-  statMembers: document.getElementById("statMembers"),
-  statPool: document.getElementById("statPool"),
-  statWinners: document.getElementById("statWinners"),
-  statPrizes: document.getElementById("statPrizes"),
+const $ = (id) => document.getElementById(id);
+const q = (selector, root = document) => root.querySelector(selector);
+const qa = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
-  scanStatusBadge: document.getElementById("scanStatusBadge"),
-  scanSummaryText: document.getElementById("scanSummaryText"),
-  scanBtn: document.getElementById("scanBtn"),
-
-  wheelCanvas: document.getElementById("wheelCanvas"),
-  spinBtn: document.getElementById("spinBtn"),
-  autoSpinBtn: document.getElementById("autoSpinBtn"),
-  restartBtn: document.getElementById("restartBtn"),
-  refreshBtn: document.getElementById("refreshBtn"),
-  logoutBtn: document.getElementById("logoutBtn"),
-
-  winnerFlash: document.getElementById("winnerFlash"),
-  winnerFlashName: document.getElementById("winnerFlashName"),
-  winnerFlashPrize: document.getElementById("winnerFlashPrize"),
-  poolEmptyText: document.getElementById("poolEmptyText"),
-
-  prizeText: document.getElementById("prizeText"),
-  savePrizeBtn: document.getElementById("savePrizeBtn"),
-
-  searchInput: document.getElementById("searchInput"),
-  showRemovedToggle: document.getElementById("showRemovedToggle"),
-
-  memberList: document.getElementById("memberList"),
-  winnerList: document.getElementById("winnerList"),
-  historyList: document.getElementById("historyList"),
-
-  membersCountText: document.getElementById("membersCountText"),
-  winnersCountText: document.getElementById("winnersCountText"),
-  historyCountText: document.getElementById("historyCountText"),
-
-  toast: document.getElementById("toast"),
-
-  settingsBtn: document.getElementById("settingsBtn"),
-  settingsDrawer: document.getElementById("settingsDrawer"),
-  settingsBackdrop: document.getElementById("settingsBackdrop"),
-  settingsCloseBtn: document.getElementById("settingsCloseBtn"),
-  saveSettingsBtn: document.getElementById("saveSettingsBtn"),
-
-  themeSelect: document.getElementById("themeSelect"),
-  bgColorInput: document.getElementById("bgColorInput"),
-  cardColorInput: document.getElementById("cardColorInput"),
-  accent1Input: document.getElementById("accent1Input"),
-  accent2Input: document.getElementById("accent2Input"),
-  arrowColorInput: document.getElementById("arrowColorInput"),
-
-  bannerTitleInput: document.getElementById("bannerTitleInput"),
-  bannerSubInput: document.getElementById("bannerSubInput"),
-  bannerTitleText: document.getElementById("bannerTitleText"),
-  bannerSubText: document.getElementById("bannerSubText"),
-
-  topLogoInput: document.getElementById("topLogoInput"),
-  wheelLogoInput: document.getElementById("wheelLogoInput"),
-  brandLogoImg: document.getElementById("brandLogoImg"),
-  brandLogoFallback: document.getElementById("brandLogoFallback"),
-  wheelCenterLogoImg: document.getElementById("wheelCenterLogoImg"),
-  wheelCenterFallback: document.getElementById("wheelCenterFallback"),
-
-  musicFileInput: document.getElementById("musicFileInput"),
-  musicOnBtn: document.getElementById("musicOnBtn"),
-  musicOffBtn: document.getElementById("musicOffBtn"),
-  bgMusicPlayer: document.getElementById("bgMusicPlayer"),
-
-  exportHistoryBtn: document.getElementById("exportHistoryBtn"),
-
-  winnerPopup: document.getElementById("winnerPopup"),
-  winnerPopupBackdrop: document.getElementById("winnerPopupBackdrop"),
-  winnerPopupName: document.getElementById("winnerPopupName"),
-  winnerPopupPrize: document.getElementById("winnerPopupPrize"),
-  winnerPopupCloseBtn: document.getElementById("winnerPopupCloseBtn"),
-  confettiLayer: document.getElementById("confettiLayer"),
-
-  quickMenuBtn: document.getElementById("quickMenuBtn"),
-  quickMenuDrawer: document.getElementById("quickMenuDrawer"),
-  quickMenuBackdrop: document.getElementById("quickMenuBackdrop"),
-  quickMenuCloseBtn: document.getElementById("quickMenuCloseBtn"),
-
-  wheelHomeSection: document.getElementById("wheelHomeSection"),
-  liveDashboardSection: document.getElementById("liveDashboardSection"),
-  prizeBuilderSection: document.getElementById("prizeBuilderSection"),
-  listsSection: document.getElementById("listsSection"),
-};
-
-const wheelCtx = el.wheelCanvas ? el.wheelCanvas.getContext("2d") : null;
-let settings = loadSettings();
-
-function loadSettings() {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { ...defaultSettings };
-    return { ...defaultSettings, ...JSON.parse(raw) };
-  } catch {
-    return { ...defaultSettings };
-  }
+function safe(value) {
+  return value == null ? "" : String(value);
 }
 
-function persistSettings() {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+function esc(value) {
+  return safe(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString("en-US");
 }
 
-function formatTime(value) {
-  if (!value) return "-";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleString();
+function formatPrize(value) {
+  const text = safe(value).trim();
+  const numeric = Number(text.replace(/[^\d.]/g, ""));
+  return Number.isFinite(numeric) && numeric > 0
+    ? `${numeric.toLocaleString("en-US")} Ks`
+    : text || "Premium Prize";
 }
 
-function setPill(node, text, type) {
-  if (!node) return;
-  node.textContent = text;
-  node.className = `pill ${type}`;
+function initials(user) {
+  const text = `${user?.first_name || ""} ${user?.last_name || ""}`.trim() ||
+    user?.username || "77";
+  const parts = text.replace(/^@/, "").split(/\s+/).filter(Boolean);
+  return parts.length > 1
+    ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+    : text.slice(0, 2).toUpperCase();
 }
 
-function showToast(message, type = "normal") {
-  if (!el.toast) return;
-  el.toast.textContent = message;
-  el.toast.classList.remove("hidden");
-
-  if (type === "error") {
-    el.toast.style.borderColor = "rgba(224,79,106,0.35)";
-  } else if (type === "success") {
-    el.toast.style.borderColor = "rgba(27,179,107,0.35)";
-  } else {
-    el.toast.style.borderColor = "rgba(0,0,0,0.08)";
-  }
-
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => {
-    el.toast.classList.add("hidden");
-  }, 2600);
-}
-
-const ADMIN_KEY_STORAGE = "lucky77_admin_api_key";
-
-function getApiKey() {
-  return sessionStorage.getItem(ADMIN_KEY_STORAGE) || "";
-}
-
-function setApiKey(key) {
-  sessionStorage.setItem(ADMIN_KEY_STORAGE, String(key || "").trim());
-}
-
-function forgetApiKey() {
-  sessionStorage.removeItem(ADMIN_KEY_STORAGE);
-}
-
-function showLoginScreen(message = "") {
-  const login = document.getElementById("adminLoginScreen");
-  const app = document.getElementById("adminApp");
-  const error = document.getElementById("adminLoginError");
-
-  if (login) login.classList.remove("hidden");
-  if (app) app.classList.add("hidden");
-  if (error) error.textContent = message || "";
-}
-
-function showAdminApp() {
-  const login = document.getElementById("adminLoginScreen");
-  const app = document.getElementById("adminApp");
-  const error = document.getElementById("adminLoginError");
-
-  if (login) login.classList.add("hidden");
-  if (app) app.classList.remove("hidden");
-  if (error) error.textContent = "";
-}
-
-async function testAdminApiKey(key) {
-  const cleanKey = String(key || "").trim();
-  if (!cleanKey) return false;
-
-  const health = await fetch(`${CONFIG.BASE_URL}/health?_=${Date.now()}`, {
-    cache: "no-store",
-  });
-
-  if (!health.ok) {
-    throw new Error("Backend connection failed");
-  }
-
-  const check = await fetch(`${CONFIG.BASE_URL}/config?_=${Date.now()}`, {
-    cache: "no-store",
-    headers: {
-      "x-api-key": cleanKey,
-      "Cache-Control": "no-cache",
-      Pragma: "no-cache",
-    },
-  });
-
-  if (check.status === 401) return false;
-  if (!check.ok) throw new Error("Login check failed");
-
-  const data = await check.json().catch(() => ({}));
-  return data.ok !== false;
-}
-
-async function handleAdminLogin() {
-  const input = document.getElementById("adminApiInput");
-  const btn = document.getElementById("adminLoginBtn");
-  const error = document.getElementById("adminLoginError");
-
-  const key = String(input?.value || "").trim();
-
-  if (!key) {
-    if (error) error.textContent = "Admin Api Code ထည့်ပါ";
-    return;
-  }
-
-  try {
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = "Checking...";
-    }
-
-    if (error) error.textContent = "";
-
-    const ok = await testAdminApiKey(key);
-
-    if (!ok) {
-      forgetApiKey();
-      if (error) error.textContent = "Api Code မမှန်ပါ";
-      if (input) {
-        input.value = "";
-        input.focus();
-      }
-      return;
-    }
-
-    setApiKey(key);
-    showAdminApp();
-
-    await firstLoad();
-  } catch (err) {
-    if (error) error.textContent = err.message || "Login failed";
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "Login";
-    }
-  }
-}
-
-function bindAdminLogin() {
-  const input = document.getElementById("adminApiInput");
-  const btn = document.getElementById("adminLoginBtn");
-
-  if (btn) btn.addEventListener("click", handleAdminLogin);
-
-  if (input) {
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") handleAdminLogin();
-    });
-  }
-}
-
-async function requireAdminLoginBeforeLoad() {
-  bindAdminLogin();
-
-  const key = getApiKey();
-
-  if (!key) {
-    showLoginScreen();
-    return false;
-  }
-
-  try {
-    const ok = await testAdminApiKey(key);
-
-    if (!ok) {
-      forgetApiKey();
-      showLoginScreen("Api Code မမှန်ပါ");
-      return false;
-    }
-
-    showAdminApp();
-    return true;
-  } catch (_) {
-    showLoginScreen("Backend connection failed");
-    return false;
-  }
+function toast(message, type = "info") {
+  const node = $("toast");
+  node.textContent = safe(message);
+  node.className = `app-toast is-${type}`;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => node.classList.add("hidden"), 3200);
 }
 
 async function api(path, options = {}) {
-  const key = getApiKey();
-
-  if (!key) {
-    showLoginScreen();
-    throw new Error("Login required");
-  }
-
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
-
-  const separator = path.includes("?") ? "&" : "?";
-  const url = `${CONFIG.BASE_URL}${path}${separator}_=${Date.now()}&v=${encodeURIComponent(CONFIG.CACHE_BUSTER)}`;
-
+  const timer = setTimeout(() => controller.abort(), 15000);
   try {
-    const response = await fetch(url, {
-      ...options,
+    const response = await fetch(`${PLAYER.API_BASE}${path}`, {
+      method: options.method || "GET",
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      body: options.body ? JSON.stringify(options.body) : undefined,
       cache: "no-store",
-      headers: {
-        "x-api-key": key,
-        "Cache-Control": "no-cache",
-        Pragma: "no-cache",
-        ...(options.method && options.method !== "GET"
-          ? { "Content-Type": "application/json" }
-          : {}),
-        ...(options.headers || {}),
-      },
       signal: controller.signal,
     });
-
     const data = await response.json().catch(() => ({}));
-
-    if (response.status === 401) {
-      forgetApiKey();
-      showLoginScreen("Api Code မမှန်ပါ");
-      throw new Error("Unauthorized");
-    }
-
     if (!response.ok || data.ok === false) {
-      throw new Error(data.error || `HTTP ${response.status}`);
+      const error = new Error(data.message || data.error || `HTTP ${response.status}`);
+      error.data = data;
+      throw error;
     }
-
     return data;
-  } catch (err) {
-    if (err?.name === "AbortError") throw new Error("Request timeout");
-    throw err;
+  } catch (error) {
+    if (error?.name === "AbortError") throw new Error("Connection timed out");
+    throw error;
   } finally {
-    clearTimeout(timeoutId);
+    clearTimeout(timer);
   }
 }
 
-function parsePrizeLines(text) {
-  return String(text || "")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const m =
-        line.match(/^(.+?)\s+(\d+)\s*time$/i) ||
-        line.match(/^(.+?)\s+(\d+)$/i);
-      if (!m) return null;
-      return { name: m[1].trim(), times: Number(m[2]) || 1 };
-    })
-    .filter(Boolean);
-}
-
-function buildWheelPrizeSegments() {
-  if (!el.prizeText) return;
-  const parsed = parsePrizeLines(el.prizeText.value);
-  const names = parsed.map((p) => p.name).filter(Boolean);
-  state.prizes = names.length
-    ? names
-    : ["10000Ks", "20000Ks", "30000Ks", "Lucky", "Prize", "Spin"];
-}
-
-function drawWheel() {
-  if (!el.wheelCanvas || !wheelCtx) return;
-
-  const canvas = el.wheelCanvas;
-  const ctx = wheelCtx;
-  const w = canvas.width;
-  const h = canvas.height;
-  const cx = w / 2;
-  const cy = h / 2;
-  const radius = Math.min(cx, cy) - 8;
-
-  ctx.clearRect(0, 0, w, h);
-
-  const prizes = state.prizes.length ? state.prizes : ["Lucky77"];
-  const count = prizes.length;
-  const anglePer = (Math.PI * 2) / count;
-
-  const colors = [
-    "#ff5f6d", "#ffc371", "#23d5ab", "#23a6d5", "#8b5dff",
-    "#ff4fd8", "#1bb36b", "#ffd166", "#7b5cff", "#18d2ff",
-  ];
-
-  for (let i = 0; i < count; i++) {
-    const start = -Math.PI / 2 + i * anglePer;
-    const end = start + anglePer;
-
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, radius, start, end);
-    ctx.closePath();
-    ctx.fillStyle = colors[i % colors.length];
-    ctx.fill();
-
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "rgba(255,255,255,0.22)";
-    ctx.stroke();
-
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(start + anglePer / 2);
-
-    const text = prizes[i];
-    ctx.textAlign = "right";
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 23px Inter, sans-serif";
-
-    const maxWidth = radius * 0.48;
-    let shown = text;
-    while (ctx.measureText(shown).width > maxWidth && shown.length > 6) {
-      shown = shown.slice(0, -1);
-    }
-    if (shown !== text) shown = shown.slice(0, -1) + "…";
-
-    ctx.fillText(shown, radius - 34, 8);
-    ctx.restore();
+function telegramIdentity() {
+  const webApp = window.Telegram?.WebApp;
+  if (webApp) {
+    try {
+      webApp.ready();
+      webApp.expand();
+      webApp.setHeaderColor("#080913");
+      webApp.setBackgroundColor("#080913");
+    } catch (_) {}
   }
 
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius - 8, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(255,255,255,0.16)";
-  ctx.lineWidth = 4;
-  ctx.stroke();
-}
+  const user = webApp?.initDataUnsafe?.user || null;
+  const initData = webApp?.initData || "";
+  if (user?.id && initData) return { user, initData };
 
-function getPrizeIndexByName(prizeName) {
-  return state.prizes.findIndex(
-    (name) => String(name).trim() === String(prizeName).trim()
-  );
-}
-
-function computeTargetRotationDeg(prizeName) {
-  const count = state.prizes.length || 1;
-  const idx = getPrizeIndexByName(prizeName);
-  const safeIdx = idx >= 0 ? idx : 0;
-  const slice = 360 / count;
-  const sliceCenter = safeIdx * slice + slice / 2;
-  let target = 360 - sliceCenter;
-  while (target < 0) target += 360;
-  while (target >= 360) target -= 360;
-  return target;
-}
-
-async function loadHealth() {
-  state.health = await api("/health");
-}
-
-async function loadPrizeConfig() {
-  const data = await api("/config");
-  if (data?.prize_source && String(data.prize_source).trim() && el.prizeText) {
-    el.prizeText.value = String(data.prize_source).trim();
+  if (PLAYER.DEMO) {
+    return {
+      user: {
+        id: "770077",
+        first_name: "Rose",
+        last_name: "Gold",
+        username: "luckymember",
+      },
+      initData: "",
+      demo: true,
+    };
   }
+
+  return { user: null, initData: "" };
 }
 
-async function loadMembers() {
-  const includeRemoved = el.showRemovedToggle?.checked ? "1" : "0";
-  const data = await api(`/members?include_removed=${includeRemoved}&backfill=0`);
-  state.members = Array.isArray(data.members) ? data.members : [];
+function applyTheme(event) {
+  document.body.dataset.theme = event?.theme || "obsidian-rose";
+  if (event?.accent) document.documentElement.style.setProperty("--accent", event.accent);
+  if (event?.accent_2) document.documentElement.style.setProperty("--gold", event.accent_2);
 }
 
-async function loadWinners() {
-  const data = await api("/winners");
-  state.winners = Array.isArray(data.winners) ? data.winners : [];
+function renderHeader() {
+  const name = state.user
+    ? `${state.user.first_name || ""} ${state.user.last_name || ""}`.trim() ||
+      `@${state.user.username || "member"}`
+    : "Lucky Member";
+
+  $("memberName").textContent = name;
+  $("memberAvatar").textContent = initials(state.user);
+  $("memberStatus").textContent = state.registered
+    ? state.spun ? "Spin completed" : "Premium member"
+    : state.user ? "Verification required" : "Connect Telegram";
+
+  const live = !!state.event?.event_live;
+  const badge = $("liveBadge");
+  badge.classList.toggle("is-live", live);
+  badge.classList.toggle("is-waiting", !live);
+  badge.querySelector("span").textContent = live ? "EVENT LIVE" : "EVENT WAITING";
 }
 
-async function loadHistory() {
-  const data = await api("/history");
-  state.history = Array.isArray(data.history) ? data.history : [];
+function renderEvent() {
+  const event = state.event || {};
+  $("eventTitle").textContent = event.title || "Lucky77 Grand Spin";
+  $("eventSubtitle").textContent = event.subtitle || "One member · One code · One premium spin";
+  $("announcementText").textContent = event.announcement || "Register now and keep your one-time code ready.";
+  applyTheme(event);
+  renderHeader();
 }
 
-async function loadPool() {
-  const data = await api("/pool");
-  state.pool = {
-    count: Number(data.count || 0),
-    ids: Array.isArray(data.ids) ? data.ids : [],
-  };
-}
-
-async function loadScanStatus() {
-  const data = await api("/scan/status");
-  state.scan = {
-    status: data.status || "idle",
-    summary: data.summary || null,
-    last_scan_at: data.last_scan_at || "",
-  };
-}
-
-async function firstLoad() {
-  await loadHealth().catch(() => { state.health = null; });
-  await loadPrizeConfig().catch(() => {});
-  await loadMembers().catch(() => { state.members = []; });
-  await loadWinners().catch(() => { state.winners = []; });
-  await loadHistory().catch(() => { state.history = []; });
-  await loadPool().catch(() => { state.pool = { count: 0, ids: [] }; });
-  await loadScanStatus().catch(() => {
-    state.scan = { status: "idle", summary: null, last_scan_at: "" };
+function revealGate(id) {
+  ["browserGate", "joinGate", "registerGate", "readyGate"].forEach((gate) => {
+    $(gate).classList.toggle("hidden", gate !== id);
   });
-
-  buildWheelPrizeSegments();
-  drawWheel();
-  renderAll();
 }
 
-async function refreshAllData() {
-  await loadHealth().catch(() => {});
-  await loadPrizeConfig().catch(() => {});
-  await loadMembers().catch(() => {});
-  await loadWinners().catch(() => {});
-  await loadHistory().catch(() => {});
-  await loadPool().catch(() => {});
-  await loadScanStatus().catch(() => {});
-  buildWheelPrizeSegments();
-  drawWheel();
-  renderAll();
-}
+function renderAccess() {
+  const spinBtn = $("spinBtn");
 
-async function refreshAfterScan() {
-  await loadScanStatus().catch(() => {});
-  await loadMembers().catch(() => {});
-  await loadPool().catch(() => {});
-  await loadHealth().catch(() => {});
-  renderAll();
-}
-
-async function refreshAfterSpin() {
-  try {
-    await Promise.all([loadWinners(), loadHistory(), loadPool(), loadHealth()]);
-  } catch (_) {
-    // Optimistic UI already updated; keep controls fast if one refresh is slow.
-  }
-
-  renderAll();
-}
-
-async function refreshAfterWinnerAction() {
-  await loadWinners().catch(() => {});
-  await loadHistory().catch(() => {});
-  renderWinners();
-  renderHistory();
-}
-
-function renderHealth() {
-  const h = state.health || {};
-  const poolCount = Number(state.pool?.count || h.pool || 0);
-
-  if (el.statMembers) el.statMembers.textContent = h.members ?? 0;
-  if (el.statPool) el.statPool.textContent = poolCount;
-  if (el.statWinners) el.statWinners.textContent = h.winners ?? 0;
-  if (el.statPrizes) el.statPrizes.textContent = h.remaining_prizes ?? 0;
-
-  if (el.serverTimeText) {
-    el.serverTimeText.textContent = h.time ? `Server: ${formatTime(h.time)}` : "Connected";
-  }
-
-  if (h.scan_status === "completed") setPill(el.healthBadge, "Healthy", "success");
-  else if (h.scan_status === "scanning") setPill(el.healthBadge, "Scanning", "warning");
-  else if (h.scan_status === "error") setPill(el.healthBadge, "Error", "danger");
-  else setPill(el.healthBadge, "Live", "neutral");
-
-  if (!el.poolEmptyText) return;
-  if (poolCount <= 0) el.poolEmptyText.classList.remove("hidden");
-  else el.poolEmptyText.classList.add("hidden");
-}
-
-function renderScan() {
-  const s = state.scan || {};
-  const summary = s.summary || null;
-
-  if (s.status === "completed") setPill(el.scanStatusBadge, "completed", "success");
-  else if (s.status === "scanning") setPill(el.scanStatusBadge, "scanning", "warning");
-  else if (s.status === "error") setPill(el.scanStatusBadge, "error", "danger");
-  else setPill(el.scanStatusBadge, "idle", "neutral");
-
-  if (!el.scanSummaryText) return;
-  if (summary) {
-    el.scanSummaryText.textContent =
-      `Active ${summary.active ?? 0} · Left ${summary.left ?? 0} · Pool ${summary.pool ?? 0}`;
-  } else if (s.last_scan_at) {
-    el.scanSummaryText.textContent = `Last scan ${formatTime(s.last_scan_at)}`;
-  } else {
-    el.scanSummaryText.textContent = "No scan yet";
-  }
-}
-
-function getSearchQuery() {
-  return (el.searchInput?.value || "").trim().toLowerCase();
-}
-
-function matchesSearch(fields, q) {
-  if (!q) return true;
-  return fields
-    .map((x) => String(x ?? ""))
-    .join(" ")
-    .toLowerCase()
-    .includes(q);
-}
-function memberStatusText(m) {
-  if (m.removed) return "removed";
-  if (m.rejoin_required) return "rejoin required";
-  if (!m.active) return "left";
-  if (m.isWinner) return "winner";
-  return "active";
-}
-
-function renderMembers() {
-  const q = getSearchQuery();
-
-  const rows = (state.members || []).filter((m) =>
-    matchesSearch(
-      [
-        m.id,
-        m.name,
-        m.username,
-        m.display,
-        m.status,
-        m.left_reason,
-      ],
-      q
-    )
-  );
-
-  if (el.membersCountText) {
-    el.membersCountText.textContent = `${rows.length} users`;
-  }
-
-  if (!el.memberList) return;
-
-  if (!rows.length) {
-    el.memberList.innerHTML = `<div class="empty-list">No members found</div>`;
+  if (!state.user) {
+    $("accessTitle").textContent = "Open inside Telegram";
+    revealGate("browserGate");
+    spinBtn.disabled = true;
+    $("spinHint").textContent = "Secure Telegram verification required";
     return;
   }
 
-  el.memberList.innerHTML = rows
-    .map((m) => {
-      const username = m.username ? `@${escapeHtml(m.username)}` : "-";
-      const status = memberStatusText(m);
+  if (!state.channel?.joined) {
+    $("accessTitle").textContent = "Channel verification";
+    revealGate("joinGate");
+    spinBtn.disabled = true;
+    $("spinHint").textContent = "Join and verify to unlock the wheel";
+    return;
+  }
 
-      return `
-        <div class="list-item">
-          <div class="list-main">
-            <div class="list-title">${escapeHtml(m.display || m.name || m.id)}</div>
-            <div class="list-sub">
-              ID: ${escapeHtml(m.id)} · Username: ${username} · Status: ${escapeHtml(status)}
-            </div>
-          </div>
+  if (!state.registered) {
+    $("accessTitle").textContent = state.event?.registration_open
+      ? "Complete registration"
+      : "Pre-register next event";
+    revealGate("registerGate");
+    q(".premium-field span").textContent = state.event?.promo_required
+      ? "One-time promotion code"
+      : "Promotion code (not required)";
+    spinBtn.disabled = true;
+    $("spinHint").textContent = state.event?.registration_open
+      ? "Register to unlock your one live spin"
+      : "Current registration is closed";
+    return;
+  }
 
-          <div class="list-meta">
-            ${m.dm_ready ? "DM Ready" : "DM Not Ready"}
-          </div>
-        </div>
-      `;
-    })
-    .join("");
+  $("accessTitle").textContent = state.spun ? "Spin completed" : "Premium access ready";
+  revealGate("readyGate");
+  $("readyText").textContent = state.spun
+    ? `Result saved: ${formatPrize(state.result?.prize)}`
+    : state.event?.event_live
+      ? "Your one premium spin is ready now."
+      : "Registration confirmed. Wait for the event to go live.";
+
+  spinBtn.disabled = state.spun || !state.event?.event_live || state.spinning;
+  $("spinHint").textContent = state.spun
+    ? "Your result is permanently saved"
+    : state.event?.event_live
+      ? "One spin available · tap SPIN to reveal your prize"
+      : "Registered · waiting for Event Live";
+}
+
+function renderMetrics() {
+  $("metricMembers").textContent = formatNumber(state.counts.registered);
+  $("metricWinners").textContent = formatNumber(state.counts.winners);
+  $("metricPrizes").textContent = formatNumber(state.counts.prizes_left);
+}
+
+function prizeInventory() {
+  const counts = new Map();
+  state.wheelPrizes.forEach((prize) => {
+    const label = formatPrize(prize);
+    counts.set(label, (counts.get(label) || 0) + 1);
+  });
+  return Array.from(counts.entries()).slice(0, 4);
+}
+
+function renderPrizes() {
+  const rows = prizeInventory();
+  $("prizePool").innerHTML = rows.length
+    ? rows.map(([prize, count], index) => `
+      <article class="prize-row">
+        <span class="prize-medal">${index === 0 ? "77" : "✦"}</span>
+        <div><strong>${esc(prize)}</strong><small>${index === 0 ? "Featured reward" : "Premium prize"}</small></div>
+        <b>${count}<small> left</small></b>
+      </article>`).join("")
+    : `<div class="empty-copy">Prize list will appear when the event opens.</div>`;
+}
+
+function timeAgo(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "recently";
+  const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1440) return `${Math.floor(minutes / 60)}h ago`;
+  return `${Math.floor(minutes / 1440)}d ago`;
 }
 
 function renderWinners() {
-  const q = getSearchQuery();
+  const items = state.recent || [];
+  $("recentWinners").innerHTML = items.length
+    ? items.slice(0, 3).map((item) => `
+      <article class="recent-row">
+        <span>${esc(initials({ first_name: item.display || "77" }))}</span>
+        <div><strong>${esc(item.display || "Lucky Member")}</strong><small>${esc(timeAgo(item.at))}</small></div>
+        <b>${esc(formatPrize(item.prize))}</b>
+      </article>`).join("")
+    : `<div class="empty-copy">Waiting for the first winner…</div>`;
 
-  const rows = (state.winners || []).filter((w) =>
-    matchesSearch(
-      [
-        w.turn,
-        w.user_id,
-        w.name,
-        w.username,
-        w.display,
-        w.prize,
-        w.done ? "done" : "pending",
-      ],
-      q
-    )
-  );
+  const ticker = items.length ? [...items, ...items] : [
+    { display: "Lucky77 Grand Spin", prize: "Event opening soon" },
+    { display: "Premium Wheel", prize: "One member · One spin" },
+  ];
 
-  if (el.winnersCountText) {
-    el.winnersCountText.textContent = `${rows.length} winners`;
-  }
-
-  if (!el.winnerList) return;
-
-  if (!rows.length) {
-    el.winnerList.innerHTML = `<div class="empty-list">No winners found</div>`;
-    return;
-  }
-
-  el.winnerList.innerHTML = rows
-    .map((w) => {
-      const display =
-        w.display ||
-        w.name ||
-        (w.username ? `@${w.username}` : w.user_id || "-");
-
-      return `
-        <div class="list-item winner-row">
-          <div class="list-main">
-            <div class="list-title">
-              #${escapeHtml(w.turn || "-")} · ${escapeHtml(display)}
-            </div>
-
-            <div class="list-sub">
-              Prize: <b>${escapeHtml(w.prize || "-")}</b>
-              · ID: ${escapeHtml(w.user_id || "-")}
-              · Username: ${w.username ? "@" + escapeHtml(w.username) : "-"}
-              · Time: ${escapeHtml(formatTime(w.at))}
-            </div>
-          </div>
-
-          <div class="list-meta">
-            ${w.done ? "Done ✅" : "Pending"}
-          </div>
-        </div>
-      `;
-    })
-    .join("");
+  $("tickerTrack").innerHTML = ticker.map((item) => `
+    <span><b>${esc(item.display || "Lucky Member")}</b><i>won</i><strong>${esc(formatPrize(item.prize))}</strong></span>
+  `).join("");
 }
 
-function renderHistory() {
-  const q = getSearchQuery();
+function drawWheel() {
+  const canvas = $("wheelCanvas");
+  const ctx = canvas.getContext("2d");
+  const size = canvas.width;
+  const center = size / 2;
+  const radius = center - 28;
+  const prizes = state.wheelPrizes.length ? state.wheelPrizes : ["Lucky77"];
+  const colors = state.event?.wheel_colors?.length
+    ? state.event.wheel_colors
+    : ["#75183f", "#21151c", "#9d2859", "#302028", "#c84272", "#171820"];
+  const slice = Math.PI * 2 / prizes.length;
 
-  const rows = (state.history || []).filter((h) => {
-    const w = h.winner || {};
-    return matchesSearch(
-      [
-        h.turn,
-        h.prize,
-        h.at,
-        w.id,
-        w.name,
-        w.username,
-        w.display,
-      ],
-      q
-    );
+  ctx.clearRect(0, 0, size, size);
+  ctx.save();
+  ctx.translate(center, center);
+  ctx.rotate(-Math.PI / 2);
+
+  prizes.forEach((prize, index) => {
+    const start = index * slice;
+    const end = start + slice;
+    const gradient = ctx.createRadialGradient(0, 0, radius * 0.18, 0, 0, radius);
+    gradient.addColorStop(0, colors[(index + 1) % colors.length]);
+    gradient.addColorStop(1, colors[index % colors.length]);
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius, start, end);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(229,197,139,.78)";
+    ctx.stroke();
+
+    ctx.save();
+    ctx.rotate(start + slice / 2);
+    ctx.translate(radius * 0.69, 0);
+    ctx.rotate(Math.PI / 2);
+    ctx.fillStyle = "#f8eddf";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const label = formatPrize(prize).replace(" Ks", "");
+    ctx.font = `700 ${prizes.length > 10 ? 21 : 26}px Manrope, sans-serif`;
+    ctx.fillText(label.length > 14 ? `${label.slice(0, 13)}…` : label, 0, 0);
+    ctx.restore();
   });
 
-  if (el.historyCountText) {
-    el.historyCountText.textContent = `${rows.length} logs`;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius - 4, 0, Math.PI * 2);
+  ctx.lineWidth = 10;
+  ctx.strokeStyle = "rgba(229,197,139,.92)";
+  ctx.stroke();
+  ctx.restore();
+}
+
+function setWheelRotation(degrees, animate = true) {
+  const frame = q(".wheel-frame");
+  frame.style.transition = animate
+    ? "transform 5.6s cubic-bezier(.12,.72,.08,1)"
+    : "none";
+  frame.style.transform = `rotate(${degrees}deg)`;
+}
+
+function targetRotation(prize) {
+  const needle = safe(prize).replace(/[^\w\d]/g, "").toLowerCase();
+  let index = state.wheelPrizes.findIndex((item) =>
+    safe(item).replace(/[^\w\d]/g, "").toLowerCase() === needle
+  );
+  if (index < 0) index = Math.floor(Math.random() * state.wheelPrizes.length);
+  const slice = 360 / state.wheelPrizes.length;
+  const center = index * slice + slice / 2;
+  const currentTurns = Math.ceil(state.rotation / 360);
+  return (currentTurns + 7) * 360 + (360 - center);
+}
+
+function simpleTone(frequency, duration = 0.08, volume = 0.04) {
+  if (!state.sound) return;
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+  const context = simpleTone.context || (simpleTone.context = new AudioContext());
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  oscillator.frequency.value = frequency;
+  oscillator.type = "sine";
+  gain.gain.setValueAtTime(volume, context.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
+  oscillator.connect(gain).connect(context.destination);
+  oscillator.start();
+  oscillator.stop(context.currentTime + duration);
+}
+
+function winSound() {
+  if (state.event?.win_sound_url && state.sound) {
+    new Audio(state.event.win_sound_url).play().catch(() => {});
+    return;
   }
+  [523, 659, 784, 1046].forEach((note, index) => {
+    setTimeout(() => simpleTone(note, 0.34, 0.06), index * 150);
+  });
+}
 
-  if (!el.historyList) return;
+function confetti() {
+  const layer = $("confettiLayer");
+  layer.innerHTML = "";
+  for (let i = 0; i < 46; i += 1) {
+    const bit = document.createElement("i");
+    bit.style.setProperty("--x", `${Math.random() * 100}%`);
+    bit.style.setProperty("--delay", `${Math.random() * 0.7}s`);
+    bit.style.setProperty("--fall", `${80 + Math.random() * 180}px`);
+    bit.style.setProperty("--color", ["#e5c58b", "#d83b75", "#f8eddf", "#9f4dce"][i % 4]);
+    layer.appendChild(bit);
+  }
+}
 
-  if (!rows.length) {
-    el.historyList.innerHTML = `<div class="empty-list">No history found</div>`;
+function showResult(result) {
+  state.result = result;
+  state.spun = true;
+  const name = `${state.user?.first_name || ""} ${state.user?.last_name || ""}`.trim() ||
+    state.user?.username || "Lucky Member";
+  $("resultName").textContent = name;
+  $("resultPrize").textContent = formatPrize(result?.prize);
+  $("resultModal").classList.remove("hidden");
+  confetti();
+  winSound();
+  renderAccess();
+  renderHeader();
+}
+
+async function refreshPlayerStatus() {
+  if (!state.user || PLAYER.DEMO) return;
+  const data = await api("/api/player/status", {
+    method: "POST",
+    body: { init_data: state.initData },
+  });
+  state.channel = data.channel || { joined: false };
+  state.registered = !!data.registered;
+  state.preregistered = !!data.preregistered;
+  state.spun = !!data.spun;
+  state.result = data.result || null;
+  state.event = { ...state.event, ...(data.event || {}) };
+}
+
+async function registerPlayer() {
+  if (PLAYER.DEMO) {
+    state.channel = { joined: true };
+    state.registered = true;
+    state.event.event_live = true;
+    renderAll();
+    toast("Demo registration ready", "success");
     return;
   }
 
-  el.historyList.innerHTML = rows
-    .map((h) => {
-      const w = h.winner || {};
-      const display =
-        w.display ||
-        w.name ||
-        (w.username ? `@${w.username}` : w.id || "-");
+  const button = $("registerBtn");
+  button.disabled = true;
+  button.textContent = "Registering…";
+  try {
+    const data = await api("/api/player/register", {
+      method: "POST",
+      body: {
+        init_data: state.initData,
+        promo_code: $("promoInput").value.trim(),
+      },
+    });
+    state.registered = !!data.registered;
+    state.preregistered = !!data.preregistered;
+    await refreshPlayerStatus();
+    renderAll();
+    toast(data.message || "Registration completed", "success");
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Register & Continue";
+  }
+}
 
-      return `
-        <div class="list-item history-row">
-          <div class="list-main">
-            <div class="list-title">
-              #${escapeHtml(h.turn || "-")} · ${escapeHtml(display)}
-            </div>
+async function verifyPlayer() {
+  const button = $("verifyBtn");
+  button.disabled = true;
+  button.textContent = "Verifying…";
+  try {
+    if (PLAYER.DEMO) {
+      state.channel = { joined: true };
+    } else {
+      await refreshPlayerStatus();
+    }
+    renderAll();
+    toast(state.channel?.joined ? "Channel verified" : "Join the channel first",
+      state.channel?.joined ? "success" : "error");
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Verify Membership";
+  }
+}
 
-            <div class="list-sub">
-              Won: <b>${escapeHtml(h.prize || "-")}</b>
-              · ID: ${escapeHtml(w.id || "-")}
-              · ${escapeHtml(formatTime(h.at))}
-            </div>
-          </div>
+async function spin() {
+  if (state.spinning || $("spinBtn").disabled) return;
+  state.spinning = true;
+  $("spinBtn").disabled = true;
+  $("spinBtn").classList.add("is-spinning");
+  $("spinBtn").querySelector("span").textContent = "SPINNING";
+  $("spinHint").textContent = "Your premium result is being secured…";
 
-          <div class="list-meta">History</div>
-        </div>
-      `;
-    })
-    .join("");
+  if (state.event?.spin_sound_url && state.sound) {
+    new Audio(state.event.spin_sound_url).play().catch(() => {});
+  } else {
+    simpleTone(220, 0.2, 0.04);
+  }
+
+  try {
+    let winner;
+    if (PLAYER.DEMO) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      winner = {
+        prize: state.wheelPrizes[Math.floor(Math.random() * state.wheelPrizes.length)],
+        at: new Date().toISOString(),
+      };
+    } else {
+      const data = await api("/api/player/spin", {
+        method: "POST",
+        body: { init_data: state.initData },
+      });
+      winner = data.winner;
+    }
+
+    state.rotation = targetRotation(winner?.prize);
+    setWheelRotation(state.rotation, true);
+    await new Promise((resolve) => setTimeout(resolve, 5750));
+    showResult(winner);
+    state.counts.prizes_left = Math.max(0, Number(state.counts.prizes_left || 0) - 1);
+    state.counts.winners = Number(state.counts.winners || 0) + 1;
+    renderMetrics();
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    state.spinning = false;
+    $("spinBtn").classList.remove("is-spinning");
+    $("spinBtn").querySelector("span").textContent = "SPIN";
+    renderAccess();
+  }
+}
+
+function renderCountdown() {
+  const end = new Date(state.event?.ends_at || "");
+  let remaining = Number.isNaN(end.getTime()) ? 0 : Math.max(0, end.getTime() - Date.now());
+  const days = Math.floor(remaining / 86400000);
+  remaining %= 86400000;
+  const hours = Math.floor(remaining / 3600000);
+  remaining %= 3600000;
+  const minutes = Math.floor(remaining / 60000);
+  const seconds = Math.floor((remaining % 60000) / 1000);
+  $("countDays").textContent = String(days).padStart(2, "0");
+  $("countHours").textContent = String(hours).padStart(2, "0");
+  $("countMinutes").textContent = String(minutes).padStart(2, "0");
+  $("countSeconds").textContent = String(seconds).padStart(2, "0");
 }
 
 function renderAll() {
-  renderHealth();
-  renderScan();
-  renderMembers();
+  renderEvent();
+  renderAccess();
+  renderMetrics();
+  renderPrizes();
   renderWinners();
-  renderHistory();
-  updateButtons();
-}
-
-function updateButtons() {
-  const poolCount = Number(state.pool?.count || state.health?.pool || 0);
-  const prizeCount = Number(state.health?.remaining_prizes || 0);
-
-  if (el.spinBtn) {
-    el.spinBtn.disabled = state.spinning || poolCount <= 0 || prizeCount <= 0;
-  }
-
-  if (el.autoSpinBtn) {
-    if (state.autoSpinning) {
-      el.autoSpinBtn.textContent = "STOP AUTO";
-      el.autoSpinBtn.classList.add("danger-outline");
-    } else {
-      el.autoSpinBtn.textContent = "AUTO SPIN";
-      el.autoSpinBtn.classList.remove("danger-outline");
-    }
-  }
-}
-
-function showSection(section) {
-  state.currentSection = section;
-
-  const map = {
-    wheel: el.wheelHomeSection,
-    live: el.liveDashboardSection,
-    prize: el.prizeBuilderSection,
-    lists: el.listsSection,
-  };
-
-  Object.values(map).forEach((node) => {
-    if (node) node.classList.add("hidden");
-  });
-
-  if (map[section]) {
-    map[section].classList.remove("hidden");
-  }
-
-  closeQuickMenu();
-}
-
-function openSettings() {
-  el.settingsDrawer?.classList.add("open");
-}
-
-function closeSettings() {
-  el.settingsDrawer?.classList.remove("open");
-}
-
-function openQuickMenu() {
-  el.quickMenuDrawer?.classList.add("open");
-}
-
-function closeQuickMenu() {
-  el.quickMenuDrawer?.classList.remove("open");
-}
-
-function applySettingsToUi() {
-  document.body.dataset.theme = settings.theme || "white";
-
-  document.documentElement.style.setProperty("--custom-bg", settings.bgColor);
-  document.documentElement.style.setProperty("--custom-card", settings.cardColor);
-  document.documentElement.style.setProperty("--accent-1", settings.accent1);
-  document.documentElement.style.setProperty("--accent-2", settings.accent2);
-  document.documentElement.style.setProperty("--arrow-color", settings.arrowColor);
-
-  if (el.themeSelect) el.themeSelect.value = settings.theme;
-  if (el.bgColorInput) el.bgColorInput.value = settings.bgColor;
-  if (el.cardColorInput) el.cardColorInput.value = settings.cardColor;
-  if (el.accent1Input) el.accent1Input.value = settings.accent1;
-  if (el.accent2Input) el.accent2Input.value = settings.accent2;
-  if (el.arrowColorInput) el.arrowColorInput.value = settings.arrowColor;
-
-  if (el.bannerTitleInput) el.bannerTitleInput.value = settings.bannerTitle || "";
-  if (el.bannerSubInput) el.bannerSubInput.value = settings.bannerSub || "";
-
-  if (el.bannerTitleText) el.bannerTitleText.textContent = settings.bannerTitle || "Lucky77 Event";
-  if (el.bannerSubText) el.bannerSubText.textContent = settings.bannerSub || "Spin & Win premium prizes";
-
-  if (settings.topLogo && el.brandLogoImg && el.brandLogoFallback) {
-    el.brandLogoImg.src = settings.topLogo;
-    el.brandLogoImg.classList.remove("hidden");
-    el.brandLogoFallback.classList.add("hidden");
-  } else if (el.brandLogoImg && el.brandLogoFallback) {
-    el.brandLogoImg.classList.add("hidden");
-    el.brandLogoFallback.classList.remove("hidden");
-  }
-
-  if (settings.wheelLogo && el.wheelCenterLogoImg && el.wheelCenterFallback) {
-    el.wheelCenterLogoImg.src = settings.wheelLogo;
-    el.wheelCenterLogoImg.classList.remove("hidden");
-    el.wheelCenterFallback.classList.add("hidden");
-  } else if (el.wheelCenterLogoImg && el.wheelCenterFallback) {
-    el.wheelCenterLogoImg.classList.add("hidden");
-    el.wheelCenterFallback.classList.remove("hidden");
-  }
-
-  if (settings.musicDataUrl && el.bgMusicPlayer) {
-    el.bgMusicPlayer.src = settings.musicDataUrl;
-    el.bgMusicPlayer.loop = true;
-  }
-}
-
-function saveSettingsFromUi() {
-  settings.theme = el.themeSelect?.value || "white";
-  settings.bgColor = el.bgColorInput?.value || defaultSettings.bgColor;
-  settings.cardColor = el.cardColorInput?.value || defaultSettings.cardColor;
-  settings.accent1 = el.accent1Input?.value || defaultSettings.accent1;
-  settings.accent2 = el.accent2Input?.value || defaultSettings.accent2;
-  settings.arrowColor = el.arrowColorInput?.value || defaultSettings.arrowColor;
-  settings.bannerTitle = el.bannerTitleInput?.value || defaultSettings.bannerTitle;
-  settings.bannerSub = el.bannerSubInput?.value || defaultSettings.bannerSub;
-
-  persistSettings();
-  applySettingsToUi();
-  showToast("Settings saved ✅", "success");
-}
-
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("File read failed"));
-    reader.readAsDataURL(file);
-  });
-}
-
-async function handleTopLogoFile(file) {
-  if (!file) return;
-  settings.topLogo = await readFileAsDataUrl(file);
-  persistSettings();
-  applySettingsToUi();
-}
-
-async function handleWheelLogoFile(file) {
-  if (!file) return;
-  settings.wheelLogo = await readFileAsDataUrl(file);
-  persistSettings();
-  applySettingsToUi();
-}
-
-async function handleMusicFile(file) {
-  if (!file) return;
-  settings.musicDataUrl = await readFileAsDataUrl(file);
-  settings.musicOn = true;
-  persistSettings();
-  applySettingsToUi();
-  playMusic();
-}
-
-function playMusic() {
-  if (!el.bgMusicPlayer || !settings.musicDataUrl) {
-    showToast("Music file မရှိသေးပါ", "error");
-    return;
-  }
-
-  settings.musicOn = true;
-  persistSettings();
-
-  el.bgMusicPlayer
-    .play()
-    .then(() => showToast("Music ON ✅", "success"))
-    .catch(() => showToast("Browser က Music ကို block လုပ်ထားပါတယ်", "error"));
-}
-
-function stopMusic() {
-  settings.musicOn = false;
-  persistSettings();
-
-  if (el.bgMusicPlayer) {
-    el.bgMusicPlayer.pause();
-  }
-
-  showToast("Music OFF", "success");
-}
-
-function playTickSound() {
-  try {
-    if (!window.AudioContext && !window.webkitAudioContext) return;
-
-    if (!state.audioCtx) {
-      state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-
-    const ctx = state.audioCtx;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.frequency.value = 760;
-    gain.gain.value = 0.045;
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + 0.035);
-  } catch (_) {}
-}
-
-function startSpinLoopVisual() {
-  stopSpinLoopVisual();
-
-  state.spinLoopTimer = setInterval(() => {
-    state.wheelDeg += state.spinLoopDegStep;
-    if (el.wheelCanvas) {
-      el.wheelCanvas.style.transform = `rotate(${state.wheelDeg}deg)`;
-    }
-  }, 28);
-
-  state.tickTimer = setInterval(playTickSound, 88);
-}
-
-function stopSpinLoopVisual() {
-  if (state.spinLoopTimer) {
-    clearInterval(state.spinLoopTimer);
-    state.spinLoopTimer = null;
-  }
-
-  if (state.tickTimer) {
-    clearInterval(state.tickTimer);
-    state.tickTimer = null;
-  }
-}
-
-function animateWheelToPrize(prize) {
-  return new Promise((resolve) => {
-    stopSpinLoopVisual();
-
-    const target = computeTargetRotationDeg(prize);
-    const current = ((state.wheelDeg % 360) + 360) % 360;
-    const diff = (target - current + 360) % 360;
-    const extra = 360 * 8;
-    const finalDeg = state.wheelDeg + extra + diff;
-
-    if (el.wheelCanvas) {
-      el.wheelCanvas.style.transition = `transform ${settings.spinDurationMs}ms cubic-bezier(.12,.74,.12,1)`;
-      requestAnimationFrame(() => {
-        state.wheelDeg = finalDeg;
-        el.wheelCanvas.style.transform = `rotate(${finalDeg}deg)`;
-      });
-    }
-
-    setTimeout(() => {
-      if (el.wheelCanvas) {
-        el.wheelCanvas.style.transition = "";
-      }
-      resolve();
-    }, settings.spinDurationMs + 80);
-  });
-}
-
-function createConfetti() {
-  if (!el.confettiLayer) return;
-
-  el.confettiLayer.innerHTML = "";
-
-  const colors = ["#ff5f6d", "#ffc371", "#23d5ab", "#23a6d5", "#8b5dff", "#ffd166"];
-
-  for (let i = 0; i < 80; i++) {
-    const piece = document.createElement("span");
-    piece.className = "confetti";
-    piece.style.left = `${Math.random() * 100}%`;
-    piece.style.background = colors[i % colors.length];
-    piece.style.animationDelay = `${Math.random() * 0.45}s`;
-    piece.style.animationDuration = `${1.2 + Math.random() * 1.4}s`;
-    el.confettiLayer.appendChild(piece);
-  }
-}
-
-function showWinnerPopup(winner, prize) {
-  if (!el.winnerPopup) return;
-
-  const display =
-    winner?.display ||
-    winner?.name ||
-    (winner?.username ? `@${winner.username}` : winner?.id || "-");
-
-  if (el.winnerPopupName) el.winnerPopupName.textContent = display;
-  if (el.winnerPopupPrize) el.winnerPopupPrize.textContent = prize || "-";
-
-  el.winnerPopup.classList.remove("hidden");
-  createConfetti();
-
-  clearTimeout(state.autoCloseTimer);
-  state.autoCloseTimer = setTimeout(closeWinnerPopup, 4200);
-}
-
-function closeWinnerPopup() {
-  el.winnerPopup?.classList.add("hidden");
-  if (el.confettiLayer) el.confettiLayer.innerHTML = "";
-}
-
-function updateWinnerFlash(winner, prize) {
-  const display =
-    winner?.display ||
-    winner?.name ||
-    (winner?.username ? `@${winner.username}` : winner?.id || "-");
-
-  if (el.winnerFlashName) el.winnerFlashName.textContent = display;
-  if (el.winnerFlashPrize) el.winnerFlashPrize.textContent = prize || "-";
-  el.winnerFlash?.classList.remove("hidden");
-}
-
-async function spinOnce() {
-  if (state.spinning) return null;
-
-  try {
-    state.spinning = true;
-    updateButtons();
-    startSpinLoopVisual();
-
-    const data = await api("/spin", { method: "POST" });
-
-    if (!data.ok) {
-      throw new Error(data.error || "Spin failed");
-    }
-
-    await animateWheelToPrize(data.prize);
-
-    updateWinnerFlash(data.winner, data.prize);
-    showWinnerPopup(data.winner, data.prize);
-
-    state.health = {
-      ...(state.health || {}),
-      pool: Math.max(0, Number(state.health?.pool || state.pool?.count || 0) - 1),
-      winners: Number(state.health?.winners || 0) + 1,
-      remaining_prizes: Math.max(0, Number(state.health?.remaining_prizes || 0) - 1),
-    };
-
-    state.pool = {
-      ...(state.pool || {}),
-      count: Math.max(0, Number(state.pool?.count || 0) - 1),
-    };
-
-    await refreshAfterSpin();
-
-    return data;
-  } catch (err) {
-    stopSpinLoopVisual();
-    showToast(err.message || "Spin failed", "error");
-    return null;
-  } finally {
-    state.spinning = false;
-    stopSpinLoopVisual();
-    updateButtons();
-  }
-}
-
-async function autoSpinLoop() {
-  if (!state.autoSpinning) return;
-
-  while (state.autoSpinning && !state.autoSpinStopRequested) {
-    const poolCount = Number(state.pool?.count || state.health?.pool || 0);
-    const prizeCount = Number(state.health?.remaining_prizes || 0);
-
-    if (poolCount <= 0 || prizeCount <= 0) {
-      state.autoSpinning = false;
-      state.autoSpinStopRequested = false;
-      updateButtons();
-      showToast("Auto spin completed", "success");
-      return;
-    }
-
-    const result = await spinOnce();
-
-    if (!result) {
-      state.autoSpinning = false;
-      state.autoSpinStopRequested = false;
-      updateButtons();
-      return;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 900));
-  }
-
-  state.autoSpinning = false;
-  state.autoSpinStopRequested = false;
-  updateButtons();
-}
-
-function toggleAutoSpin() {
-  if (state.autoSpinning) {
-    state.autoSpinStopRequested = true;
-    state.autoSpinning = false;
-    updateButtons();
-    showToast("Auto spin stopping...", "success");
-    return;
-  }
-
-  state.autoSpinning = true;
-  state.autoSpinStopRequested = false;
-  updateButtons();
-  autoSpinLoop();
-}
-
-async function savePrizeConfig() {
-  if (!el.prizeText) return;
-
-  try {
-    if (el.savePrizeBtn) {
-      el.savePrizeBtn.disabled = true;
-      el.savePrizeBtn.textContent = "Saving...";
-    }
-
-    const data = await api("/config/prizes", {
-      method: "POST",
-      body: JSON.stringify({
-        prizeText: el.prizeText.value,
-      }),
-    });
-
-    buildWheelPrizeSegments();
-    drawWheel();
-
-    await refreshAllData();
-
-    showToast(`Prize saved: ${data.total} item(s)`, "success");
-  } catch (err) {
-    showToast(err.message || "Save failed", "error");
-  } finally {
-    if (el.savePrizeBtn) {
-      el.savePrizeBtn.disabled = false;
-      el.savePrizeBtn.textContent = "Save Prize";
-    }
-  }
-}
-
-async function scanMembers() {
-  try {
-    if (el.scanBtn) {
-      el.scanBtn.disabled = true;
-      el.scanBtn.textContent = "Scanning...";
-    }
-
-    const data = await api("/scan/members", {
-      method: "POST",
-    });
-
-    state.scan = {
-      status: "completed",
-      summary: data.summary || null,
-      last_scan_at: data.summary?.scanned_at || "",
-    };
-
-    await refreshAfterScan();
-
-    showToast("Scan completed ✅", "success");
-  } catch (err) {
-    showToast(err.message || "Scan failed", "error");
-  } finally {
-    if (el.scanBtn) {
-      el.scanBtn.disabled = false;
-      el.scanBtn.textContent = "Scan Channel Member";
-    }
-  }
-}
-
-async function restartEvent() {
-  const ok = window.confirm(
-    "Restart Event လုပ်မလား?\n\nWinner/History ကို reset လုပ်မယ်။ Member memory မဖျက်ပါ။"
-  );
-
-  if (!ok) return;
-
-  try {
-    if (el.restartBtn) {
-      el.restartBtn.disabled = true;
-      el.restartBtn.textContent = "Restarting...";
-    }
-
-    await api("/restart-spin", {
-      method: "POST",
-      body: JSON.stringify({
-        mode: "safe_restart",
-      }),
-    });
-
-    await refreshAllData();
-
-    showToast("Restart complete ✅", "success");
-  } catch (err) {
-    showToast(err.message || "Restart failed", "error");
-  } finally {
-    if (el.restartBtn) {
-      el.restartBtn.disabled = false;
-      el.restartBtn.textContent = "Restart Event";
-    }
-  }
-}
-function exportHistoryCsv() {
-  const headers = [
-    "Turn",
-    "Prize",
-    "Winner ID",
-    "Display",
-    "Name",
-    "Username",
-    "Time",
-  ];
-
-  const rows = (state.history || []).map((h) => {
-    const w = h.winner || {};
-    return [
-      h.turn || "",
-      h.prize || "",
-      w.id || "",
-      w.display || "",
-      w.name || "",
-      w.username || "",
-      h.at || "",
-    ];
-  });
-
-  const csv = [headers, ...rows]
-    .map((row) =>
-      row
-        .map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`)
-        .join(",")
-    )
-    .join("\n");
-
-  const blob = new Blob(["\uFEFF" + csv], {
-    type: "text/csv;charset=utf-8;",
-  });
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-
-  a.href = url;
-  a.download = `lucky77-spin-history-${Date.now()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-
-  URL.revokeObjectURL(url);
-}
-
-function bindTabs() {
-  document.querySelectorAll(".tab-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tab = btn.dataset.tab;
-
-      document.querySelectorAll(".tab-btn").forEach((x) => {
-        x.classList.remove("active");
-      });
-
-      document.querySelectorAll(".tab-panel").forEach((x) => {
-        x.classList.remove("active");
-      });
-
-      btn.classList.add("active");
-
-      const panel = document.getElementById(`tab-${tab}`);
-      if (panel) panel.classList.add("active");
-    });
-  });
-}
-
-function bindEvents() {
-  el.refreshBtn?.addEventListener("click", async () => {
-    try {
-      el.refreshBtn.disabled = true;
-      await refreshAllData();
-      showToast("Refreshed ✅", "success");
-    } catch (err) {
-      showToast(err.message || "Refresh failed", "error");
-    } finally {
-      el.refreshBtn.disabled = false;
-    }
-  });
-
-  el.logoutBtn?.addEventListener("click", () => {
-    forgetApiKey();
-    location.reload();
-  });
-
-  el.scanBtn?.addEventListener("click", scanMembers);
-  el.spinBtn?.addEventListener("click", spinOnce);
-  el.autoSpinBtn?.addEventListener("click", toggleAutoSpin);
-  el.restartBtn?.addEventListener("click", restartEvent);
-  el.savePrizeBtn?.addEventListener("click", savePrizeConfig);
-
-  el.searchInput?.addEventListener("input", () => {
-    renderMembers();
-    renderWinners();
-    renderHistory();
-  });
-
-  el.showRemovedToggle?.addEventListener("change", async () => {
-    try {
-      await loadMembers();
-      renderMembers();
-    } catch (err) {
-      showToast(err.message || "Load members failed", "error");
-    }
-  });
-
-  el.settingsBtn?.addEventListener("click", openSettings);
-  el.settingsBackdrop?.addEventListener("click", closeSettings);
-  el.settingsCloseBtn?.addEventListener("click", closeSettings);
-  el.saveSettingsBtn?.addEventListener("click", saveSettingsFromUi);
-
-  el.quickMenuBtn?.addEventListener("click", openQuickMenu);
-  el.quickMenuBackdrop?.addEventListener("click", closeQuickMenu);
-  el.quickMenuCloseBtn?.addEventListener("click", closeQuickMenu);
-
-  document.querySelectorAll(".quick-nav-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      showSection(btn.dataset.section || "wheel");
-    });
-  });
-
-  el.topLogoInput?.addEventListener("change", (e) => {
-    handleTopLogoFile(e.target.files?.[0]).catch((err) => {
-      showToast(err.message || "Logo failed", "error");
-    });
-  });
-
-  el.wheelLogoInput?.addEventListener("change", (e) => {
-    handleWheelLogoFile(e.target.files?.[0]).catch((err) => {
-      showToast(err.message || "Wheel logo failed", "error");
-    });
-  });
-
-  el.musicFileInput?.addEventListener("change", (e) => {
-    handleMusicFile(e.target.files?.[0]).catch((err) => {
-      showToast(err.message || "Music failed", "error");
-    });
-  });
-
-  el.musicOnBtn?.addEventListener("click", playMusic);
-  el.musicOffBtn?.addEventListener("click", stopMusic);
-  el.exportHistoryBtn?.addEventListener("click", exportHistoryCsv);
-
-  el.winnerPopupBackdrop?.addEventListener("click", closeWinnerPopup);
-  el.winnerPopupCloseBtn?.addEventListener("click", closeWinnerPopup);
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closeSettings();
-      closeQuickMenu();
-      closeWinnerPopup();
-    }
-  });
-
-  bindTabs();
-}
-
-function bootUiOnly() {
-  applySettingsToUi();
-  buildWheelPrizeSegments();
   drawWheel();
-  showSection("wheel");
-
-  if (settings.musicOn && settings.musicDataUrl) {
-    if (el.bgMusicPlayer) {
-      el.bgMusicPlayer.src = settings.musicDataUrl;
-      el.bgMusicPlayer.loop = true;
-    }
-  }
+  renderCountdown();
 }
 
-bindEvents();
-bootUiOnly();
+function bind() {
+  $("verifyBtn").addEventListener("click", verifyPlayer);
+  $("registerBtn").addEventListener("click", registerPlayer);
+  $("spinBtn").addEventListener("click", spin);
+  $("resultCloseBtn").addEventListener("click", () => $("resultModal").classList.add("hidden"));
+  q(".result-backdrop").addEventListener("click", () => $("resultModal").classList.add("hidden"));
+  $("soundToggle").addEventListener("click", () => {
+    state.sound = !state.sound;
+    localStorage.setItem(PLAYER.SOUND_KEY, state.sound ? "on" : "off");
+    $("soundToggle").classList.toggle("is-muted", !state.sound);
+    toast(state.sound ? "Sound on" : "Sound off");
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") $("resultModal").classList.add("hidden");
+  });
+}
 
-requireAdminLoginBeforeLoad().then((ok) => {
-  if (ok) {
-    firstLoad();
+async function boot() {
+  bind();
+  const identity = telegramIdentity();
+  state.user = identity.user;
+  state.initData = identity.initData;
+  $("soundToggle").classList.toggle("is-muted", !state.sound);
+
+  if (PLAYER.DEMO) {
+    state.event = {
+      title: "Lucky77 Grand Spin",
+      subtitle: "One member · One code · One premium spin",
+      announcement: "July Premium Event · one verified member receives one secured live spin.",
+      registration_open: true,
+      event_live: true,
+      ends_at: new Date(Date.now() + 2 * 86400000 + 18 * 3600000 + 42 * 60000).toISOString(),
+      theme: "obsidian-rose",
+      wheel_colors: ["#75183f", "#21151c", "#9d2859", "#302028", "#c84272", "#171820"],
+    };
+    state.channel = { joined: true };
+    state.registered = true;
+    state.counts = { registered: 12480, winners: 386, prizes_left: 24 };
+    state.recent = [
+      { display: "May Zin", prize: "50,000 Ks", at: new Date(Date.now() - 120000).toISOString() },
+      { display: "Aung Ko", prize: "25,000 Ks", at: new Date(Date.now() - 420000).toISOString() },
+      { display: "Thu Thu", prize: "10,000 Ks", at: new Date(Date.now() - 720000).toISOString() },
+    ];
+  } else {
+    try {
+      const data = await api("/api/player/event");
+      state.event = data.event || {};
+      state.counts = {
+        registered: data.counts?.registered || 0,
+        winners: data.counts?.winners || 0,
+        prizes_left: data.counts?.prizes_left || 0,
+      };
+      state.recent = data.recent_winners || [];
+      if (Array.isArray(data.wheel_prizes) && data.wheel_prizes.length) {
+        state.wheelPrizes = data.wheel_prizes;
+      }
+      if (data.channel_link) {
+        $("joinChannelBtn").href = data.channel_link;
+        $("openTelegramBtn").href = data.channel_link;
+      }
+      if (state.user) await refreshPlayerStatus();
+    } catch (error) {
+      state.event = {
+        title: "Lucky77 Grand Spin",
+        subtitle: "One member · One code · One premium spin",
+        announcement: "Secure event connection is being restored.",
+        registration_open: true,
+        event_live: false,
+        theme: "obsidian-rose",
+        wheel_colors: ["#75183f", "#21151c", "#9d2859", "#302028", "#c84272", "#171820"],
+      };
+      toast(error.message, "error");
+    }
   }
-});
+
+  renderAll();
+  setInterval(renderCountdown, 1000);
+}
+
+boot();
