@@ -2,7 +2,7 @@
 
 /* =========================================================
    Lucky77 Winner Inbox Dashboard
-   Version: clean-stable-login-v3.1.0
+   Version: premium-hybrid-v4.0.0
    Backend: Render
    Frontend: Vercel
 ========================================================= */
@@ -10,9 +10,10 @@
 /* ================= App Config ================= */
 const APP = {
   BASE_URL: "https://lucky77-wheel-bot-548i.onrender.com",
-  CACHE_BUSTER: "winner-inbox-login-v3-1-0",
+  CACHE_BUSTER: "winner-inbox-premium-v4-0-0",
   STORAGE_KEY: "lucky77_admin_api_key",
   ACCOUNT_KEY: "lucky77_dashboard_account",
+  NOTIFICATION_KEY: "lucky77_inbox_notification_v1",
   PAGE_SIZE: 60,
 };
 
@@ -442,6 +443,25 @@ async function boot() {
 
 
 /* ================= New Message Notification Sound ================= */
+function loadNotificationSettings() {
+  const fallback = {
+    enabled: true,
+    type: "double",
+    volume: 0.35,
+    customDataUrl: "",
+    customName: "",
+  };
+
+  try {
+    const parsed = JSON.parse(localStorage.getItem(APP.NOTIFICATION_KEY) || "{}");
+    return { ...fallback, ...(parsed && typeof parsed === "object" ? parsed : {}) };
+  } catch (_) {
+    return fallback;
+  }
+}
+
+let notificationSettings = loadNotificationSettings();
+
 const notificationState = {
   audioCtx: null,
   unlocked: false,
@@ -472,13 +492,26 @@ function unlockNotificationSound() {
 }
 
 function playNotificationSound() {
+  if (!notificationSettings.enabled) return;
+
+  if (notificationSettings.type === "custom" && notificationSettings.customDataUrl) {
+    try {
+      const audio = new Audio(notificationSettings.customDataUrl);
+      audio.volume = Math.max(0.05, Math.min(Number(notificationSettings.volume || 0.35), 1));
+      audio.play().catch(() => {});
+      return;
+    } catch (_) {}
+  }
+
   if (!notificationState.unlocked || !notificationState.audioCtx) return;
 
   try {
     const ctx = notificationState.audioCtx;
     const now = ctx.currentTime;
 
-    function beep(start, frequency) {
+    const volume = Math.max(0.05, Math.min(Number(notificationSettings.volume || 0.35), 1));
+
+    function beep(start, frequency, duration = 0.2) {
       const oscillator = ctx.createOscillator();
       const gain = ctx.createGain();
 
@@ -486,19 +519,109 @@ function playNotificationSound() {
       oscillator.frequency.setValueAtTime(frequency, start);
 
       gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.22, start + 0.018);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+      gain.gain.exponentialRampToValueAtTime(volume, start + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + Math.max(0.08, duration - 0.02));
 
       oscillator.connect(gain);
       gain.connect(ctx.destination);
 
       oscillator.start(start);
-      oscillator.stop(start + 0.2);
+      oscillator.stop(start + duration);
     }
 
-    beep(now, 880);
-    beep(now + 0.22, 1175);
+    if (notificationSettings.type === "single") {
+      beep(now, 940, 0.24);
+    } else if (notificationSettings.type === "soft") {
+      beep(now, 660, 0.3);
+      beep(now + 0.18, 825, 0.34);
+    } else {
+      beep(now, 880);
+      beep(now + 0.22, 1175);
+    }
   } catch (_) {}
+}
+
+function syncNotificationSettingsForm() {
+  const enabled = $("notificationSoundEnabled");
+  const type = $("notificationSoundType");
+  const volume = $("notificationVolume");
+
+  if (enabled) enabled.checked = notificationSettings.enabled !== false;
+  if (type) type.value = notificationSettings.type || "double";
+  if (volume) volume.value = String(notificationSettings.volume || 0.35);
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("file_read_failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function saveNotificationSettings() {
+  const file = $("notificationSoundFile")?.files?.[0] || null;
+
+  if (file) {
+    if (file.size > 1024 * 1024) {
+      toast("Custom sound must be 1 MB or smaller", "error");
+      return;
+    }
+    notificationSettings.customDataUrl = await readFileAsDataUrl(file);
+    notificationSettings.customName = file.name || "custom sound";
+  }
+
+  notificationSettings.enabled = !!$("notificationSoundEnabled")?.checked;
+  notificationSettings.type = getValue("notificationSoundType") || "double";
+  notificationSettings.volume = Number(getValue("notificationVolume") || 0.35);
+
+  localStorage.setItem(APP.NOTIFICATION_KEY, JSON.stringify(notificationSettings));
+  toast("Notification sound saved", "success");
+}
+
+async function loadPostSettings() {
+  try {
+    const data = await api(`/settings/posts?_=${Date.now()}`);
+    const settings = data.settings || {};
+    setValue("settingJoinCaption", settings.join_caption || "");
+    setValue("settingJoinButton", settings.join_button || "Start Bot");
+    setValue("settingRegisterCaption", settings.register_caption || "");
+    setValue("settingRegisterButton", settings.register_button || "Register");
+    setValue("settingChannelCaption", settings.channel_caption || "");
+    setValue("settingChannelButton", settings.channel_button || "Join Now");
+  } catch (err) {
+    toast(err.message || "Post settings failed", "error");
+  }
+}
+
+async function savePostSettings() {
+  try {
+    await api("/settings/posts", {
+      method: "POST",
+      body: {
+        join_caption: getValue("settingJoinCaption"),
+        join_button: getValue("settingJoinButton"),
+        register_caption: getValue("settingRegisterCaption"),
+        register_button: getValue("settingRegisterButton"),
+        channel_caption: getValue("settingChannelCaption"),
+        channel_button: getValue("settingChannelButton"),
+      },
+    });
+    toast("Register and post settings saved", "success");
+  } catch (err) {
+    toast(err.message || "Post settings save failed", "error");
+  }
+}
+
+function openInboxSettings() {
+  syncNotificationSettingsForm();
+  setHidden($("inboxSettingsModal"), false);
+  loadPostSettings();
+}
+
+function closeInboxSettings() {
+  setHidden($("inboxSettingsModal"), true);
 }
 
 function updateNotificationTitle() {
@@ -1900,6 +2023,23 @@ function bindEvents() {
   $("openTemplatesNavBtn")?.addEventListener("click", openBroadcastModal);
   $("exportBtn")?.addEventListener("click", exportCsv);
   $("backupOwnerBtn")?.addEventListener("click", sendBackupOwner);
+  $("openInboxSettingsBtn")?.addEventListener("click", openInboxSettings);
+  $("closeInboxSettingsBtn")?.addEventListener("click", closeInboxSettings);
+  $("testNotificationSoundBtn")?.addEventListener("click", () => {
+    unlockNotificationSound();
+    notificationSettings.enabled = !!$("notificationSoundEnabled")?.checked;
+    notificationSettings.type = getValue("notificationSoundType") || "double";
+    notificationSettings.volume = Number(getValue("notificationVolume") || 0.35);
+    playNotificationSound();
+  });
+  $("saveNotificationSettingsBtn")?.addEventListener("click", saveNotificationSettings);
+  $("reloadPostSettingsBtn")?.addEventListener("click", loadPostSettings);
+  $("savePostSettingsBtn")?.addEventListener("click", savePostSettings);
+
+  qsa("[data-close-modal='inbox-settings']").forEach((el) => {
+    el.addEventListener("click", closeInboxSettings);
+  });
+
 $("openSimpleWinnerListBtn")?.addEventListener("click", openSimpleWinnerList);
 $("closeSimpleWinnerBtn")?.addEventListener("click", closeSimpleWinnerList);
 
@@ -2020,6 +2160,7 @@ $("simpleWinnerRefreshBtn")?.addEventListener("click", async () => {
   document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeBroadcastModal();
+    closeInboxSettings();
     closeSimpleWinnerList();
     closeReplyModal();
   }
