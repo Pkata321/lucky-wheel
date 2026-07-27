@@ -2,7 +2,7 @@
 
 /* =========================================================
    Lucky77 Winner Inbox Dashboard
-   Version: premium-hybrid-v4.0.0
+   Version: premium-hybrid-v5.0.0
    Backend: Render
    Frontend: Vercel
 ========================================================= */
