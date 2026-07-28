@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="my">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#eaf6ff" />
+  <meta name="lucky77-api-base" content="%VITE_API_BASE%" />
+  <title>Lucky77 · Test Event</title>
+  <link rel="stylesheet" href="/styles.css?v=6.1.0" />
+  <link rel="stylesheet" href="/v6.css?v=6.1.0" />
+  <link rel="stylesheet" href="/final.css?v=6.1.0" />
+</head>
+<body class="test-body">
+  <main class="test-shell">
+    <header class="test-header premium-surface">
+      <img src="/assets/lucky77-logo.png" alt="Lucky77" />
+      <div>
+        <span>ISOLATED TEST EVENT</span>
+        <h1 id="testTitle">Lucky77 Test Spin</h1>
+        <p>ဒီနေရာမှစမ်းသပ်မှုများကို Real Event Data ထဲ လုံးဝမမှတ်ပါ။</p>
+      </div>
+      <b>TEST</b>
+    </header>
+
+    <section id="testGate" class="test-gate premium-surface">
+      <h2>Test Member စစ်ဆေးနေသည်</h2>
+      <p id="testStatus">Telegram မှ ဖွင့်ထားကြောင်းနှင့် Test Link မှန်ကန်ကြောင်း စစ်ဆေးနေပါသည်။</p>
+      <a id="testJoin" class="secondary-action hidden" href="#" target="_blank" rel="noopener">Lucky77 Channel Join ရန်</a>
+    </section>
+
+    <section id="testStage" class="test-stage premium-surface hidden">
+      <div class="test-wheel-wrap">
+        <div class="test-pointer">▼</div>
+        <canvas id="testWheel" width="720" height="720"></canvas>
+        <img class="test-wheel-logo" src="/assets/lucky77-logo.png" alt="" />
+      </div>
+      <button id="testSpin" class="spin-action" type="button"><span>TEST SPIN</span></button>
+      <p>အကြိမ်ရေ အကန့်အသတ်မရှိ စမ်းနိုင်သည်။ Real Prize မလျော့ပါ။</p>
+    </section>
+
+    <section class="test-proof-grid">
+      <article><strong>0</strong><span>Real Prize Used</span></article>
+      <article><strong>0</strong><span>Winner History</span></article>
+      <article><strong>0</strong><span>Promo Usage</span></article>
+      <article><strong>0</strong><span>Real Spin Right</span></article>
+    </section>
+  </main>
+
+  <div id="testResult" class="result-modal hidden" role="dialog" aria-modal="true">
+    <button class="result-backdrop" type="button" aria-label="Close"></button>
+    <section class="result-card">
+      <span class="result-kicker">TEST RESULT · NOT SAVED</span>
+      <h2>စမ်းသပ်မှု အောင်မြင်သည်</h2>
+      <strong id="testPrize">Premium Prize</strong>
+      <p>ဒီ Result ကို Winner List၊ Prize Stock၊ Report ထဲ မထည့်ပါ။</p>
+      <button id="testAgain" class="primary-action" type="button">ထပ်စမ်းမည်</button>
+    </section>
+  </div>
+
+  <div id="testToast" class="app-toast hidden" role="status"></div>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script type="module" src="/test.js?v=6.1.0"></script>
+</body>
+</html>

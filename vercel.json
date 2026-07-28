@@ -1,0 +1,19 @@
+{
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/event/:slug", "destination": "/index.html" },
+    { "source": "/test/:slug", "destination": "/test.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/inbox", "destination": "/winners.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    }
+  ]
+}
