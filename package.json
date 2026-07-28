@@ -1,0 +1,15 @@
+{
+  "name": "lucky77-wheel-web",
+  "version": "6.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "check": "node --check script.js && node --check admin.js && node --check winners.js",
+    "test": "npm run check && node tests/frontend-contract.test.cjs && node tests/user-confirmed-flow.test.cjs"
+  },
+  "devDependencies": {
+    "vite": "^7.0.6"
+  }
+}
