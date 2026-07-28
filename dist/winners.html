@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lucky77 Premium Inbox</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script type="module" crossorigin src="/assets/winners-DqdRM932.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/v6.css_v_6.3-Ba-jM3DF.js">
+  <link rel="stylesheet" crossorigin href="/assets/v6.css_v_6-C8-BSbB5.css">
+</head>
+
+<body class="cs-inbox-body">
+  <!-- ================= LOGIN VIEW ================= -->
+  <section id="loginView" class="lw-login-view">
+    <div class="lw-login-bg">
+      <div class="lw-doodle lw-doodle-1">✦</div>
+      <div class="lw-doodle lw-doodle-2">⚡</div>
+      <div class="lw-doodle lw-doodle-3">🎲</div>
+      <div class="lw-doodle lw-doodle-4">♠</div>
+
+      <div class="lw-login-shell">
+        <header class="lw-login-head">
+          <h1>Lucky77 SpinWheel Dashboard</h1>
+          <p>★ Customer Service Only Use ★</p>
+        </header>
+
+        <main class="lw-login-card">
+          <div class="lw-logo-wrap">
+            <div class="lw-logo-mark"><img src="/assets/lucky77-logo-BTnAI4zv.png" alt="Lucky77" /></div>
+          </div>
+
+          <form id="loginForm" class="lw-login-form" autocomplete="off">
+            <div class="lw-field-row">
+              <div class="lw-field-icon">👤</div>
+              <label class="lw-field">
+                <span>Account</span>
+                <input
+                  id="accountInput"
+                  type="text"
+                  value="lucky77autospin"
+                  placeholder="Account"
+                  autocomplete="username"
+                />
+              </label>
+            </div>
+
+            <div class="lw-field-row">
+              <div class="lw-field-icon">🔒</div>
+              <label class="lw-field">
+                <span>Api Pass</span>
+                <div class="lw-pass-wrap">
+                  <input
+                    id="apiPassInput"
+                    type="password"
+                    placeholder="Api Pass"
+                    autocomplete="current-password"
+                  />
+                  <button id="togglePassBtn" type="button" class="lw-eye-btn" aria-label="Show Api Pass">
+                    👁
+                  </button>
+                </div>
+              </label>
+            </div>
+
+            <div id="loginError" class="lw-login-error" hidden></div>
+
+            <button id="loginBtn" type="submit" class="lw-login-btn">
+              <span>🛡</span>
+              <strong>Login</strong>
+              <b>➜</b>
+            </button>
+
+            <div class="lw-login-links">
+              <button id="forgotPassBtn" type="button">Forgot Api Pass?</button>
+              <span>|</span>
+              <button id="contactBotBtn" type="button">✈ Connect Bot</button>
+            </div>
+
+            <div class="lw-login-note">
+              🛡 Admin Telegram verification required
+            </div>
+          </form>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= APP VIEW ================= -->
+  <section id="appView" class="cs-app" hidden>
+    <!-- Sidebar -->
+    <aside class="cs-sidebar">
+      <div class="cs-brand-mark"><img src="/assets/lucky77-logo-BTnAI4zv.png" alt="Lucky77" /></div>
+      <button id="csMenuToggle" class="cs-nav-btn cs-menu-toggle" type="button" title="Open menu">
+        ☰ <span class="cs-nav-label">Menu</span>
+      </button>
+
+      <nav class="cs-nav">
+        <button id="sidebarInboxBtn" class="cs-nav-btn is-active" type="button" title="Inbox">
+          💬 <span class="cs-nav-label">Inbox</span>
+        </button>
+        <button id="openBroadcastNavBtn" class="cs-nav-btn" type="button" title="Broadcast">
+          📣 <span class="cs-nav-label">Broadcast</span>
+        </button>
+        <button id="openSimpleWinnerListBtn" class="cs-nav-btn" type="button" title="Winner List">
+          🏆 <span class="cs-nav-label">Winner List</span>
+        </button>
+        <button id="openTemplatesNavBtn" class="cs-nav-btn" type="button" title="Templates">
+          🧾 <span class="cs-nav-label">Templates</span>
+        </button>
+        <button id="sidebarRefreshBtn" class="cs-nav-btn" type="button" title="Refresh">
+          🔄 <span class="cs-nav-label">Refresh</span>
+        </button>
+        <button id="openInboxSettingsBtn" class="cs-nav-btn" type="button" title="Settings">
+          ⚙ <span class="cs-nav-label">Settings</span>
+        </button>
+      </nav>
+
+      <div class="cs-sidebar-spacer"></div>
+
+      <button id="logoutBtn" class="cs-nav-btn cs-danger-nav" type="button" title="Logout">
+        ⎋ <span class="cs-nav-label">Logout</span>
+      </button>
+    </aside>
+
+    <!-- Main shell -->
+    <main class="cs-shell">
+      <!-- Topbar -->
+      <header class="cs-topbar">
+        <div class="cs-title-group">
+          <h1>Lucky77 Premium Inbox</h1>
+          <p>Player စာများ၊ Media Backup နှင့် Broadcast များကို တစ်နေရာတည်းမှ စီမံရန်</p>
+        </div>
+
+        <div class="cs-top-actions">
+          <div id="statusBadge" class="cs-status-badge">
+            <span></span>
+            <b id="statusText">Online</b>
+          </div>
+
+          <div class="cs-user-chip">
+            <small>Account</small>
+            <b id="accountNameText">lucky77autospin</b>
+          </div>
+
+          <a href="./admin.html" class="cs-top-btn cs-back-admin" style="text-decoration:none;display:inline-flex;align-items:center;">Admin Dashboard</a>
+
+          <button id="refreshBtn" type="button" class="cs-top-btn">
+            ပြန်တင်မည်
+          </button>
+
+          <button id="forceRebuildBtn" type="button" class="cs-top-btn">
+            ပြန်တည်ဆောက်မည်
+          </button>
+
+          <button id="broadcastBtn" type="button" class="cs-primary-btn">
+            ပို့မည်
+          </button>
+
+          <button id="exportBtn" type="button" class="cs-top-btn">
+            ထုတ်ယူမည်
+          </button>
+
+          <button id="backupOwnerBtn" type="button" class="cs-top-btn">
+            Backup လုပ်မည်
+          </button>
+        </div>
+      </header>
+
+      <!-- Main grid -->
+      <section class="cs-grid">
+        <!-- Left list panel -->
+        <aside class="cs-list-panel">
+          <div class="cs-list-head">
+            <div>
+              <h2>Inbox</h2>
+              <p id="cacheInfoText">Cache အသင့်ဖြစ်သည်</p>
+            </div>
+            <strong id="listCount">0</strong>
+          </div>
+
+          <div class="cs-stats">
+            <div>
+              <span>စုစုပေါင်း</span>
+              <b id="statTotal">0</b>
+            </div>
+            <div>
+              <span>မဖတ်ရသေး</span>
+              <b id="statUnread">0</b>
+            </div>
+            <div>
+              <span>စောင့်ဆိုင်း</span>
+              <b id="statPending">0</b>
+            </div>
+            <div>
+              <span>ပြီးဆုံး</span>
+              <b id="statDone">0</b>
+            </div>
+          </div>
+
+          <div class="cs-tabs">
+            <button class="cs-tab is-active" type="button" data-filter="all">အားလုံး</button>
+            <button class="cs-tab" type="button" data-filter="unread">မဖတ်ရသေး</button>
+            <button class="cs-tab" type="button" data-filter="pending">စောင့်ဆိုင်း</button>
+            <button class="cs-tab" type="button" data-filter="done">ပြီးဆုံး</button>
+          </div>
+
+          <div class="cs-search-row">
+            <input id="searchInput" type="search" placeholder="Search name, username, user id..." />
+          </div>
+
+          <div id="winnerList" class="cs-winner-list">
+            <div class="cs-empty">Loading winners...</div>
+          </div>
+
+          <div class="cs-list-footer">
+            <button id="loadMoreBtn" type="button" class="cs-small-btn">
+              ထပ်မံဖော်ပြမည်
+            </button>
+          </div>
+        </aside>
+
+        <!-- Chat panel -->
+        <section class="cs-chat-panel">
+          <div id="emptyChat" class="cs-chat-empty">
+            <div>
+              <span>💬</span>
+              <h2>Select a Winner</h2>
+              <p>စာပြန်ရန်၊ Account တောင်းရန်၊ Media သို့မဟုတ် အသိပေးစာပို့ရန် Player Conversation ကို ရွေးပါ။</p>
+            </div>
+          </div>
+
+          <div id="chatActive" class="cs-chat-active" hidden>
+            <header class="cs-chat-header">
+              <div class="cs-chat-avatar" id="chatAvatar">77</div>
+
+              <div class="cs-chat-person">
+                <h2 id="chatName">Winner</h2>
+                <p id="chatSub">User details</p>
+              </div>
+
+              <div class="cs-chat-actions">
+                <button id="quickAccountRequestBtn" type="button" class="cs-top-btn">
+                  Account တောင်းမည်
+                </button>
+                <button id="sendNoticeBtn" type="button" class="cs-primary-btn">
+                  အသိပေးစာပို့မည်
+                </button>
+                <button id="markDoneBtn" type="button" class="cs-top-btn">
+                  ပြီးဆုံးအဖြစ် မှတ်မည်
+                </button>
+              </div>
+            </header>
+
+            <div id="chatMessages" class="cs-chat-messages">
+              <div class="cs-empty">No messages yet.</div>
+            </div>
+
+            <footer class="cs-composer">
+              <textarea
+                id="replyText"
+                placeholder="Type reply message... Ctrl/Command + Enter to send"
+              ></textarea>
+
+              <div id="selectedFilePreview" class="cs-file-preview" hidden>
+                <span id="selectedFileName"></span>
+                <button id="clearSelectedFileBtn" type="button">×</button>
+              </div>
+
+              <div class="cs-composer-actions">
+                <label class="cs-attach-btn" title="Attach file">
+                  📎
+                  <input id="mediaInput" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" hidden />
+                </label>
+
+                <button id="sendReplyBtn" type="button" class="cs-send-btn">
+                  Send
+                </button>
+              </div>
+            </footer>
+          </div>
+        </section>
+
+        <!-- Detail panel -->
+        <aside class="cs-detail-panel">
+          <div class="cs-detail-card">
+            <h3>Winner Detail</h3>
+
+            <div class="cs-detail-row">
+              <span>Name</span>
+              <b id="detailName">-</b>
+            </div>
+
+            <div class="cs-detail-row">
+              <span>Username</span>
+              <b id="detailUsername">-</b>
+            </div>
+
+            <div class="cs-detail-row">
+              <span>User ID</span>
+              <b id="detailUserId">-</b>
+            </div>
+
+            <div class="cs-detail-row">
+              <span>Prize</span>
+              <b id="detailPrize">-</b>
+            </div>
+
+            <div class="cs-detail-row">
+              <span>Turn</span>
+              <b id="detailTurn">-</b>
+            </div>
+
+            <div class="cs-detail-row">
+              <span>Status</span>
+              <b id="detailStatus">-</b>
+            </div>
+
+            <label class="cs-check-row">
+              <input id="detailDoneCheckbox" type="checkbox" />
+              <span>Done</span>
+            </label>
+          </div>
+
+          <div class="cs-detail-card">
+            <h3>CS Note</h3>
+            <textarea id="detailNote" placeholder="Internal note..."></textarea>
+            <button id="saveNoteBtn" type="button" class="cs-primary-btn">
+              Save Note
+            </button>
+          </div>
+
+          <div class="cs-detail-card">
+            <h3>Quick Notice</h3>
+            <p class="cs-muted">
+              Send a clean prize/account notice to selected winner.
+            </p>
+            <button id="assignBtn" type="button" class="cs-top-btn">
+              Assign to me
+            </button>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </section>
+
+  <!-- ================= BROADCAST MODAL ================= -->
+  <div id="broadcastModal" class="cs-modal" hidden>
+    <div class="cs-modal-backdrop" data-close-modal="broadcast"></div>
+
+    <section class="cs-modal-card cs-broadcast-card">
+      <header class="cs-modal-header">
+        <div>
+          <h2>Broadcast Center</h2>
+          <p>Template save, target filter, send now, schedule later</p>
+        </div>
+        <button id="closeBroadcastBtn" type="button" class="cs-modal-close">×</button>
+      </header>
+
+      <div class="cs-broadcast-grid">
+        <div class="cs-broadcast-form">
+          <label class="cs-form-field">
+            <span>Campaign Name</span>
+            <input id="broadcastName" type="text" value="July Winner Notice" />
+          </label>
+
+          <label class="cs-form-field">
+            <span>Template</span>
+            <select id="broadcastTemplateSelect">
+              <option value="">No template / Custom message</option>
+            </select>
+          </label>
+
+          <label class="cs-form-field">
+            <span>Target</span>
+            <select id="broadcastTarget">
+              <option value="selected">Selected Customer Only</option>
+              <option value="all_members">All Saved Members</option>
+              <option value="current_event">Current Event Members</option>
+              <option value="pending">Pending / Not Done</option>
+              <option value="unread">Unread Winners</option>
+              <option value="done">Done Winners</option>
+            </select>
+          </label>
+
+          <label class="cs-form-field">
+            <span>Message</span>
+            <textarea id="broadcastText" placeholder="Hello {{display}}, congratulations! Prize: {{prize}}"></textarea>
+          </label>
+
+          <label class="cs-form-field">
+            <span>Image / File</span>
+            <input id="broadcastFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" />
+          </label>
+
+          <label class="cs-form-field">
+            <span>Caption for image</span>
+            <textarea id="broadcastCaption" placeholder="Caption for uploaded media..."></textarea>
+          </label>
+
+          <label class="cs-schedule-row">
+            <input id="broadcastScheduleToggle" type="checkbox" />
+            <span>Schedule · Asia/Yangon</span>
+            <input id="broadcastScheduleAt" type="datetime-local" />
+          </label>
+
+          <div class="cs-broadcast-actions">
+            <button id="previewBroadcastBtn" type="button" class="cs-top-btn">
+              Preview Count
+            </button>
+            <button id="saveTemplateBtn" type="button" class="cs-top-btn">
+              Save Template
+            </button>
+            <button id="scheduleBroadcastBtn" type="button" class="cs-top-btn">
+              Schedule
+            </button>
+            <button id="sendBroadcastBtn" type="button" class="cs-primary-btn">
+              Send Now
+            </button>
+          </div>
+        </div>
+
+        <aside class="cs-broadcast-side">
+          <div class="cs-preview-card">
+            <h3>Preview</h3>
+            <p id="broadcastPreviewTarget">Target: 0</p>
+            <div id="broadcastPreviewList" class="cs-preview-list">
+              <div class="cs-empty">No target preview yet.</div>
+            </div>
+          </div>
+
+          <div class="cs-preview-card">
+            <div class="cs-card-head">
+              <h3>History</h3>
+              <button id="refreshCampaignsBtn" type="button">Refresh</button>
+            </div>
+            <div id="campaignList" class="cs-campaign-list">
+              <div class="cs-empty">No campaigns yet.</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= INBOX SETTINGS MODAL ================= -->
+  <div id="inboxSettingsModal" class="cs-modal" hidden>
+    <div class="cs-modal-backdrop" data-close-modal="inbox-settings"></div>
+
+    <section class="cs-modal-card cs-settings-card">
+      <header class="cs-modal-header">
+        <div>
+          <h2>Inbox & Post Settings</h2>
+          <p>Notification sound and Telegram register/post text are kept separate here.</p>
+        </div>
+        <button id="closeInboxSettingsBtn" type="button" class="cs-modal-close">×</button>
+      </header>
+
+      <div class="cs-settings-grid">
+        <section class="cs-preview-card">
+          <h3>New Message Sound</h3>
+
+          <label class="cs-check-row">
+            <input id="notificationSoundEnabled" type="checkbox" checked />
+            <span>Enable notification sound</span>
+          </label>
+
+          <label class="cs-form-field">
+            <span>Built-in Sound</span>
+            <select id="notificationSoundType">
+              <option value="double">Lucky Double</option>
+              <option value="soft">Soft Bell</option>
+              <option value="single">Single Beep</option>
+              <option value="custom">Custom Upload</option>
+            </select>
+          </label>
+
+          <label class="cs-form-field">
+            <span>Volume</span>
+            <input id="notificationVolume" type="range" min="0.05" max="1" step="0.05" value="0.35" />
+          </label>
+
+          <label class="cs-form-field">
+            <span>Custom MP3 / WAV (max 1 MB)</span>
+            <input id="notificationSoundFile" type="file" accept="audio/*,.mp3,.wav,.ogg" />
+          </label>
+
+          <div class="cs-broadcast-actions">
+            <button id="testNotificationSoundBtn" type="button" class="cs-top-btn">Test Sound</button>
+            <button id="saveNotificationSettingsBtn" type="button" class="cs-primary-btn">Save Sound</button>
+          </div>
+        </section>
+
+        <section class="cs-preview-card">
+          <h3>Register Button & Post Settings</h3>
+
+          <label class="cs-form-field">
+            <span>Join Caption</span>
+            <textarea id="settingJoinCaption" placeholder="Join message caption..."></textarea>
+          </label>
+          <label class="cs-form-field">
+            <span>Join Button</span>
+            <input id="settingJoinButton" type="text" placeholder="Start Bot" />
+          </label>
+          <label class="cs-form-field">
+            <span>Register Caption</span>
+            <textarea id="settingRegisterCaption" placeholder="Registration message..."></textarea>
+          </label>
+          <label class="cs-form-field">
+            <span>Register Button</span>
+            <input id="settingRegisterButton" type="text" placeholder="Register" />
+          </label>
+          <label class="cs-form-field">
+            <span>Channel Post Caption</span>
+            <textarea id="settingChannelCaption" placeholder="Channel post caption..."></textarea>
+          </label>
+          <label class="cs-form-field">
+            <span>Channel Post Button</span>
+            <input id="settingChannelButton" type="text" placeholder="Join Now" />
+          </label>
+
+          <div class="cs-broadcast-actions">
+            <button id="reloadPostSettingsBtn" type="button" class="cs-top-btn">Reload</button>
+            <button id="savePostSettingsBtn" type="button" class="cs-primary-btn">Save Post Settings</button>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+<!-- ================= SIMPLE WINNER LIST MODAL ================= -->
+<div id="simpleWinnerModal" class="cs-modal" hidden>
+  <div class="cs-modal-backdrop" data-close-modal="simple-winner"></div>
+
+  <section class="cs-modal-card cs-simple-winner-card">
+    <header class="cs-modal-header">
+      <div>
+        <h2>Winner List</h2>
+        <p>Name • Username • User ID • Prize • Done / Undone</p>
+      </div>
+      <button id="closeSimpleWinnerBtn" type="button" class="cs-modal-close">×</button>
+    </header>
+
+    <div class="cs-simple-winner-toolbar">
+      <input
+        id="simpleWinnerSearch"
+        type="search"
+        placeholder="Search name, username, user id, prize..."
+      />
+
+      <select id="simpleWinnerStatusFilter">
+        <option value="all">All</option>
+        <option value="done">Done</option>
+        <option value="undone">Undone</option>
+      </select>
+
+      <button id="simpleWinnerRefreshBtn" type="button" class="cs-top-btn">
+        Refresh
+      </button>
+    </div>
+
+    <div class="cs-simple-winner-head">
+      <span>Name</span>
+      <span>Username</span>
+      <span>User ID</span>
+      <span>Prize</span>
+      <span>Status</span>
+    </div>
+
+    <div id="simpleWinnerList" class="cs-simple-winner-list">
+      <div class="cs-empty">No winners loaded.</div>
+    </div>
+  </section>
+</div>
+
+  <!-- ================= REPLY MODAL / GENERIC MODAL PLACEHOLDER ================= -->
+  <div id="replyModal" class="cs-modal" hidden>
+    <div class="cs-modal-backdrop" data-close-modal="reply"></div>
+    <section class="cs-modal-card cs-mini-modal">
+      <header class="cs-modal-header">
+        <h2>Message</h2>
+        <button id="closeReplyModalBtn" type="button" class="cs-modal-close">×</button>
+      </header>
+      <div id="replyModalBody" class="cs-mini-modal-body"></div>
+    </section>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="cs-toast" hidden></div>
+
+</body>
+</html>
