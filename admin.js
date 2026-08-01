@@ -196,6 +196,7 @@ function switchSection(section) {
     posts: "Channel Posts",
     history: "Winner History",
     reports: "Reports & Claims",
+    command: "Bot Command Box",
     system: "System Health",
   };
   $("adminPageTitle").textContent = titles[section] || "Lucky77 Control";
@@ -618,6 +619,123 @@ async function memberAction(button) {
   }
 }
 
+
+function commandRoleFor(text) {
+  const raw = safe(text).toLowerCase();
+  if (/token|secret|database|restore|mass delete|delete all|owner/i.test(raw)) return "owner";
+  if (/publish|send|post|broadcast|invite|register.*send|close|open|lock|start/i.test(raw)) return "confirm";
+  return "read";
+}
+
+function appendCommandMessage(kind, html) {
+  const log = $("commandChatLog");
+  if (!log) return;
+  const node = document.createElement("article");
+  node.className = `command-message is-${kind}`;
+  node.innerHTML = html;
+  log.appendChild(node);
+  log.scrollTop = log.scrollHeight;
+}
+
+function renderCommandWelcome() {
+  const log = $("commandChatLog");
+  if (!log || log.dataset.ready) return;
+  log.dataset.ready = "1";
+  appendCommandMessage("system", `
+    <strong>Lucky77 Safe Command Box</strong>
+    <p>AI မပါသေးသော Non-AI Base ဖြစ်သည်။ Dashboard Login ဝင်ထားသော Admin command များသာ Preview/Confirm flow သုံးနိုင်သည်။ Member-facing Telegram Bot မှ Admin command မလုပ်နိုင်ပါ။</p>
+  `);
+}
+
+function commandMockReply(text, file) {
+  const role = commandRoleFor(text);
+  const members = state.overview?.counts || {};
+  if (/regstatus|register|member/i.test(text)) {
+    return {
+      role,
+      title: "Registration status checked",
+      body: `လက်ရှိ Event Registered ${number(members.registered)} · Live ${number(members.live_registered)} · Spin ပြီး ${number(members.spun)} · Account pending ${number(members.pending_account)} ဖြစ်သည်။`,
+      action: role === "confirm" ? "Registration invite preview ready. Confirm လုပ်မှ Telegram ပို့မည်။" : "Read-only status only.",
+    };
+  }
+  if (/health|error|system/i.test(text)) {
+    const status = state.health?.status || "partial";
+    return {
+      role: "read",
+      title: "System diagnosis",
+      body: `Health status: ${esc(status)}. Bot/Webhook/Supabase/Redis/Storage တစ်ခုချင်းစီကို System page တွင်စစ်ပါ။ Secret values မပြပါ။`,
+      action: "Retry/Recheck action only; destructive action မလုပ်ပါ။",
+    };
+  }
+  if (/post|channel|caption|button|link|broadcast/i.test(text)) {
+    return {
+      role: "confirm",
+      title: "Channel post draft ready",
+      body: `Caption draft + Spin Now button ကို Preview ပြထားသည်${file ? ` · attachment: ${esc(file.name)}` : ""}. Confirm & Publish မနှိပ်မချင်း main channel သို့မပို့ပါ။`,
+      action: "Preview → Confirm & Publish → Telegram message id + audit log.",
+      buttons: ["Spin Now", "Join Channel"],
+    };
+  }
+  return {
+    role,
+    title: "Command parsed",
+    body: `ဒီ request ကို safe preview အဖြစ်ဖတ်ပြီးထားသည်: “${esc(text)}”${file ? ` · attachment: ${esc(file.name)}` : ""}`,
+    action: role === "read" ? "No write action required." : "Admin confirmation required before any write action.",
+  };
+}
+
+function showPendingAction(reply) {
+  const card = $("pendingActionCard");
+  if (!card) return;
+  card.classList.toggle("hidden", reply.role !== "confirm");
+  if (reply.role !== "confirm") return;
+  $("pendingActionTitle").textContent = reply.title;
+  $("pendingActionCopy").textContent = reply.body;
+  $("pendingActionButtons").innerHTML = (reply.buttons || ["Confirm"])
+    .map((item) => `<span>${esc(item)}</span>`).join("");
+}
+
+function submitCommandBox(event) {
+  event.preventDefault();
+  const input = $("commandInput");
+  const file = $("commandFile")?.files?.[0] || null;
+  const text = input.value.trim();
+  if (!text && !file) return toast("Command သို့ attachment ထည့်ပါ", "error");
+  appendCommandMessage("admin", `<strong>Admin</strong><p>${esc(text || "[Attachment only]")}</p>${file ? `<small>Attached: ${esc(file.name)}</small>` : ""}`);
+  const reply = commandMockReply(text, file);
+  const badge = reply.role === "read" ? "READ" : reply.role === "confirm" ? "CONFIRM REQUIRED" : "OWNER ONLY";
+  appendCommandMessage("bot", `<strong>${esc(reply.title)} <em>${badge}</em></strong><p>${reply.body}</p><small>${esc(reply.action)}</small>`);
+  showPendingAction(reply);
+  input.value = "";
+  $("commandFile").value = "";
+  $("commandAttachmentPreview").classList.add("hidden");
+}
+
+function bindCommandBox() {
+  renderCommandWelcome();
+  qa(".command-template").forEach((button) => button.addEventListener("click", () => {
+    $("commandInput").value = button.dataset.template || "";
+    $("commandInput").focus();
+  }));
+  $("commandForm")?.addEventListener("submit", submitCommandBox);
+  $("commandFile")?.addEventListener("change", () => {
+    const file = $("commandFile").files?.[0];
+    const node = $("commandAttachmentPreview");
+    if (!file) return node.classList.add("hidden");
+    node.textContent = `${file.name} · ${Math.ceil(file.size / 1024)} KB staged for preview`;
+    node.classList.remove("hidden");
+  });
+  $("confirmMockAction")?.addEventListener("click", () => {
+    appendCommandMessage("system", `<strong>Mock publish blocked</strong><p>Production တွင် Backend confirmation endpoint နှင့် audit log ချိတ်ပြီးမှ Telegram သို့ပို့မည်။ ယခု Non-AI Base preview တွင် real post မပို့ပါ။</p>`);
+    $("pendingActionCard").classList.add("hidden");
+    toast("Preview confirmed · real send disabled in base build", "success");
+  });
+  $("cancelMockAction")?.addEventListener("click", () => {
+    $("pendingActionCard").classList.add("hidden");
+    appendCommandMessage("system", `<strong>Action cancelled</strong><p>Pending channel/broadcast action ကိုဖျက်လိုက်သည်။</p>`);
+  });
+}
+
 function bind() {
   $("adminLoginForm").addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -687,6 +805,7 @@ function bind() {
     }
   });
   $("eventTheme").addEventListener("change", () => applyTheme({ ...state.event, theme: $("eventTheme").value }));
+  bindCommandBox();
 }
 
 async function boot() {
