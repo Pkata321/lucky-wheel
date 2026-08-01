@@ -1,6 +1,6 @@
 {
   "name": "lucky77-wheel-web",
-  "version": "6.3.0",
+  "version": "6.4.0-player-ui-refine",
   "private": true,
   "type": "module",
   "scripts": {
