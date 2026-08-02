@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#eaf3ff" />
+  <title>Lucky77 · Premium Wheel</title>
+  <link rel="stylesheet" href="./styles.css?v=6.4.0-non-ai-base" />
+  <link rel="stylesheet" href="./v6.css?v=6.4.0-non-ai-base" />
+</head>
+<body class="player-body" data-theme="sky-white">
+  <div class="player-shell">
+    <header class="player-topbar premium-surface">
+      <a class="brand-lockup" href="./"><span class="brand-seal"><img src="./assets/lucky77-logo.png" alt="Lucky77" /></span><span><strong>Lucky77</strong><small>Premium Wheel</small></span></a>
+      <div id="liveBadge" class="event-pill is-waiting"><i></i><span>EVENT WAITING</span></div>
+      <div class="topbar-tools">
+        <button id="soundToggle" class="round-btn" type="button" aria-label="Toggle sound">♪</button>
+        <div class="member-chip"><span id="memberAvatar">77</span><div><strong id="memberName">Lucky Member</strong><small id="memberStatus">Connect Telegram</small></div></div>
+      </div>
+    </header>
+
+    <main class="player-grid">
+      <aside class="event-column">
+        <section class="event-card premium-surface">
+          <div class="section-kicker">Asia/Yangon event time</div>
+          <h1 id="eventTitle">Lucky77 Grand Spin</h1>
+          <p id="eventSubtitle">One member · One code · One premium spin</p>
+          <div class="event-time-row"><span id="eventStartText">Start: not configured</span><span id="eventEndText">End: not configured</span></div>
+          <div id="countdownLabel" class="countdown-label">Event starts in</div>
+          <div class="countdown" id="countdown">
+            <div><strong id="countDays">00</strong><span>Days</span></div>
+            <div><strong id="countHours">00</strong><span>Hrs</span></div>
+            <div><strong id="countMinutes">00</strong><span>Mins</span></div>
+            <div><strong id="countSeconds">00</strong><span>Secs</span></div>
+          </div>
+          <div id="phaseNotice" class="phase-notice">Registration is open.</div>
+        </section>
+
+        <section id="accessCard" class="access-card premium-surface">
+          <div class="access-head"><span class="access-icon">✓</span><div><small>Your access</small><strong id="accessTitle">Verify to enter</strong></div></div>
+
+          <div id="browserGate" class="access-step hidden">
+            <p>လုံခြုံစွာ အတည်ပြုနိုင်ရန် Lucky77 Telegram Mini App အတွင်းမှ ဖွင့်ပေးပါ။</p>
+            <a id="openTelegramBtn" class="primary-action" href="#" target="_blank" rel="noopener">Telegram တွင် ဖွင့်မည်</a>
+          </div>
+          <div id="joinGate" class="access-step hidden">
+            <p>Official Channel ကို အရင် Join ပြီးနောက် ပြန်လာ၍ Member ဖြစ်ကြောင်း အတည်ပြုပါ။</p>
+            <a id="joinChannelBtn" class="secondary-action" href="#" target="_blank" rel="noopener">Lucky77 Channel ကို Join မည်</a>
+            <button id="verifyBtn" class="primary-action" type="button">Member အတည်ပြုမည်</button>
+          </div>
+          <div id="registerGate" class="access-step hidden">
+            <p id="registerCopy">လစဉ် Event အတွက် Register လုပ်ပါ။ Event စသည့်အချိန်တွင် သင့် Promo Code ကို သီးသန့်ပို့ပေးပါမည်။</p>
+            <button id="registerBtn" class="primary-action" type="button">လက်ရှိ Event ကို Register လုပ်မည်</button>
+            <small class="security-note">လစဉ် Register လုပ်ရန် · Channel Member ဖြစ်ရန်လိုအပ်သည်</small>
+          </div>
+          <form id="accountGate" class="access-step hidden">
+            <p>ဂိမ်းအကောင့် Name မပေးရသေးသည့်အတွက် ဂိမ်းအကောင့်အရင်ဖောက်ပေးရန်</p>
+            <label class="premium-field"><span>Promo Code</span><input id="accountPromoInput" type="text" maxlength="120" autocomplete="one-time-code" /></label>
+            <div class="account-help-actions">
+              <a id="selfSignupBtn" class="secondary-action" href="#" target="_blank" rel="noopener">ကိုယ်တိုင်အကောင့်ဖောက်ရန်</a>
+              <a id="contactCsBtn" class="secondary-action" href="#" target="_blank" rel="noopener">CS သို့ဆက်သွယ်ရန်</a>
+            </div>
+            <label class="premium-field"><span>ဂိမ်းအကောင့် Name</span><input id="accountNameInput" type="text" maxlength="120" autocomplete="name" /></label>
+            <label id="accountPhoneField" class="premium-field"><span>ဖုန်းနံပါတ် (မဖြစ်မနေမဟုတ်ပါ)</span><input id="accountPhoneInput" type="tel" maxlength="40" autocomplete="tel" /></label>
+            <button id="accountSaveBtn" class="primary-action" type="submit">Confirm</button>
+          </form>
+          <div id="readyGate" class="access-step hidden">
+            <div class="verified-line"><i>✓</i><span>Channel အတည်ပြုပြီးပါပြီ</span></div>
+            <div class="verified-line"><i>✓</i><span>Event Register အတည်ပြုပြီးပါပြီ</span></div>
+            <div class="verified-line"><i>✓</i><span>Verified Game Account</span></div>
+            <label id="spinCodeField" class="premium-field"><span>Promo Code</span><input id="spinCodeInput" type="text" autocomplete="one-time-code" placeholder="L77-••••-••••" /></label>
+            <p id="readyText">Event စတင်ချိန်ကို စောင့်ပေးပါ။</p>
+          </div>
+        </section>
+
+        <section class="metric-stack">
+          <article class="metric-card premium-surface"><span class="metric-icon">♙</span><div><strong id="metricMembers">0</strong><small>Register လုပ်ထားသူ</small></div></article>
+          <article class="metric-card premium-surface"><span class="metric-icon">♛</span><div><strong id="metricWinners">0</strong><small>ဆုရရှိသူ</small></div></article>
+          <article class="metric-card premium-surface"><span class="metric-icon">◇</span><div><strong id="metricPrizes">0</strong><small>ကျန်ရှိဆု</small></div></article>
+        </section>
+      </aside>
+
+      <section class="wheel-stage premium-surface" aria-label="Lucky77 prize wheel">
+        <div class="wheel-kicker"><span>Live prize wheel</span><b id="wheelEventId">EVENT</b></div>
+        <div class="wheel-halo"></div>
+        <div class="wheel-pointer" aria-hidden="true"><span></span></div>
+        <div class="wheel-frame"><canvas id="wheelCanvas" width="720" height="720"></canvas></div>
+        <div class="wheel-hub"><img id="wheelLogo" src="./assets/lucky77-logo.png" alt="Lucky77" /></div>
+        <button id="spinBtn" class="spin-action" type="button" disabled><span>SPIN</span></button>
+        <p id="spinHint" class="spin-hint">အတည်ပြုခြင်းနှင့် Register ပြီးပါက Spin လှည့်နိုင်ပါမည်</p>
+      </section>
+
+      <aside class="insight-column">
+        <section class="prize-card premium-surface">
+          <div class="section-head"><div><span class="section-kicker">သတ်မှတ်ထားသောဆုများ</span><h2>Prize Pool</h2></div><span class="mini-live">LIVE</span></div>
+          <div id="prizePool" class="prize-list"></div>
+        </section>
+        <section class="recent-card premium-surface">
+          <div class="section-head"><div><span class="section-kicker">နောက်ဆုံးကြေညာချက်</span><h2>Recent Winners</h2></div></div>
+          <div id="recentWinners" class="recent-list"></div>
+        </section>
+        <section class="announcement-card premium-surface"><span class="announcement-mark">77</span><div><span class="section-kicker">Event အသိပေးချက်</span><p id="announcementText"></p></div></section>
+        <a id="playerSupportLink" class="support-card premium-surface" href="#" target="_blank" rel="noopener"><span>?</span><div><strong>Lucky77 Customer Service</strong><small>အကောင့်နှင့် ဆုကိစ္စများအတွက် အကူအညီတောင်းရန်</small></div></a>
+      </aside>
+    </main>
+  </div>
+
+  <div id="resultModal" class="result-modal hidden" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+    <div class="result-backdrop"></div>
+    <div class="result-card premium-surface">
+      <div id="confettiLayer" class="confetti-layer"></div>
+      <div class="result-seal">77</div><span id="resultSaveLabel" class="section-kicker">Lucky77 Result သိမ်းပြီးပါပြီ</span>
+      <h2 id="resultTitle">Congratulations</h2><p id="resultName">Lucky Member</p><strong id="resultPrize">30,000 Ks</strong>
+      <p id="resultCopy" class="result-copy">Promo Code ကို အသုံးပြုပြီးပါပြီ။ ဆုထုတ်ယူရန် Lucky77 Customer Service သို့ ဆက်သွယ်ပါ။</p>
+      <a id="resultSupportLink" class="result-cs" href="#" target="_blank" rel="noopener">Customer Service သို့ ဆက်သွယ်မည်</a>
+      <button id="resultCloseBtn" class="primary-action" type="button">ပိတ်မည်</button>
+    </div>
+  </div>
+  <div id="toast" class="app-toast hidden" role="status"></div>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script type="module" src="./script.js?v=6.4.0-non-ai-base"></script>
+</body>
+</html>
