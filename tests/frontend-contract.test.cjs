@@ -93,4 +93,4 @@ for (const route of [
 
 assert.ok(fs.statSync(path.join(root, "assets", "lucky77-logo.png")).size > 1000);
 
-console.log("Lucky77 v6.4.2 frontend contracts: PASS");
+console.log("Lucky77 v6.4.4 frontend contracts: PASS");
