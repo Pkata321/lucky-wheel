@@ -442,7 +442,7 @@ function renderSystem() {
   const supabase = health.supabase || {};
   $("systemHealthCards").innerHTML = [
     ["Backend", health.ok ? "Online" : "Offline"],
-    ["Version", health.version || "6.4.4"],
+    ["Version", health.version || "6.4.5"],
     ["Redis slot", redis.slot || health.redis_slot || "-"],
     ["Supabase", supabase.ready ? "Ready" : supabase.configured ? "Configured" : "Not configured"],
     ["Timezone", "Asia/Yangon"],

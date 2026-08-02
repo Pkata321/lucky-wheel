@@ -31,6 +31,7 @@ const state = {
   rotation: 0,
   spinning: false,
   spinRequestKey: "",
+  localPromoConfirmedCode: "",
   accessToken: PLAYER.ACCESS_TOKEN,
   testMode: PLAYER.TEST_MODE,
   sound: localStorage.getItem(PLAYER.SOUND_KEY) !== "off",
@@ -198,9 +199,36 @@ function revealGate(id) {
   ["browserGate", "joinGate", "registerGate", "accountGate", "readyGate"].forEach((gate) => $(gate).classList.toggle("hidden", gate !== id));
 }
 
+
+function setPromoConfirmUi(enteredCode, confirmed) {
+  const btn = $("promoConfirmBtn");
+  const msg = $("promoConfirmMsg");
+  const line = $("promoReadyLine");
+  if (!btn || !msg) return;
+  const hasCode = enteredCode.length > 0;
+  btn.disabled = !hasCode || confirmed || state.spinning || state.spun;
+  btn.textContent = confirmed ? "Promo Code အတည်ပြုပြီး" : "Promo Code အတည်ပြုမည်";
+  msg.textContent = !hasCode
+    ? "Bot မှပို့ထားသော Promo Code ကိုထည့်ပါ။"
+    : confirmed
+      ? "Code အတည်ပြုပြီးပါပြီ။ အခု Spin လှည့်နိုင်ပါသည်။"
+      : "Code ထည့်ပြီး အတည်ပြုမည်ကိုနှိပ်ပါ။";
+  if (line) line.textContent = confirmed ? "Promo Code အတည်ပြုပြီးပါပြီ" : "Promo Code အတည်ပြုရန်လိုအပ်သည်";
+}
+
+function promoRequired() {
+  return state.testMode || state.event?.require_unique_code !== false;
+}
+
+function promoConfirmedForCurrentInput(enteredCode) {
+  if (!promoRequired()) return true;
+  return enteredCode.length > 0 && state.localPromoConfirmedCode === enteredCode;
+}
+
 function renderAccess() {
   const spinBtn = $("spinBtn");
   const enteredCode = normalizePromoCode($("spinCodeInput").value);
+  const promoConfirmed = promoConfirmedForCurrentInput(enteredCode);
 
   if (!state.user) {
     $("accessTitle").textContent = "Telegram မှ ဖွင့်ပါ";
@@ -222,11 +250,12 @@ function renderAccess() {
     $("accessTitle").textContent = "Test Promo Code";
     revealGate("readyGate");
     $("spinCodeField").classList.remove("hidden");
-    $("readyText").textContent = "Unlimited Test Spin · Promo Code တစ်ခုခုထည့်ပြီး အကြိမ်ကြိမ် စမ်းလှည့်နိုင်သည်။ Real Data မသိမ်းပါ။";
-    spinBtn.disabled = state.spinning || enteredCode.length === 0;
-    $("spinHint").textContent = enteredCode.length
+    setPromoConfirmUi(enteredCode, promoConfirmed);
+    $("readyText").textContent = "Unlimited Test Spin · Promo Code ထည့်ပြီး အတည်ပြုပါ။ Result ကို Real Data ထဲမသိမ်းပါ။";
+    spinBtn.disabled = state.spinning || !promoConfirmed;
+    $("spinHint").textContent = promoConfirmed
       ? "Test Spin လှည့်ရန် အသင့်ဖြစ်သည် · Result မသိမ်းပါ"
-      : "စမ်းသပ်ရန် Promo Code တစ်ခုခုထည့်ပါ";
+      : enteredCode.length ? "Promo Code အတည်ပြုမည်ကိုနှိပ်ပါ" : "စမ်းသပ်ရန် Promo Code တစ်ခုခုထည့်ပါ";
     return;
   }
 
@@ -276,12 +305,13 @@ function renderAccess() {
         : "Promo Code ကို ထည့်ပြီး Spin လှည့်ပါ။"
       : "Register အတည်ပြုပြီးပါပြီ။ Event စတင်ချိန်ကို စောင့်ပေးပါ။";
 
-  const codeReady = !state.event?.require_unique_code || enteredCode.length > 0;
+  setPromoConfirmUi(enteredCode, promoConfirmed);
+  const codeReady = promoConfirmed;
   spinBtn.disabled = state.spun || !state.event?.event_live || state.spinning || !codeReady;
   $("spinHint").textContent = state.spun
     ? "ဒီ Event အတွက် Spin လှည့်ပြီးပါပြီ"
     : state.event?.event_live
-      ? codeReady ? "Spin လှည့်ရန် အသင့်ဖြစ်သည်" : "Promo Code ထည့်ပါ"
+      ? codeReady ? "Spin လှည့်ရန် အသင့်ဖြစ်သည်" : enteredCode.length ? "Promo Code အတည်ပြုမည်ကိုနှိပ်ပါ" : "Promo Code ထည့်ပါ"
       : "Event Live ဖြစ်သည့်အချိန် ပြန်လှည့်ပါ";
 }
 
@@ -431,6 +461,10 @@ async function verifyPlayer() {
 }
 
 async function spin() {
+  const code = normalizePromoCode($("spinCodeInput").value);
+  if (promoRequired() && !promoConfirmedForCurrentInput(code)) {
+    return toast(code ? "Promo Code အတည်ပြုမည်ကို အရင်နှိပ်ပါ။" : "Promo Code ထည့်ပေးပါ။", "error");
+  }
   if (state.spinning || $("spinBtn").disabled) return;
   state.spinning = true; $("spinBtn").disabled = true; $("spinBtn").classList.add("is-spinning"); $("spinBtn").querySelector("span").textContent = "SPINNING";
   try {
@@ -493,6 +527,14 @@ function bind() {
   $("spinCodeInput").addEventListener("input", (event) => {
     const normalized = normalizePromoCode(event.target.value);
     if (event.target.value !== normalized) event.target.value = normalized;
+    if (state.localPromoConfirmedCode && state.localPromoConfirmedCode !== normalized) state.localPromoConfirmedCode = "";
+    renderAccess();
+  });
+  $("promoConfirmBtn")?.addEventListener("click", () => {
+    const code = normalizePromoCode($("spinCodeInput").value);
+    if (!code) return toast("Promo Code ထည့်ပေးပါ။", "error");
+    state.localPromoConfirmedCode = code;
+    toast("Promo Code အတည်ပြုပြီးပါပြီ။", "success");
     renderAccess();
   });
   $("resultCloseBtn").addEventListener("click", () => {

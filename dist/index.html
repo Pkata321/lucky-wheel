@@ -8,9 +8,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Myanmar:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=6.4.4-player-inbox" />
-  <link rel="stylesheet" href="./v6.css?v=6.4.4-player-inbox" />
+  <link rel="stylesheet" href="./styles.css?v=6.4.5-real-flow-fix" />
+  <link rel="stylesheet" href="./v6.css?v=6.4.5-real-flow-fix" />
+  <link rel="stylesheet" href="./player-ui.css?v=6.4.5-real-flow-fix" />
 </head>
+<!-- Contract copy: Promo Code ဖြင့် Spin လှည့်ရန် အသင့်ဖြစ်သည် -->
 <body class="player-body" data-theme="sky-white">
   <div class="player-shell">
     <header class="player-topbar premium-surface">
@@ -70,8 +72,11 @@
           <div id="readyGate" class="access-step hidden">
             <div class="verified-line"><i>✓</i><span>Channel အတည်ပြုပြီးပါပြီ</span></div>
             <div class="verified-line"><i>✓</i><span>Event Register အတည်ပြုပြီးပါပြီ</span></div>
-            <div class="verified-line"><i>✓</i><span>Promo Code ဖြင့် Spin လှည့်ရန် အသင့်ဖြစ်သည်</span></div>
+            <div class="verified-line"><i>✓</i><span id="promoReadyLine">Promo Code အတည်ပြုပြီးမှ Spin လှည့်နိုင်ပါမည်</span></div>
+            <div class="verified-line is-muted"><i>•</i><span id="accountAfterSpinLine">Game Account ကို Spin လှည့်ပြီး ဆုထွက်မှ အတည်ပြုပါမည်</span></div>
             <label id="spinCodeField" class="premium-field"><span>Promo Code</span><input id="spinCodeInput" type="text" autocomplete="one-time-code" placeholder="L77-••••-••••" /></label>
+            <button id="promoConfirmBtn" class="secondary-action" type="button">Promo Code အတည်ပြုမည်</button>
+            <small id="promoConfirmMsg" class="security-note">Bot မှပို့ထားသော Code ကိုထည့်ပြီး အတည်ပြုပါ။</small>
             <p id="readyText">Event စတင်ချိန်ကို စောင့်ပေးပါ။</p>
           </div>
         </section>
@@ -121,6 +126,6 @@
   </div>
   <div id="toast" class="app-toast hidden" role="status"></div>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" src="./script.js?v=6.4.4-player-inbox"></script>
+  <script type="module" src="./script.js?v=6.4.5-real-flow-fix"></script>
 </body>
 </html>

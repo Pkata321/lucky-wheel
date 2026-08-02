@@ -1,6 +1,5 @@
 {
-  "version": "6.4.4",
-  "build": "static-safe-output",
-  "source": "UTF-8 source files copied without minification",
-  "notes": "Use when Vercel serves dist; no stale hashed assets included."
+  "version": "6.4.5",
+  "build": "player-inbox-real-flow-fix",
+  "generated_at": "2026-08-02T20:17:00+06:30"
 }

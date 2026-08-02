@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Myanmar:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=6.4.4-player-inbox" />
-  <link rel="stylesheet" href="./v6.css?v=6.4.4-player-inbox" />
+  <link rel="stylesheet" href="./styles.css?v=6.4.5-real-flow-fix" />
+  <link rel="stylesheet" href="./v6.css?v=6.4.5-real-flow-fix" />
 </head>
 
 <body class="cs-inbox-body">
@@ -258,6 +258,13 @@
             </div>
 
             <footer class="cs-composer">
+              <div class="cs-shortcut-bar" aria-label="Saved shortcuts">
+                <button type="button" data-cs-shortcut="Game Account Name ပေးပို့ပေးပါရှင့်။ ဆုယူနစ်ဖြည့်ရန် Account Name လိုအပ်ပါသည်။">Acc တောင်း</button>
+                <button type="button" data-cs-shortcut="ယူနစ်ဖြည့်ပြီးပါပြီရှင့်။ Account ထဲပြန်စစ်ပေးပါ။">Done စာ</button>
+                <button type="button" data-cs-shortcut="ခဏစောင့်ပေးပါရှင့်။ CS Team မှ စစ်ဆေးပေးနေပါတယ်။">စောင့်ရန်</button>
+                <button type="button" data-cs-shortcut="Promo Code / Spin အဆင်မပြေပါက Screenshot ပို့ပေးပါရှင့်။">Error တောင်း</button>
+              </div>
+
               <textarea
                 id="replyText"
                 placeholder="စာပြန်ရေးရန်... Ctrl/Command + Enter ဖြင့်ပို့နိုင်သည်"
@@ -273,7 +280,7 @@
                   📎
                   <input id="mediaInput" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" hidden />
                 </label>
-
+                <button id="composerDoneBtn" type="button" class="cs-top-btn cs-done-toggle">Done</button>
                 <button id="sendReplyBtn" type="button" class="cs-send-btn">
                   Send
                 </button>
@@ -589,6 +596,6 @@
   <!-- Toast -->
   <div id="toast" class="cs-toast" hidden></div>
 
-  <script type="module" src="./winners.js?v=6.4.4-player-inbox"></script>
+  <script type="module" src="./winners.js?v=6.4.5-real-flow-fix"></script>
 </body>
 </html>

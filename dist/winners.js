@@ -2,7 +2,7 @@
 
 /* =========================================================
    Lucky77 Winner Inbox Dashboard
-   Version: premium-hybrid-v6.4.4
+   Version: premium-hybrid-v6.4.5
    Backend: Render
    Frontend: Vercel
 ========================================================= */
@@ -768,16 +768,24 @@ async function loadInitialData() {
   setLoading(true, "Loading");
 
   try {
-    await Promise.all([
+    const results = await Promise.allSettled([
       loadWinners(false),
       loadTemplates(),
       loadCampaigns(),
     ]);
+    const winnersOk = results[0]?.status === "fulfilled";
+    const anyOk = results.some((item) => item.status === "fulfilled");
+    const firstError = results.find((item) => item.status === "rejected")?.reason;
 
-    setOnline("Online");
-    state.booted = true;
-    startNotificationWatcher();
-    startAutoRefresh();
+    if (winnersOk || anyOk) {
+      setOnline(winnersOk ? "Online" : "Partial Online");
+      state.booted = true;
+      startNotificationWatcher();
+      startAutoRefresh();
+      if (firstError) toast("Inbox partially loaded. Retrying failed tools in background.", "info");
+    } else {
+      throw firstError || new Error("Load failed");
+    }
   } catch (err) {
     console.error(err);
     setOffline("Error");
@@ -1180,6 +1188,12 @@ function renderDetails() {
 
   const cb = $("detailDoneCheckbox");
   if (cb) cb.checked = status === "done";
+  setText("detailGameAccount", w.account_name || w.game_account_name || w.account || w.cs?.account_name || w.note || "-");
+  const composerDone = $("composerDoneBtn");
+  if (composerDone) {
+    composerDone.textContent = status === "done" ? "Undone" : "Done";
+    composerDone.classList.toggle("is-done", status === "done");
+  }
 }
 
 function syncSelectedWinnerPatch(patch) {
@@ -1335,6 +1349,22 @@ function insertAccountRequest() {
 
   el.value = ACCOUNT_REQUEST_TEXT;
   el.focus();
+}
+
+
+function insertShortcutText(text) {
+  const input = $("replyText");
+  if (!input) return;
+  const existing = safeText(input.value).trim();
+  input.value = existing ? `${existing}\n${text}` : text;
+  input.focus();
+}
+
+async function toggleComposerDone() {
+  const cb = $("detailDoneCheckbox");
+  if (!cb) return markDone();
+  cb.checked = !(cb.checked === true);
+  await setDoneFromCheckbox();
 }
 
 async function sendNotice() {
@@ -2206,6 +2236,10 @@ $("simpleWinnerRefreshBtn")?.addEventListener("click", async () => {
   $("quickAccountRequestBtn")?.addEventListener("click", insertAccountRequest);
   $("sendNoticeBtn")?.addEventListener("click", sendNotice);
   $("markDoneBtn")?.addEventListener("click", markDone);
+  $("composerDoneBtn")?.addEventListener("click", toggleComposerDone);
+  qsa("[data-cs-shortcut]").forEach((btn) => {
+    btn.addEventListener("click", () => insertShortcutText(btn.dataset.csShortcut || btn.textContent || ""));
+  });
   $("sendReplyBtn")?.addEventListener("click", sendReply);
   $("saveNoteBtn")?.addEventListener("click", saveWinnerNote);
   $("detailDoneCheckbox")?.addEventListener("change", setDoneFromCheckbox);
