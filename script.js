@@ -45,6 +45,31 @@ const esc = (value) => safe(value)
   .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 const formatNumber = (value) => Number(value || 0).toLocaleString("en-US");
 
+function normalizePromoCode(value) {
+  return safe(value)
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/[‐‑‒–—―]/g, "-")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+}
+
+function playerErrorMessage(error) {
+  const code = safe(error?.data?.error || "");
+  const messages = {
+    registration_required: "ဒီ Event အတွက် Register လုပ်ထားမှ Spin လှည့်နိုင်ပါသည်။",
+    invalid_unique_code: "Promo Code မမှန်ပါ။ Telegram Bot မှပို့ထားသော Code ကို ပြန်စစ်ပါ။",
+    promo_not_started: "Promo Code ကို အသုံးပြုနိုင်သည့်အချိန် မရောက်သေးပါ။",
+    promo_expired: "Promo Code သက်တမ်းကုန်ဆုံးသွားပါပြီ။",
+    event_not_live: "Event မစတင်သေးပါ။ Event Live ဖြစ်သည့်အချိန် ပြန်လှည့်ပါ။",
+    channel_membership_required: "Lucky77 Channel ကို Join ထားမှ Spin လှည့်နိုင်ပါသည်။",
+    telegram_verification_required: "Official Telegram Bot မှ Player Link ကို ပြန်ဖွင့်ပါ။",
+    spin_in_progress: "Spin လှည့်နေဆဲဖြစ်ပါသည်။ ခဏစောင့်ပါ။",
+    no_prize_left: "ဒီ Event အတွက် ဆုများကုန်ဆုံးသွားပါပြီ။",
+  };
+  return messages[code] || safe(error?.message || "လုပ်ဆောင်မှုမအောင်မြင်ပါ။ ပြန်စမ်းပါ။");
+}
+
 function formatPrize(value) {
   const text = safe(value).trim();
   const numeric = Number(text.replace(/[^\d.]/g, ""));
@@ -92,7 +117,7 @@ async function api(path, options = {}) {
     }
     return data;
   } catch (error) {
-  if (error?.name === "AbortError") throw new Error("áá»á­ááºáááºáá»á­ááº áá»á±á¬áºáá½ááºáá½á¬á¸áá«áá¼á®");
+  if (error?.name === "AbortError") throw new Error("ချိတ်ဆက်ချိန် ကျော်လွန်သွားပါပြီ");
     throw error;
   } finally { clearTimeout(timer); }
 }
@@ -139,8 +164,10 @@ function renderHeader() {
   $("memberName").textContent = name;
   $("memberAvatar").textContent = initials(state.user);
   $("memberStatus").textContent = state.testMode
-    ? state.user ? "Test member" : "Connect Telegram"
-    : state.spun ? "Spin completed" : state.registered ? state.access.account_ready ? "Event member" : "Account pending" : state.user ? "Verification required" : "Connect Telegram";
+    ? state.user ? "Test Member" : "Telegram ချိတ်ဆက်ရန်"
+    : state.spun
+      ? state.access.account_ready ? "ဆုရယူရန်အဆင်သင့်" : "Game Account ထည့်ရန်"
+      : state.registered ? "Event Member" : state.user ? "အတည်ပြုရန်လိုအပ်သည်" : "Telegram ချိတ်ဆက်ရန်";
   const live = !!state.event?.event_live;
   $("liveBadge").classList.toggle("is-live", live);
   $("liveBadge").classList.toggle("is-waiting", !live);
@@ -150,17 +177,17 @@ function renderHeader() {
 function renderEvent() {
   const event = state.event || {};
   $("eventTitle").textContent = event.title || "Lucky77 Grand Spin";
-  $("eventSubtitle").textContent = event.subtitle || "One member Â· One code Â· One premium spin";
+  $("eventSubtitle").textContent = event.subtitle || "One member · One code · One premium spin";
   $("announcementText").textContent = event.announcement || "Register now. Your private code will arrive when the event starts.";
-  $("eventStartText").textContent = `ááááºáá»á­ááº: ${yangonDate(event.starts_at)}`;
-  $("eventEndText").textContent = `áá¼á®á¸áá¯á¶á¸áá»á­ááº: ${yangonDate(event.ends_at)}`;
+  $("eventStartText").textContent = `စတင်ချိန်: ${yangonDate(event.starts_at)}`;
+  $("eventEndText").textContent = `ပြီးဆုံးချိန်: ${yangonDate(event.ends_at)}`;
   $("wheelEventId").textContent = safe(event.event_id || "EVENT");
   const phaseCopy = {
-    registration: "áááºáá¾á­ááááº Event á¡áá½ááº Register áá¯ááºáá­á¯ááºáá«áá¼á®á",
-    scheduled: "Register áá¬áááºá¸áá­ááºáá¼á®á¸ Event áá­á¯ á¡áá­á¯á¡áá»á±á¬ááºááááºáá«áááºá",
-    live: "Event ááááºáá±áá«áá¼á®á á¡áááºááá·áºáá¼ááºáá±á¬ Member áá»á¬á¸ Promo Code áá¼áá·áº áááºáá¼á­ááº Spin áá¾áá·áºáá­á¯ááºáá«áááºá",
-    ended: "áááºáá¾á­ Event áá¼á®á¸áá¯á¶á¸áá«áá¼á®á áá±á¬ááº Event á¡áá½ááº áá¼á­á¯áááº Register áá¯ááºáá­á¯ááºáá«áááºá",
-    blocked: event.lifecycle_error || "Event áááááºáá® Admin áá¾ áááºáá±á¸áááºáá­á¯á¡ááºáá«áááºá",
+    registration: "လက်ရှိလစဉ် Event အတွက် Register လုပ်နိုင်ပါပြီ။",
+    scheduled: "Register စာရင်းပိတ်ပြီး Event ကို အလိုအလျောက်စတင်ပါမည်။",
+    live: "Event စတင်နေပါပြီ။ အဆင်သင့်ဖြစ်သော Member များ Promo Code ဖြင့် တစ်ကြိမ် Spin လှည့်နိုင်ပါသည်။",
+    ended: "လက်ရှိ Event ပြီးဆုံးပါပြီ။ နောက် Event အတွက် ကြိုတင် Register လုပ်နိုင်ပါသည်။",
+    blocked: event.lifecycle_error || "Event မစတင်မီ Admin မှ စစ်ဆေးရန်လိုအပ်ပါသည်။",
   };
   $("phaseNotice").textContent = phaseCopy[event.phase] || event.lifecycle_error || "Waiting for event settings.";
   applyTheme(event);
@@ -173,64 +200,89 @@ function revealGate(id) {
 
 function renderAccess() {
   const spinBtn = $("spinBtn");
+  const enteredCode = normalizePromoCode($("spinCodeInput").value);
+
   if (!state.user) {
-    $("accessTitle").textContent = "Telegram áá¾ áá½áá·áºáá«"; revealGate("browserGate");
-    spinBtn.disabled = true; $("spinHint").textContent = "Telegram áá¾ áá¯á¶áá¼á¯á¶áá½á¬ á¡áááºáá¼á¯áááºáá­á¯á¡ááºáááº"; return;
-  }
-  if (!state.channel?.joined) {
-    $("accessTitle").textContent = "Channel á¡áááºáá¼á¯áááº"; revealGate("joinGate");
-    spinBtn.disabled = true; $("spinHint").textContent = "áááºáá¯ááºáááº Channel Join áá¼á®á¸ á¡áááºáá¼á¯áá«"; return;
-  }
-  if (state.testMode) {
-    if (!state.access.account_ready) {
-      $("accessTitle").textContent = "Test Game Account";
-      $("accountPhoneField").classList.add("hidden");
-      revealGate("accountGate");
-      spinBtn.disabled = true;
-      $("spinHint").textContent = "Promo Code áá¾áá·áº áá­ááºá¸á¡áá±á¬áá·áº Name ááá·áºáá¼á®á¸ Confirm áá¯ááºáá«";
-      return;
-    }
-    $("accessTitle").textContent = "â Verified Game Account";
-    revealGate("readyGate");
-    $("spinCodeField").classList.remove("hidden");
-    $("readyText").textContent = "Test Mode áá¼ááºááá¼áá·áº á¡áá¼á­ááºáá¼á­ááº Spin áá¾áá·áºáá­á¯ááºáá¼á®á¸ Real Data áááºááá·áºá¡áá¬áá­á¯áá»á¾ ááá­ááºá¸áá«á";
-    const testCodeReady = $("spinCodeInput").value.trim().length > 0;
-    spinBtn.disabled = state.spinning || !testCodeReady;
-    $("spinHint").textContent = "Unlimited Test Spin Â· Result áá­á¯ ááá­ááºá¸áá«";
+    $("accessTitle").textContent = "Telegram မှ ဖွင့်ပါ";
+    revealGate("browserGate");
+    spinBtn.disabled = true;
+    $("spinHint").textContent = "Official Telegram Bot မှ Player Link ကို ဖွင့်ရန်လိုအပ်သည်";
     return;
   }
+
+  if (!state.channel?.joined) {
+    $("accessTitle").textContent = "Channel အတည်ပြုရန်";
+    revealGate("joinGate");
+    spinBtn.disabled = true;
+    $("spinHint").textContent = "Lucky77 Channel ကို Join ပြီး Member အတည်ပြုပါ";
+    return;
+  }
+
+  if (state.testMode) {
+    $("accessTitle").textContent = "Test Promo Code";
+    revealGate("readyGate");
+    $("spinCodeField").classList.remove("hidden");
+    $("readyText").textContent = "Unlimited Test Spin · Promo Code တစ်ခုခုထည့်ပြီး အကြိမ်ကြိမ် စမ်းလှည့်နိုင်သည်။ Real Data မသိမ်းပါ။";
+    spinBtn.disabled = state.spinning || enteredCode.length === 0;
+    $("spinHint").textContent = enteredCode.length
+      ? "Test Spin လှည့်ရန် အသင့်ဖြစ်သည် · Result မသိမ်းပါ"
+      : "စမ်းသပ်ရန် Promo Code တစ်ခုခုထည့်ပါ";
+    return;
+  }
+
   if (!state.registered) {
     const open = !!state.event?.registration_open;
-    $("accessTitle").textContent = open ? "Monthly registration" : state.event?.next_event_id ? "Next-event pre-registration" : "Registration closed";
+    $("accessTitle").textContent = open
+      ? "Event Register လုပ်ရန်"
+      : state.event?.next_event_id ? "နောက် Event ကြိုတင် Register" : "Register ပိတ်ထားသည်";
     $("registerCopy").textContent = open
-      ? "áá® Event á¡áá½ááº Register áá¯ááºáá«á Event ááá»á­ááºáá½ááº ááá·áº Promo Code áá­á¯ áá®á¸ááá·áºáá­á¯á·áá«áááºá"
+      ? "ဒီ Event အတွက် Register လုပ်ပါ။ Event စချိန်တွင် သင့် Promo Code ကို Telegram Bot မှ သီးသန့်ပို့ပါမည်။"
       : state.event?.next_event_id
-        ? `áááºáá¾á­ Event áá­ááºáá¬á¸áá«áá¼á®á ${state.event.next_event_id} á¡áá½ááº áá¼á­á¯áááº Register áá¯ááºáá­á¯ááºáá«áááºá`
-        : "Register áá­ááºáá¬á¸áá¼á®á¸ áá±á¬ááº Event áá­á¯ ááááºáá¾ááºááá±á¸áá«á";
-    $("registerBtn").textContent = open ? "áááºáá¾á­ Event áá­á¯ Register áá¯ááºáááº" : "áá±á¬ááº Event áá­á¯ áá¼á­á¯áááº Register áá¯ááºáááº";
+        ? `လက်ရှိ Event ပိတ်ထားပါပြီ။ ${state.event.next_event_id} အတွက် ကြိုတင် Register လုပ်နိုင်ပါသည်။`
+        : "Register ပိတ်ထားပြီး နောက် Event ကို မသတ်မှတ်ရသေးပါ။";
+    $("registerBtn").textContent = open ? "လက်ရှိ Event ကို Register လုပ်မည်" : "နောက် Event ကို ကြိုတင် Register လုပ်မည်";
     $("registerBtn").disabled = !open && !state.event?.next_event_id;
-    revealGate("registerGate"); spinBtn.disabled = true; $("spinHint").textContent = "ááááº Event Register áá­á¯ á¡áááºáá¼á®á¸á¡á±á¬ááºáá¯ááºáá«"; return;
+    revealGate("registerGate");
+    spinBtn.disabled = true;
+    $("spinHint").textContent = "Event Register လုပ်ပြီးမှ Promo Code ဖြင့် Spin လှည့်နိုင်ပါသည်";
+    return;
   }
-  if (state.event?.require_account && !state.access.account_ready) {
-    $("accessTitle").textContent = "Game Account Verification";
+
+  // Confirmed flow: player spins with Promo Code first, then submits Game Account Name.
+  if (state.spun && !state.access.account_ready) {
+    $("accessTitle").textContent = "ဆုရယူရန် Game Account ထည့်ပါ";
     $("accountPhoneField").classList.remove("hidden");
-    $("accountPromoInput").value = state.access.promo_code || $("accountPromoInput").value || "";
-    $("accountNameInput").value = state.access.account_name || "";
-    $("accountPhoneInput").value = state.access.phone || "";
-    revealGate("accountGate"); spinBtn.disabled = true; $("spinHint").textContent = "áá­ááºá¸á¡áá±á¬áá·áº Name ááá·áºáá¼á®á¸ Confirm áá¯ááºáá«"; return;
+    $("accountPromoInput").value = state.access.promo_code || enteredCode;
+    $("accountNameInput").value = state.access.account_name || $("accountNameInput").value || "";
+    $("accountPhoneInput").value = state.access.phone || $("accountPhoneInput").value || "";
+    revealGate("accountGate");
+    spinBtn.disabled = true;
+    $("spinHint").textContent = "ကံထူးဆုရယူရန် Game Account Name ကို အတည်ပြုပါ";
+    return;
   }
-  $("accessTitle").textContent = state.spun ? "Spin Completed" : "â Verified Game Account";
+
+  $("accessTitle").textContent = state.spun ? "Spin လှည့်ပြီးပါပြီ" : "Promo Code အတည်ပြုရန်";
   revealGate("readyGate");
   $("spinCodeField").classList.toggle("hidden", !state.event?.require_unique_code);
-  if (state.access.promo_code && !$("spinCodeInput").value) $("spinCodeInput").value = state.access.promo_code;
+  if (state.access.promo_code && !$("spinCodeInput").value) {
+    $("spinCodeInput").value = state.access.promo_code;
+  }
+
   $("readyText").textContent = state.spun
-      ? `Result áá­ááºá¸áá¼á®á¸: ${formatPrize(state.result?.prize)}`
+    ? `ကံထူးဆု: ${formatPrize(state.result?.prize)} · Game Account အတည်ပြုပြီးပါပြီ။`
     : state.event?.event_live
-      ? state.access.promo_sent_at ? "Promo Code áá­á¯ Telegram áá¾áá­á¯á·áá¼á®á¸áá«áá¼á®á Code ááá·áºáá¼á®á¸ áááºáá¼á­ááº Spin áá¾áá·áºáá«á" : "Promo Code á¡ááá·áºáá¼ááºáá«áá¼á®á Code ááá·áºáá¼á®á¸ áááºáá¼á­ááº Spin áá¾áá·áºáá«á"
-      : "Register á¡áááºáá¼á¯áá¼á®á¸áá«áá¼á®á Event ááááºáá»á­ááºáá­á¯ áá±á¬áá·áºáá±á¸áá«á";
-  const codeReady = !state.event?.require_unique_code || $("spinCodeInput").value.trim().length >= 8;
+      ? state.access.promo_sent_at
+        ? "Telegram Bot မှပို့ထားသော Promo Code ကို ထည့်ပြီး Spin လှည့်ပါ။"
+        : "Promo Code ကို ထည့်ပြီး Spin လှည့်ပါ။"
+      : "Register အတည်ပြုပြီးပါပြီ။ Event စတင်ချိန်ကို စောင့်ပေးပါ။";
+
+  const codeReady = !state.event?.require_unique_code || enteredCode.length > 0;
   spinBtn.disabled = state.spun || !state.event?.event_live || state.spinning || !codeReady;
-  $("spinHint").textContent = state.spun ? "Result áá¾áá·áº á¡áá¯á¶á¸áá¼á¯áá¼á®á¸ Code áá­á¯ á¡áá¼á²áááºá¸áá­ááºá¸áá¬á¸áá«áááº" : state.event?.event_live ? "áá¯á¶áá¼á¯á¶áá±á¬ Spin áááºáá¼á­ááº ááá¾á­áá«áááº" : "Event Live áá­á¯ áá±á¬áá·áºáá±áá«áááº";
+  $("spinHint").textContent = state.spun
+    ? "ဒီ Event အတွက် Spin လှည့်ပြီးပါပြီ"
+    : state.event?.event_live
+      ? codeReady ? "Spin လှည့်ရန် အသင့်ဖြစ်သည်" : "Promo Code ထည့်ပါ"
+      : "Event Live ဖြစ်သည့်အချိန် ပြန်လှည့်ပါ";
 }
 
 function renderMetrics() {
@@ -242,7 +294,7 @@ function renderMetrics() {
 function renderPrizes() {
   const counts = new Map();
   state.wheelPrizes.forEach((prize) => counts.set(formatPrize(prize), (counts.get(formatPrize(prize)) || 0) + 1));
-  $("prizePool").innerHTML = counts.size ? Array.from(counts.entries()).slice(0, 5).map(([prize, count], index) => `<article class="prize-row"><span class="prize-medal">${index === 0 ? "77" : "â¦"}</span><div><strong>${esc(prize)}</strong><small>${index === 0 ? "Featured reward" : "Configured prize type"}</small></div><b>${count}</b></article>`).join("") : `<div class="empty-copy">Prize list appears after admin configuration.</div>`;
+  $("prizePool").innerHTML = counts.size ? Array.from(counts.entries()).slice(0, 5).map(([prize, count], index) => `<article class="prize-row"><span class="prize-medal">${index === 0 ? "77" : "✦"}</span><div><strong>${esc(prize)}</strong><small>${index === 0 ? "Featured reward" : "Configured prize type"}</small></div><b>${count}</b></article>`).join("") : `<div class="empty-copy">Prize list appears after admin configuration.</div>`;
 }
 
 function timeAgo(value) {
@@ -270,7 +322,7 @@ function drawWheel() {
     ctx.save(); ctx.rotate(start + slice / 2); ctx.translate(radius * .69, 0); ctx.rotate(Math.PI / 2);
     ctx.fillStyle = index % 3 === 2 ? "#16345f" : "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     const label = formatPrize(prize).replace(" Ks", ""); ctx.font = `800 ${prizes.length > 10 ? 20 : 25}px system-ui, sans-serif`;
-    ctx.fillText(label.length > 14 ? `${label.slice(0, 13)}â¦` : label, 0, 0); ctx.restore();
+    ctx.fillText(label.length > 14 ? `${label.slice(0, 13)}…` : label, 0, 0); ctx.restore();
   });
   ctx.beginPath(); ctx.arc(0, 0, radius - 4, 0, Math.PI * 2); ctx.lineWidth = 10; ctx.strokeStyle = "rgba(255,255,255,.95)"; ctx.stroke(); ctx.restore();
 }
@@ -306,10 +358,10 @@ function showResult(result) {
   state.result = result; state.spun = !state.testMode;
   $("resultName").textContent = `${state.user?.first_name || ""} ${state.user?.last_name || ""}`.trim() || state.user?.username || "Lucky Member";
   $("resultPrize").textContent = formatPrize(result?.prize);
-  $("resultSaveLabel").textContent = state.testMode ? "TEST RESULT Â· NOT SAVED" : "Lucky77 Result áá­ááºá¸áá¼á®á¸áá«áá¼á®";
+  $("resultSaveLabel").textContent = state.testMode ? "TEST RESULT · NOT SAVED" : "Lucky77 Result သိမ်းပြီးပါပြီ";
   $("resultCopy").textContent = state.testMode
-    ? "Test Mode Result áá¼ááºáá¼á®á¸ Memberá Promoá Prize Stocká Winnerá Report áá­á¯á·ááá¯ááº Spin Count áááºáá¯áá»á¾ ááá­ááºá¸áá«á"
-    : "Promo Code áá­á¯ á¡áá¯á¶á¸áá¼á¯áá¼á®á¸áá«áá¼á®á áá¯áá¯ááºáá°áááº Lucky77 Customer Service áá­á¯á· áááºáá½ááºáá«á";
+    ? "Test Mode Result ဖြစ်ပြီး Member၊ Promo၊ Prize Stock၊ Winner၊ Report သို့မဟုတ် Spin Count တစ်ခုမျှ မသိမ်းပါ။"
+    : "ဂုဏ်ယူပါတယ်ရှင့်။ ယူနစ်ဆုရယူရန် အောက်ပါခလုတ်ကိုနှိပ်ပြီး Game Account Name ကို ထည့်ပေးပါ။";
   $("resultModal").classList.remove("hidden");
   confetti(); [523, 659, 784, 1046].forEach((note, i) => setTimeout(() => simpleTone(note, .34, .06), i * 150));
   renderAccess(); renderHeader();
@@ -333,7 +385,7 @@ async function registerPlayer() {
     else {
       const data = await api("/api/player/register", { method: "POST", body: { init_data: state.initData } });
       state.registered = !!data.registered; state.preregistered = !!data.preregistered; await refreshPlayerStatus();
-      toast(data.message || "Register áá¯ááºáá¼á®á¸áá«áá¼á®", "success");
+      toast(data.message || "Register လုပ်ပြီးပါပြီ", "success");
     }
     renderAll();
   } catch (error) { toast(error.message, "error"); } finally { button.disabled = false; }
@@ -341,34 +393,40 @@ async function registerPlayer() {
 
 async function saveAccount(event) {
   event.preventDefault();
-  const promoCode = $("accountPromoInput").value.trim();
-  const body = { account_name: $("accountNameInput").value.trim(), phone: $("accountPhoneInput").value.trim() };
-  if (!promoCode || !body.account_name) return toast("Promo Code áá¾áá·áº áá­ááºá¸á¡áá±á¬áá·áº Name ááá·áºáá±á¸áá«", "error");
+  const body = {
+    account_name: $("accountNameInput").value.trim(),
+    phone: $("accountPhoneInput").value.trim(),
+  };
+  if (!body.account_name) {
+    return toast("Game Account Name ထည့်ပေးပါ။", "error");
+  }
   try {
     if (PLAYER.DEMO || state.testMode) {
       state.access = {
         ...state.access,
         ...body,
         account_ready: true,
-        promo_code: promoCode,
         account_verified_at: new Date().toISOString(),
         test_member: state.testMode,
       };
-    }
-    else {
-      const data = await api("/api/player/account", { method: "POST", body: { init_data: state.initData, ...body } });
+    } else {
+      const data = await api("/api/player/account", {
+        method: "POST",
+        body: { init_data: state.initData, ...body },
+      });
       state.access = { ...state.access, ...(data.access || {}) };
-      if (!state.access.promo_code) state.access.promo_code = promoCode;
     }
-    $("spinCodeInput").value = promoCode;
-    toast("áá­ááºá¸á¡áá±á¬áá·áº á¡áááºáá¼á¯áá¼á®á¸áá«áá¼á®", "success"); renderAll();
-  } catch (error) { toast(error.message, "error"); }
+    toast("Game Account Name အတည်ပြုပြီးပါပြီ။", "success");
+    renderAll();
+  } catch (error) {
+    toast(playerErrorMessage(error), "error");
+  }
 }
 
 async function verifyPlayer() {
   try {
     if (PLAYER.DEMO) state.channel = { joined: true }; else await refreshPlayerStatus();
-    renderAll(); toast(state.channel?.joined ? "Channel á¡áááºáá¼á¯áá¼á®á¸áá«áá¼á®" : "Channel áá­á¯ á¡áááº Join áá±á¸áá«", state.channel?.joined ? "success" : "error");
+    renderAll(); toast(state.channel?.joined ? "Channel အတည်ပြုပြီးပါပြီ" : "Channel ကို အရင် Join ပေးပါ", state.channel?.joined ? "success" : "error");
   } catch (error) { toast(error.message, "error"); }
 }
 
@@ -395,7 +453,7 @@ async function spin() {
         headers: { "X-Idempotency-Key": state.spinRequestKey },
         body: {
           init_data: state.initData,
-          promo_code: $("spinCodeInput").value.trim(),
+          promo_code: normalizePromoCode($("spinCodeInput").value),
           access_token: state.accessToken,
         },
       });
@@ -410,7 +468,7 @@ async function spin() {
       state.counts.prizes_left = Math.max(0, Number(state.counts.prizes_left || 0) - 1);
       state.counts.winners = Number(state.counts.winners || 0) + 1;
     }
-  } catch (error) { toast(error.message, "error"); }
+  } catch (error) { toast(playerErrorMessage(error), "error"); }
   finally { state.spinning = false; $("spinBtn").classList.remove("is-spinning"); $("spinBtn").querySelector("span").textContent = "SPIN"; renderAccess(); renderMetrics(); }
 }
 
@@ -432,9 +490,19 @@ function bind() {
   $("registerBtn").addEventListener("click", registerPlayer);
   $("accountGate").addEventListener("submit", saveAccount);
   $("spinBtn").addEventListener("click", spin);
-  $("spinCodeInput").addEventListener("input", renderAccess);
-  $("resultCloseBtn").addEventListener("click", () => $("resultModal").classList.add("hidden"));
-  q(".result-backdrop").addEventListener("click", () => $("resultModal").classList.add("hidden"));
+  $("spinCodeInput").addEventListener("input", (event) => {
+    const normalized = normalizePromoCode(event.target.value);
+    if (event.target.value !== normalized) event.target.value = normalized;
+    renderAccess();
+  });
+  $("resultCloseBtn").addEventListener("click", () => {
+    $("resultModal").classList.add("hidden");
+    renderAccess();
+    $("accountNameInput")?.focus();
+  });
+  q(".result-backdrop").addEventListener("click", () => {
+    if (state.testMode) $("resultModal").classList.add("hidden");
+  });
   $("soundToggle").addEventListener("click", () => { state.sound = !state.sound; localStorage.setItem(PLAYER.SOUND_KEY, state.sound ? "on" : "off"); toast(state.sound ? "Sound on" : "Sound off"); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") $("resultModal").classList.add("hidden"); });
 }
@@ -461,7 +529,7 @@ async function boot() {
       state.access = { account_ready: false, promo_code: "", test_member: true };
       state.event = { ...state.event, event_live: true, registration_open: true, phase: "live" };
     } else if (PLAYER.DEMO) {
-      state.channel = { joined: true }; state.registered = true; state.access = { account_ready: true, promo_code: "L77-DEMO-2026", promo_sent_at: new Date().toISOString(), test_member: true };
+      state.channel = { joined: true }; state.registered = true; state.access = { account_ready: false, promo_code: "L77-DEMO-2026", promo_sent_at: new Date().toISOString(), test_member: true };
     } else if (state.user) await refreshPlayerStatus();
   } catch (error) {
     state.event = { title: "Lucky77 Grand Spin", subtitle: "Connection unavailable", registration_open: false, event_live: false, phase: "blocked", lifecycle_error: "Event data could not be loaded.", theme: "sky-white" };
