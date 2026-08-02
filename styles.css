@@ -4350,3 +4350,314 @@ button {
   .winner-toolbar { grid-template-columns: 1fr; }
   .admin-inbox-section { height: calc(100vh - 84px); }
 }
+
+/* v6.4.3 CS Inbox fixed layout + independent scroll guard */
+html:has(.cs-inbox-body),
+body.cs-inbox-body {
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  overflow: hidden !important;
+}
+.cs-inbox-body .cs-app {
+  height: 100vh !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+.cs-inbox-body .cs-shell {
+  height: 100vh !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+.cs-inbox-body .cs-grid {
+  height: calc(100vh - 76px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+.cs-inbox-body .cs-list-panel,
+.cs-inbox-body .cs-chat-panel,
+.cs-inbox-body .cs-detail-panel {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+.cs-inbox-body .cs-list-panel {
+  overflow: hidden !important;
+}
+.cs-inbox-body .cs-winner-list {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.cs-inbox-body .cs-chat-panel {
+  overflow: hidden !important;
+}
+.cs-inbox-body .cs-chat-active {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+.cs-inbox-body .cs-chat-messages {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.cs-inbox-body .cs-detail-panel {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.cs-inbox-body .cs-composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+}
+.embedded-inbox .cs-app {
+  grid-template-columns: 1fr !important;
+}
+.embedded-inbox .cs-sidebar {
+  display: none !important;
+}
+.embedded-inbox .cs-shell {
+  padding-bottom: 0 !important;
+}
+.embedded-inbox .cs-grid {
+  height: calc(100vh - 76px) !important;
+}
+.admin-inbox-section,
+.admin-inbox-section .inbox-frame-panel {
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+.admin-inbox-section .cs-inbox-frame {
+  display: block;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+@media (max-width: 960px) {
+  .cs-inbox-body .cs-grid {
+    grid-template-columns: 300px minmax(360px, 1fr) !important;
+  }
+  .cs-inbox-body .cs-detail-panel {
+    display: none !important;
+  }
+}
+@media (max-width: 820px) {
+  .cs-inbox-body {
+    overflow: hidden !important;
+  }
+  .cs-inbox-body .cs-grid {
+    height: calc(100vh - 62px - 68px) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .cs-inbox-body .cs-chat-panel:has(.cs-chat-active:not([hidden])) {
+    display: grid !important;
+  }
+}
+
+
+/* v6.4.4 Respond.io-style independent inbox scroll + Myanmar rendering */
+:root {
+  --inbox-viewport-height: 100vh;
+}
+@supports (height: 100dvh) {
+  :root { --inbox-viewport-height: 100dvh; }
+}
+html,
+body {
+  text-rendering: optimizeLegibility;
+}
+body,
+button,
+input,
+textarea,
+select {
+  font-family: Inter, "Noto Sans Myanmar", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html:has(body.cs-inbox-body),
+body.cs-inbox-body {
+  width: 100%;
+  height: var(--inbox-viewport-height);
+  min-height: 0;
+  margin: 0;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+body.cs-inbox-body #appView.cs-app:not([hidden]) {
+  display: grid !important;
+  width: 100%;
+  height: var(--inbox-viewport-height) !important;
+  min-width: 0;
+  min-height: 0 !important;
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden !important;
+}
+
+body.cs-inbox-body .cs-shell {
+  display: grid;
+  width: 100%;
+  height: 100% !important;
+  min-width: 0;
+  min-height: 0 !important;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden !important;
+}
+
+body.cs-inbox-body .cs-grid {
+  display: grid;
+  width: 100%;
+  height: auto !important;
+  min-width: 0;
+  min-height: 0 !important;
+  grid-template-columns: minmax(280px, 330px) minmax(380px, 1fr) minmax(230px, 270px);
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden !important;
+}
+
+body.cs-inbox-body .cs-list-panel,
+body.cs-inbox-body .cs-chat-panel,
+body.cs-inbox-body .cs-detail-panel {
+  width: 100%;
+  height: 100% !important;
+  min-width: 0;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+body.cs-inbox-body .cs-list-panel {
+  display: grid;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+}
+
+body.cs-inbox-body .cs-winner-list {
+  min-width: 0;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.cs-inbox-body .cs-chat-panel {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+body.cs-inbox-body .cs-chat-empty,
+body.cs-inbox-body .cs-chat-active {
+  width: 100%;
+  height: 100% !important;
+  min-width: 0;
+  min-height: 0 !important;
+}
+
+body.cs-inbox-body .cs-chat-active:not([hidden]) {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden !important;
+}
+
+body.cs-inbox-body .cs-chat-messages {
+  min-width: 0;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.cs-inbox-body .cs-composer {
+  position: relative !important;
+  inset: auto !important;
+  flex: 0 0 auto;
+  z-index: 6;
+}
+
+body.cs-inbox-body .cs-detail-panel {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.cs-inbox-body .cs-topbar,
+body.cs-inbox-body .cs-list-head,
+body.cs-inbox-body .cs-stats,
+body.cs-inbox-body .cs-tabs,
+body.cs-inbox-body .cs-search-row,
+body.cs-inbox-body .cs-list-footer,
+body.cs-inbox-body .cs-chat-header {
+  flex: 0 0 auto;
+}
+
+body.embedded-inbox.cs-inbox-body .cs-app {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+body.embedded-inbox.cs-inbox-body .cs-sidebar {
+  display: none !important;
+}
+body.embedded-inbox.cs-inbox-body .cs-shell,
+body.embedded-inbox.cs-inbox-body .cs-grid {
+  height: 100% !important;
+}
+
+.admin-inbox-section,
+.admin-inbox-section .inbox-frame-panel {
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+.admin-inbox-section .cs-inbox-frame {
+  display: block;
+  width: 100%;
+  height: 100% !important;
+  min-height: 0 !important;
+  border: 0;
+  overflow: hidden !important;
+}
+
+@media (max-width: 1120px) {
+  body.cs-inbox-body .cs-grid {
+    grid-template-columns: minmax(270px, 310px) minmax(360px, 1fr);
+  }
+  body.cs-inbox-body .cs-detail-panel {
+    display: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  body.cs-inbox-body #appView.cs-app:not([hidden]) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  body.cs-inbox-body .cs-sidebar {
+    display: none !important;
+  }
+  body.cs-inbox-body .cs-topbar {
+    min-height: 62px;
+  }
+  body.cs-inbox-body .cs-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  body.cs-inbox-body .cs-list-panel,
+  body.cs-inbox-body .cs-chat-panel {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  body.cs-inbox-body .cs-chat-panel {
+    display: none;
+  }
+  body.cs-inbox-body .cs-chat-panel:has(.cs-chat-active:not([hidden])) {
+    display: grid !important;
+  }
+}
