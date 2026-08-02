@@ -18,7 +18,9 @@ const state = {
   branding: null,
   audit: [],
   claims: [],
-  inboxWinners: [],
+  winners: [],
+  historySearch: "",
+  historyFilter: "all",
   testLinks: [],
   section: "overview",
 };
@@ -27,6 +29,30 @@ const $ = (id) => document.getElementById(id);
 const qa = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 const safe = (value) => value == null ? "" : String(value);
 const number = (value) => Number(value || 0).toLocaleString("en-US");
+function prizeNumber(value) {
+  const n = Number(safe(value).replace(/[^0-9.]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+function money(value) {
+  return `${Number(value || 0).toLocaleString("en-US")} Ks`;
+}
+function statusOfWinner(item) {
+  return safe(item.cs_status || item.status || item.cs?.status || "pending") === "done" ? "done" : "pending";
+}
+function winnerAmount(item) {
+  return prizeNumber(item.amount || item.prize || item.data?.amount);
+}
+function flattenWinner(item = {}) {
+  const uid = safe(item.user_id || item.id || item.telegram_id);
+  return {
+    ...item,
+    user_id: uid,
+    id: uid,
+    display: item.display || item.name || item.username || uid,
+    cs_status: statusOfWinner(item),
+    amount: winnerAmount(item),
+  };
+}
 const esc = (value) => safe(value)
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
   .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
@@ -56,62 +82,6 @@ function dateText(value) {
     minute: "2-digit",
     hour12: true,
   }).format(date);
-}
-
-function winnerStatus(value) {
-  return safe(value).toLowerCase() === "done" ? "done" : "pending";
-}
-
-function inboxWinner(userId) {
-  const uid = safe(userId);
-  return (state.inboxWinners || []).find((item) => safe(item.user_id || item.id) === uid) || null;
-}
-
-function historyStatus(item) {
-  return winnerStatus(inboxWinner(item?.user_id)?.cs_status || item?.cs_status);
-}
-
-function patchWinnerStatus(userId, status) {
-  const uid = safe(userId);
-  const clean = winnerStatus(status);
-  state.inboxWinners = (state.inboxWinners || []).map((item) =>
-    safe(item.user_id || item.id) === uid ? { ...item, cs_status: clean, unread: clean === "done" ? 0 : Number(item.unread || 0) } : item
-  );
-  if (state.overview?.recent_history) {
-    state.overview.recent_history = state.overview.recent_history.map((item) =>
-      safe(item.user_id) === uid ? { ...item, cs_status: clean } : item
-    );
-  }
-}
-
-function postStatusToInbox(userId, status) {
-  const frame = $("csInboxFrame");
-  frame?.contentWindow?.postMessage({
-    type: "lucky77:winner-status",
-    user_id: safe(userId),
-    status: winnerStatus(status),
-  }, location.origin);
-}
-
-async function setWinnerStatusFromHistory(userId, status, button) {
-  const uid = safe(userId).trim();
-  const clean = winnerStatus(status);
-  if (!uid) return;
-  if (button) button.disabled = true;
-  try {
-    await api("/winner/status", {
-      method: "POST",
-      body: { user_id: uid, status: clean },
-    });
-    patchWinnerStatus(uid, clean);
-    renderHistory();
-    postStatusToInbox(uid, clean);
-    toast(clean === "done" ? "Winner ကို Done အဖြစ်သိမ်းပြီးပါပြီ" : "Winner ကို Undone အဖြစ်ပြန်ဖွင့်ပြီးပါပြီ", "success");
-  } catch (error) {
-    toast(error.message || "Winner status ပြောင်းမရပါ", "error");
-  } finally {
-    if (button?.isConnected) button.disabled = false;
-  }
 }
 
 function isoToYangonInput(value) {
@@ -286,7 +256,7 @@ function renderOverview() {
   const counts = data.counts || {};
   applyTheme(event);
   $("overviewTitle").textContent = event.title || "Lucky77 Grand Spin";
-  $("overviewSubtitle").textContent = `${event.subtitle || ""} · ${safe(event.phase || "registration").toUpperCase()}`;
+  $("overviewSubtitle").textContent = `${event.subtitle || ""} Â· ${safe(event.phase || "registration").toUpperCase()}`;
   const live = !!event.event_live;
   $("overviewLive").classList.toggle("is-live", live);
   $("overviewLive").classList.toggle("is-waiting", !live);
@@ -351,7 +321,7 @@ function renderEventForm() {
   $("eventWheelColors").value = Array.isArray(event.wheel_colors) ? event.wheel_colors.join(", ") : "";
   $("eventSpinSound").value = safe(event.spin_sound_url);
   $("eventWinSound").value = safe(event.win_sound_url);
-  $("eventPhaseText").textContent = `Phase: ${safe(event.phase || "registration")} · Timezone: Asia/Yangon`;
+  $("eventPhaseText").textContent = `Phase: ${safe(event.phase || "registration")} Â· Timezone: Asia/Yangon`;
   $("eventLifecycleError").textContent = event.lifecycle_error || "";
   $("eventLifecycleError").classList.toggle("hidden", !event.lifecycle_error);
 }
@@ -391,21 +361,69 @@ function renderMembers() {
   }).join("") : `<tr><td colspan="6"><div class="empty-copy">No registered member matches this search.</div></td></tr>`;
 }
 
+function filteredHistory() {
+  const term = safe(state.historySearch).trim().toLowerCase();
+  const filter = state.historyFilter || "all";
+  let list = [...(state.winners || [])];
+  if (!list.length) list = (state.overview?.recent_history || []).map(flattenWinner);
+  if (filter === "done") list = list.filter((item) => statusOfWinner(item) === "done");
+  if (filter === "undone") list = list.filter((item) => statusOfWinner(item) !== "done");
+  if (term) {
+    list = list.filter((item) => [
+      item.name, item.display, item.username, item.user_id, item.telegram_id,
+      item.prize, item.amount, item.turn
+    ].map(safe).join(" ").toLowerCase().includes(term));
+  }
+  return list.sort((a, b) => {
+    const at = safe(a.last_message_at || a.at || a.created_at);
+    const bt = safe(b.last_message_at || b.at || b.created_at);
+    if (bt !== at) return bt.localeCompare(at);
+    return Number(b.turn || 0) - Number(a.turn || 0);
+  });
+}
+
+function renderHistorySummary() {
+  const all = state.winners || [];
+  const done = all.filter((item) => statusOfWinner(item) === "done");
+  setText("historySummaryTotal", all.length);
+  setText("historySummaryDone", done.length);
+  setText("historySummaryUndone", Math.max(0, all.length - done.length));
+  setText("historySummaryAmount", money(done.reduce((sum, item) => sum + winnerAmount(item), 0)));
+}
+
 function renderHistory() {
-  const history = state.overview?.recent_history || [];
+  const history = filteredHistory();
+  renderHistorySummary();
   $("historyTable").innerHTML = history.length ? history.map((item) => {
-    const status = historyStatus(item);
-    const done = status === "done";
-    return `<tr data-history-user-id="${esc(item.user_id || "")}">
+    const done = statusOfWinner(item) === "done";
+    const uid = safe(item.user_id || item.id || item.telegram_id);
+    return `<tr>
       <td class="mono">#${esc(item.turn || "-")}</td>
-      <td><div class="table-person"><span>${esc((item.display || item.name || "77").slice(0, 2).toUpperCase())}</span><div><strong>${esc(item.display || item.name || "Lucky Member")}</strong><small>${esc(item.user_id || "")}</small></div></div></td>
+      <td><div class="table-person"><span>${esc((item.display || item.name || "77").slice(0, 2).toUpperCase())}</span><div><strong>${esc(item.display || item.name || "Lucky Member")}</strong><small>${esc(uid)}</small></div></div></td>
       <td><strong class="prize-text">${esc(item.prize || "-")}</strong></td>
       <td>${item.username ? `@${esc(safe(item.username).replace(/^@/, ""))}` : "-"}</td>
-      <td>${esc(dateText(item.at))}</td>
       <td><span class="table-status ${done ? "is-good" : "is-waiting"}">${done ? "Done" : "Undone"}</span></td>
-      <td><button type="button" class="history-status-btn ${done ? "is-undone-action" : "is-done-action"}" data-history-status-user="${esc(item.user_id || "")}" data-next-status="${done ? "pending" : "done"}">${done ? "Undone" : "Done"}</button></td>
+      <td>${esc(dateText(item.at || item.created_at || item.last_message_at))}</td>
+      <td><button class="table-mode-btn ${done ? "" : "is-test"}" data-history-status="${done ? "pending" : "done"}" data-user-id="${esc(uid)}">${done ? "Undone áá¼ááºáá¯ááºáááº" : "áá°áááºáá¼áá·áºáá¼á®á¸ Done"}</button></td>
     </tr>`;
   }).join("") : `<tr><td colspan="7"><div class="empty-copy">No winner history yet.</div></td></tr>`;
+}
+
+async function updateWinnerStatusFromHistory(button) {
+  const uid = safe(button.dataset.userId).trim();
+  const status = button.dataset.historyStatus === "done" ? "done" : "pending";
+  if (!uid) return;
+  button.disabled = true;
+  try {
+    await api("/winner/status", { method: "POST", body: { user_id: uid, status } });
+    state.winners = state.winners.map((item) => safe(item.user_id) === uid ? { ...item, cs_status: status, status } : item);
+    renderHistory();
+    toast(status === "done" ? "áá°áááºáá¼áá·áºáá¼á®á¸ Done" : "Undone áá¼ááºáá¯ááºáá¼á®á¸", "success");
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function renderPosts() {
@@ -424,7 +442,7 @@ function renderSystem() {
   const supabase = health.supabase || {};
   $("systemHealthCards").innerHTML = [
     ["Backend", health.ok ? "Online" : "Offline"],
-    ["Version", health.version || "6.3.0"],
+    ["Version", health.version || "6.4.2"],
     ["Redis slot", redis.slot || health.redis_slot || "-"],
     ["Supabase", supabase.ready ? "Ready" : supabase.configured ? "Configured" : "Not configured"],
     ["Timezone", "Asia/Yangon"],
@@ -484,11 +502,11 @@ function renderAll() {
 async function refresh() {
   $("adminRefresh").disabled = true;
   try {
-    const [overview, eventPack, posts, staged, health, promoPack, branding, auditPack, claimsPack, inboxPack] = await Promise.all([
+    const [overview, eventPack, posts, staged, health, promoPack, branding, auditPack, claimsPack, winnersPack] = await Promise.all([
       api("/admin/overview"), api("/admin/event"), api("/settings/posts"),
       api("/channel/post/staged"), api("/health/full"), api("/admin/promos"),
       api("/admin/branding"), api("/admin/audit?limit=100"), api("/admin/claims?limit=200"),
-      api(`/winners/cs?_=${Date.now()}`).catch(() => ({ winners: state.inboxWinners || [] })),
+      api("/winners/cs"),
     ]);
     state.overview = overview;
     state.event = eventPack.event || {};
@@ -498,7 +516,7 @@ async function refresh() {
     state.branding = branding;
     state.audit = auditPack.logs || [];
     state.claims = claimsPack.claims || [];
-    state.inboxWinners = Array.isArray(inboxPack.winners) ? inboxPack.winners : [];
+    state.winners = (winnersPack.winners || []).map(flattenWinner);
     renderHealth(true);
     renderAll();
   } catch (error) {
@@ -614,7 +632,7 @@ async function sendPromos() {
       method: "POST",
       body: { event_id: state.event?.event_id, user_ids: selected },
     });
-    toast(`${number(data.delivered)} delivered · ${number(data.failed)} failed`, data.failed ? "info" : "success");
+    toast(`${number(data.delivered)} delivered Â· ${number(data.failed)} failed`, data.failed ? "info" : "success");
     await refresh();
   } catch (error) { toast(error.message, "error"); }
 }
@@ -623,7 +641,7 @@ async function copyTestLink() {
   try {
     const link = $("testLinkUrl").value.trim() || `${location.origin}/test/preview`;
     await navigator.clipboard.writeText(link);
-    toast("Test Link ကို ကူးယူပြီးပါပြီ", "success");
+    toast("Test Link áá­á¯ áá°á¸áá°áá¼á®á¸áá«áá¼á®", "success");
   } catch (error) { toast(error.message, "error"); }
 }
 
@@ -708,7 +726,7 @@ function renderCommandWelcome() {
   log.dataset.ready = "1";
   appendCommandMessage("system", `
     <strong>Lucky77 Safe Command Box</strong>
-    <p>AI မပါသေးသော Non-AI Base ဖြစ်သည်။ Dashboard Login ဝင်ထားသော Admin command များသာ Preview/Confirm flow သုံးနိုင်သည်။ Member-facing Telegram Bot မှ Admin command မလုပ်နိုင်ပါ။</p>
+    <p>AI ááá«áá±á¸áá±á¬ Non-AI Base áá¼ááºáááºá Dashboard Login áááºáá¬á¸áá±á¬ Admin command áá»á¬á¸áá¬ Preview/Confirm flow áá¯á¶á¸áá­á¯ááºáááºá Member-facing Telegram Bot áá¾ Admin command ááá¯ááºáá­á¯ááºáá«á</p>
   `);
 }
 
@@ -719,8 +737,8 @@ function commandMockReply(text, file) {
     return {
       role,
       title: "Registration status checked",
-      body: `လက်ရှိ Event Registered ${number(members.registered)} · Live ${number(members.live_registered)} · Spin ပြီး ${number(members.spun)} · Account pending ${number(members.pending_account)} ဖြစ်သည်။`,
-      action: role === "confirm" ? "Registration invite preview ready. Confirm လုပ်မှ Telegram ပို့မည်။" : "Read-only status only.",
+      body: `áááºáá¾á­ Event Registered ${number(members.registered)} Â· Live ${number(members.live_registered)} Â· Spin áá¼á®á¸ ${number(members.spun)} Â· Account pending ${number(members.pending_account)} áá¼ááºáááºá`,
+      action: role === "confirm" ? "Registration invite preview ready. Confirm áá¯ááºáá¾ Telegram áá­á¯á·áááºá" : "Read-only status only.",
     };
   }
   if (/health|error|system/i.test(text)) {
@@ -728,23 +746,23 @@ function commandMockReply(text, file) {
     return {
       role: "read",
       title: "System diagnosis",
-      body: `Health status: ${esc(status)}. Bot/Webhook/Supabase/Redis/Storage တစ်ခုချင်းစီကို System page တွင်စစ်ပါ။ Secret values မပြပါ။`,
-      action: "Retry/Recheck action only; destructive action မလုပ်ပါ။",
+      body: `Health status: ${esc(status)}. Bot/Webhook/Supabase/Redis/Storage áááºáá¯áá»ááºá¸áá®áá­á¯ System page áá½ááºáááºáá«á Secret values ááá¼áá«á`,
+      action: "Retry/Recheck action only; destructive action ááá¯ááºáá«á",
     };
   }
   if (/post|channel|caption|button|link|broadcast/i.test(text)) {
     return {
       role: "confirm",
       title: "Channel post draft ready",
-      body: `Caption draft + Spin Now button ကို Preview ပြထားသည်${file ? ` · attachment: ${esc(file.name)}` : ""}. Confirm & Publish မနှိပ်မချင်း main channel သို့မပို့ပါ။`,
-      action: "Preview → Confirm & Publish → Telegram message id + audit log.",
+      body: `Caption draft + Spin Now button áá­á¯ Preview áá¼áá¬á¸áááº${file ? ` Â· attachment: ${esc(file.name)}` : ""}. Confirm & Publish ááá¾á­ááºááá»ááºá¸ main channel áá­á¯á·ááá­á¯á·áá«á`,
+      action: "Preview â Confirm & Publish â Telegram message id + audit log.",
       buttons: ["Spin Now", "Join Channel"],
     };
   }
   return {
     role,
     title: "Command parsed",
-    body: `ဒီ request ကို safe preview အဖြစ်ဖတ်ပြီးထားသည်: “${esc(text)}”${file ? ` · attachment: ${esc(file.name)}` : ""}`,
+    body: `áá® request áá­á¯ safe preview á¡áá¼ááºáááºáá¼á®á¸áá¬á¸áááº: â${esc(text)}â${file ? ` Â· attachment: ${esc(file.name)}` : ""}`,
     action: role === "read" ? "No write action required." : "Admin confirmation required before any write action.",
   };
 }
@@ -765,7 +783,7 @@ function submitCommandBox(event) {
   const input = $("commandInput");
   const file = $("commandFile")?.files?.[0] || null;
   const text = input.value.trim();
-  if (!text && !file) return toast("Command သို့ attachment ထည့်ပါ", "error");
+  if (!text && !file) return toast("Command áá­á¯á· attachment ááá·áºáá«", "error");
   appendCommandMessage("admin", `<strong>Admin</strong><p>${esc(text || "[Attachment only]")}</p>${file ? `<small>Attached: ${esc(file.name)}</small>` : ""}`);
   const reply = commandMockReply(text, file);
   const badge = reply.role === "read" ? "READ" : reply.role === "confirm" ? "CONFIRM REQUIRED" : "OWNER ONLY";
@@ -787,17 +805,17 @@ function bindCommandBox() {
     const file = $("commandFile").files?.[0];
     const node = $("commandAttachmentPreview");
     if (!file) return node.classList.add("hidden");
-    node.textContent = `${file.name} · ${Math.ceil(file.size / 1024)} KB staged for preview`;
+    node.textContent = `${file.name} Â· ${Math.ceil(file.size / 1024)} KB staged for preview`;
     node.classList.remove("hidden");
   });
   $("confirmMockAction")?.addEventListener("click", () => {
-    appendCommandMessage("system", `<strong>Mock publish blocked</strong><p>Production တွင် Backend confirmation endpoint နှင့် audit log ချိတ်ပြီးမှ Telegram သို့ပို့မည်။ ယခု Non-AI Base preview တွင် real post မပို့ပါ။</p>`);
+    appendCommandMessage("system", `<strong>Mock publish blocked</strong><p>Production áá½ááº Backend confirmation endpoint áá¾áá·áº audit log áá»á­ááºáá¼á®á¸áá¾ Telegram áá­á¯á·áá­á¯á·áááºá ááá¯ Non-AI Base preview áá½ááº real post ááá­á¯á·áá«á</p>`);
     $("pendingActionCard").classList.add("hidden");
-    toast("Preview confirmed · real send disabled in base build", "success");
+    toast("Preview confirmed Â· real send disabled in base build", "success");
   });
   $("cancelMockAction")?.addEventListener("click", () => {
     $("pendingActionCard").classList.add("hidden");
-    appendCommandMessage("system", `<strong>Action cancelled</strong><p>Pending channel/broadcast action ကိုဖျက်လိုက်သည်။</p>`);
+    appendCommandMessage("system", `<strong>Action cancelled</strong><p>Pending channel/broadcast action áá­á¯áá»ááºáá­á¯ááºáááºá</p>`);
   });
 }
 
@@ -824,7 +842,7 @@ function bind() {
   $("showAdminPass").addEventListener("click", () => {
     const input = $("adminPass");
     input.type = input.type === "password" ? "text" : "password";
-    $("showAdminPass").textContent = input.type === "password" ? "ပြမည်" : "ဖျောက်မည်";
+    $("showAdminPass").textContent = input.type === "password" ? "áá¼áááº" : "áá»á±á¬ááºáááº";
   });
   qa(".admin-nav-btn").forEach((button) => button.addEventListener("click", () => switchSection(button.dataset.section)));
   qa(".nav-shortcut").forEach((button) => button.addEventListener("click", () => switchSection(button.dataset.target)));
@@ -833,16 +851,6 @@ function bind() {
   $("sidebarOverlay").addEventListener("click", () => setSidebar(false));
   $("adminRefresh").addEventListener("click", refresh);
   $("adminLogout").addEventListener("click", () => logout());
-  $("historyTable").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-history-status-user]");
-    if (!button) return;
-    setWinnerStatusFromHistory(button.dataset.historyStatusUser, button.dataset.nextStatus, button);
-  });
-  window.addEventListener("message", (event) => {
-    if (event.origin !== location.origin || event.data?.type !== "lucky77:winner-status") return;
-    patchWinnerStatus(event.data.user_id, event.data.status);
-    renderHistory();
-  });
   $("eventForm").addEventListener("submit", saveEvent);
   $("savePrizes").addEventListener("click", savePrizes);
   $("postSettingsForm").addEventListener("submit", savePostSettings);
@@ -859,6 +867,12 @@ function bind() {
   $("brandingPublish").addEventListener("click", publishBranding);
   $("brandingLogoUrl").addEventListener("input", () => {
     $("brandingPreview").src = $("brandingLogoUrl").value || "./assets/lucky77-logo.png";
+  });
+  $("historySearch")?.addEventListener("input", (event) => { state.historySearch = event.target.value; renderHistory(); });
+  $("historyStatusFilter")?.addEventListener("change", (event) => { state.historyFilter = event.target.value || "all"; renderHistory(); });
+  $("historyTable")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-history-status]");
+    if (button) updateWinnerStatusFromHistory(button);
   });
   $("memberSearch").addEventListener("input", renderMembers);
   $("memberTable").addEventListener("click", (event) => {
