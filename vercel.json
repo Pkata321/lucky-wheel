@@ -1,18 +1,40 @@
-import { defineConfig } from "vite";
-import { resolve } from "node:path";
-
-export default defineConfig({
-  server: {
-    host: "0.0.0.0",
-    allowedHosts: ["terminal.local"],
-  },
-  build: {
-    rollupOptions: {
-      input: {
-        player: resolve(import.meta.dirname, "index.html"),
-        admin: resolve(import.meta.dirname, "admin.html"),
-        winners: resolve(import.meta.dirname, "winners.html"),
-      },
+{
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/backend/:path*",
+      "destination": "https://lucky77-wheel-bot-548i.onrender.com/:path*"
     },
-  },
-});
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/player",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/test",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/event/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/test/:path*",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(self), geolocation=()" }
+      ]
+    }
+  ]
+}
