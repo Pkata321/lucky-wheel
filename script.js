@@ -32,6 +32,9 @@ const state = {
   spinning: false,
   spinRequestKey: "",
   localPromoConfirmedCode: "",
+  promoConfirming: false,
+  promoConfirmation: null,
+  previewAccountPending: false,
   accessToken: PLAYER.ACCESS_TOKEN,
   testMode: PLAYER.TEST_MODE,
   sound: localStorage.getItem(PLAYER.SOUND_KEY) !== "off",
@@ -67,6 +70,9 @@ function playerErrorMessage(error) {
     telegram_verification_required: "Official Telegram Bot မှ Player Link ကို ပြန်ဖွင့်ပါ။",
     spin_in_progress: "Spin လှည့်နေဆဲဖြစ်ပါသည်။ ခဏစောင့်ပါ။",
     no_prize_left: "ဒီ Event အတွက် ဆုများကုန်ဆုံးသွားပါပြီ။",
+    account_after_spin_required: "Spin လှည့်ပြီး ဆုရရှိမှ Game Account Name ထည့်နိုင်ပါသည်။",
+    promo_already_used: "ဒီ Promo Code ကို အသုံးပြုပြီးပါပြီ။",
+    test_link_required: "Test access ကို Test Event Link ဖြင့်သာဖွင့်ပါ။",
   };
   return messages[code] || safe(error?.message || "လုပ်ဆောင်မှုမအောင်မြင်ပါ။ ပြန်စမ်းပါ။");
 }
@@ -206,14 +212,16 @@ function setPromoConfirmUi(enteredCode, confirmed) {
   const line = $("promoReadyLine");
   if (!btn || !msg) return;
   const hasCode = enteredCode.length > 0;
-  btn.disabled = !hasCode || confirmed || state.spinning || state.spun;
-  btn.textContent = confirmed ? "Promo Code အတည်ပြုပြီး" : "Promo Code အတည်ပြုမည်";
+  btn.disabled = !hasCode || confirmed || state.promoConfirming || state.spinning || state.spun;
+  btn.textContent = state.promoConfirming
+    ? "စစ်ဆေးနေပါသည်..."
+    : confirmed ? "Promo Code အတည်ပြုပြီး" : "Promo Code အတည်ပြုမည်";
   msg.textContent = !hasCode
-    ? "Bot မှပို့ထားသော Promo Code ကိုထည့်ပါ။"
+    ? "Bot မှပို့ထားသော Promo Code ကို popup တွင်ထည့်ပါ။"
     : confirmed
-      ? "Code အတည်ပြုပြီးပါပြီ။ အခု Spin လှည့်နိုင်ပါသည်။"
-      : "Code ထည့်ပြီး အတည်ပြုမည်ကိုနှိပ်ပါ။";
-  if (line) line.textContent = confirmed ? "Promo Code အတည်ပြုပြီးပါပြီ" : "Promo Code အတည်ပြုရန်လိုအပ်သည်";
+      ? "Code အတည်ပြုပြီးပါပြီ။ အခု SPIN လှည့်နိုင်ပါသည်။"
+      : state.promoConfirming ? "Promo Code ကိုစစ်ဆေးနေပါသည်..." : "Code ထည့်ပြီး အတည်ပြုမည်ကိုနှိပ်ပါ။";
+  if (line) line.textContent = confirmed ? "Promo Code အတည်ပြုပြီးပါပြီ" : "Promo Code Popup မှ အတည်ပြုရန်လိုအပ်သည်";
 }
 
 function promoRequired() {
@@ -223,6 +231,112 @@ function promoRequired() {
 function promoConfirmedForCurrentInput(enteredCode) {
   if (!promoRequired()) return true;
   return enteredCode.length > 0 && state.localPromoConfirmedCode === enteredCode;
+}
+
+
+function promoModalElements() {
+  return {
+    modal: $("promoVerifyModal"),
+    input: $("promoPopupCodeInput"),
+    button: $("promoPopupConfirmBtn"),
+    stateNode: $("promoPopupState"),
+  };
+}
+
+function setPromoPopupState(kind, title, copy) {
+  const { stateNode } = promoModalElements();
+  if (!stateNode) return;
+  stateNode.classList.remove("is-checking", "is-verified", "is-error");
+  if (kind) stateNode.classList.add(`is-${kind}`);
+  const icon = stateNode.querySelector(".state-icon");
+  const strong = stateNode.querySelector("strong");
+  const small = stateNode.querySelector("small");
+  if (icon) icon.textContent = kind === "verified" ? "✓" : kind === "error" ? "!" : "77";
+  if (strong) strong.textContent = title;
+  if (small) small.textContent = copy;
+}
+
+function setPromoModalOpen(open) {
+  const { modal, input } = promoModalElements();
+  if (!modal) return;
+  modal.classList.toggle("hidden", !open);
+  document.body.classList.toggle("promo-gate-open", !!open);
+  if (open) {
+    const current = normalizePromoCode($("spinCodeInput")?.value || state.access?.promo_code || "");
+    if (input && !input.value && current) input.value = current;
+    syncPromoPopupUi();
+    requestAnimationFrame(() => input?.focus());
+  }
+}
+
+function syncPromoPopupUi() {
+  const { input, button } = promoModalElements();
+  if (!input || !button) return;
+  const code = normalizePromoCode(input.value);
+  if (input.value !== code) input.value = code;
+  const confirmed = promoConfirmedForCurrentInput(code);
+  button.disabled = !code || confirmed || state.promoConfirming || state.spinning || state.spun;
+  button.querySelector("span").textContent = state.promoConfirming
+    ? "စစ်ဆေးနေပါသည်..."
+    : confirmed ? "Promo Code အတည်ပြုပြီး" : "Promo Code အတည်ပြုမည်";
+  if (!code) setPromoPopupState("", "Code မထည့်ရသေးပါ", "Promo Code အတည်ပြုပြီးမှ SPIN ခလုတ်အသက်ဝင်ပါမည်။");
+  else if (confirmed) setPromoPopupState("verified", "Promo Code အတည်ပြုပြီးပါပြီ", "Popup ပိတ်ပြီး Wheel လှည့်နိုင်ပါပြီ။");
+  else if (state.promoConfirming) setPromoPopupState("checking", "Code စစ်ဆေးနေပါသည်", "ခဏစောင့်ပါ။");
+  else setPromoPopupState("", "Code ထည့်ထားပါသည်", "အတည်ပြုမည်ကိုနှိပ်ပါ။");
+}
+
+function shouldShowPromoPopup() {
+  if (!state.user || !state.channel?.joined || !state.registered) return false;
+  if (state.spun || state.access?.account_ready || state.previewAccountPending) return false;
+  if (!promoRequired()) return false;
+  if (!state.testMode && !PLAYER.DEMO && !state.event?.event_live) return false;
+  const entered = normalizePromoCode($("spinCodeInput")?.value || "");
+  return !promoConfirmedForCurrentInput(entered);
+}
+
+async function confirmPromoCodeFrom(code, source = "inline") {
+  code = normalizePromoCode(code);
+  if (!code) {
+    toast("Promo Code ထည့်ပေးပါ။", "error");
+    return false;
+  }
+  state.promoConfirming = true;
+  state.localPromoConfirmedCode = "";
+  state.promoConfirmation = null;
+  if ($("spinCodeInput")) $("spinCodeInput").value = code;
+  syncPromoPopupUi();
+  renderAccess();
+  try {
+    if (PLAYER.DEMO || state.testMode) {
+      await new Promise((resolve) => setTimeout(resolve, 180));
+      state.localPromoConfirmedCode = code;
+      state.promoConfirmation = { confirmed: true, test: true };
+    } else {
+      const data = await api("/api/player/promo/confirm", {
+        method: "POST",
+        body: { init_data: state.initData, promo_code: code, access_token: state.accessToken },
+      });
+      const latest = normalizePromoCode(source === "popup" ? $("promoPopupCodeInput")?.value : $("spinCodeInput")?.value);
+      if (latest && latest !== code) return false;
+      if (!data.confirmed) throw new Error("Promo Code confirmation failed.");
+      state.localPromoConfirmedCode = code;
+      state.promoConfirmation = data.promo || { confirmed: true };
+    }
+    setPromoPopupState("verified", "Promo Code အတည်ပြုပြီးပါပြီ", "Popup ပိတ်ပြီး Wheel လှည့်နိုင်ပါပြီ။");
+    toast("Promo Code အတည်ပြုပြီးပါပြီ။", "success");
+    setTimeout(() => setPromoModalOpen(false), 350);
+    return true;
+  } catch (error) {
+    state.localPromoConfirmedCode = "";
+    state.promoConfirmation = null;
+    setPromoPopupState("error", "Promo Code မအောင်မြင်ပါ", playerErrorMessage(error));
+    toast(playerErrorMessage(error), "error");
+    return false;
+  } finally {
+    state.promoConfirming = false;
+    syncPromoPopupUi();
+    renderAccess();
+  }
 }
 
 function renderAccess() {
@@ -235,6 +349,7 @@ function renderAccess() {
     revealGate("browserGate");
     spinBtn.disabled = true;
     $("spinHint").textContent = "Official Telegram Bot မှ Player Link ကို ဖွင့်ရန်လိုအပ်သည်";
+    setPromoModalOpen(false);
     return;
   }
 
@@ -243,6 +358,17 @@ function renderAccess() {
     revealGate("joinGate");
     spinBtn.disabled = true;
     $("spinHint").textContent = "Lucky77 Channel ကို Join ပြီး Member အတည်ပြုပါ";
+    setPromoModalOpen(false);
+    return;
+  }
+
+  if (state.testMode && state.previewAccountPending && !state.access.account_ready) {
+    $("accessTitle").textContent = "Test Result · Game Account Preview";
+    $("accountPhoneField").classList.remove("hidden");
+    revealGate("accountGate");
+    spinBtn.disabled = true;
+    $("spinHint").textContent = "Test flow အတွက် Game Account Name UI ကို စမ်းသပ်ပါ။ Data မသိမ်းပါ။";
+    setPromoModalOpen(false);
     return;
   }
 
@@ -256,6 +382,7 @@ function renderAccess() {
     $("spinHint").textContent = promoConfirmed
       ? "Test Spin လှည့်ရန် အသင့်ဖြစ်သည် · Result မသိမ်းပါ"
       : enteredCode.length ? "Promo Code အတည်ပြုမည်ကိုနှိပ်ပါ" : "စမ်းသပ်ရန် Promo Code တစ်ခုခုထည့်ပါ";
+    setPromoModalOpen(shouldShowPromoPopup());
     return;
   }
 
@@ -274,6 +401,7 @@ function renderAccess() {
     revealGate("registerGate");
     spinBtn.disabled = true;
     $("spinHint").textContent = "Event Register လုပ်ပြီးမှ Promo Code ဖြင့် Spin လှည့်နိုင်ပါသည်";
+    setPromoModalOpen(false);
     return;
   }
 
@@ -287,6 +415,7 @@ function renderAccess() {
     revealGate("accountGate");
     spinBtn.disabled = true;
     $("spinHint").textContent = "ကံထူးဆုရယူရန် Game Account Name ကို အတည်ပြုပါ";
+    setPromoModalOpen(false);
     return;
   }
 
@@ -313,6 +442,7 @@ function renderAccess() {
     : state.event?.event_live
       ? codeReady ? "Spin လှည့်ရန် အသင့်ဖြစ်သည်" : enteredCode.length ? "Promo Code အတည်ပြုမည်ကိုနှိပ်ပါ" : "Promo Code ထည့်ပါ"
       : "Event Live ဖြစ်သည့်အချိန် ပြန်လှည့်ပါ";
+  setPromoModalOpen(shouldShowPromoPopup());
 }
 
 function renderMetrics() {
@@ -385,7 +515,9 @@ function confetti() {
 }
 
 function showResult(result) {
-  state.result = result; state.spun = !state.testMode;
+  state.result = result;
+  state.spun = !state.testMode;
+  state.previewAccountPending = !!state.testMode;
   $("resultName").textContent = `${state.user?.first_name || ""} ${state.user?.last_name || ""}`.trim() || state.user?.username || "Lucky Member";
   $("resultPrize").textContent = formatPrize(result?.prize);
   $("resultSaveLabel").textContent = state.testMode ? "TEST RESULT · NOT SAVED" : "Lucky77 Result သိမ်းပြီးပါပြီ";
@@ -447,6 +579,17 @@ async function saveAccount(event) {
       state.access = { ...state.access, ...(data.access || {}) };
     }
     toast("Game Account Name အတည်ပြုပြီးပါပြီ။", "success");
+    if (state.testMode) {
+      state.previewAccountPending = false;
+      setTimeout(() => {
+        state.access = { account_ready: false, promo_code: "", test_member: true };
+        state.localPromoConfirmedCode = "";
+        state.promoConfirmation = null;
+        if ($("spinCodeInput")) $("spinCodeInput").value = "";
+        if ($("promoPopupCodeInput")) $("promoPopupCodeInput").value = "";
+        renderAll();
+      }, 900);
+    }
     renderAll();
   } catch (error) {
     toast(playerErrorMessage(error), "error");
@@ -466,6 +609,7 @@ async function spin() {
     return toast(code ? "Promo Code အတည်ပြုမည်ကို အရင်နှိပ်ပါ။" : "Promo Code ထည့်ပေးပါ။", "error");
   }
   if (state.spinning || $("spinBtn").disabled) return;
+  setPromoModalOpen(false);
   state.spinning = true; $("spinBtn").disabled = true; $("spinBtn").classList.add("is-spinning"); $("spinBtn").querySelector("span").textContent = "SPINNING";
   try {
     let winner;
@@ -495,9 +639,9 @@ async function spin() {
       state.spinRequestKey = "";
     }
     state.rotation = targetRotation(winner?.prize);
-    q(".wheel-frame").style.transition = "transform 5.6s cubic-bezier(.12,.72,.08,1)";
+    q(".wheel-frame").style.transition = "transform 4.8s cubic-bezier(.12,.72,.08,1)";
     q(".wheel-frame").style.transform = `rotate(${state.rotation}deg)`;
-    await new Promise((resolve) => setTimeout(resolve, 5750)); showResult(winner);
+    await new Promise((resolve) => setTimeout(resolve, 5000)); showResult(winner);
     if (!winner?.test) {
       state.counts.prizes_left = Math.max(0, Number(state.counts.prizes_left || 0) - 1);
       state.counts.winners = Number(state.counts.winners || 0) + 1;
@@ -527,15 +671,28 @@ function bind() {
   $("spinCodeInput").addEventListener("input", (event) => {
     const normalized = normalizePromoCode(event.target.value);
     if (event.target.value !== normalized) event.target.value = normalized;
-    if (state.localPromoConfirmedCode && state.localPromoConfirmedCode !== normalized) state.localPromoConfirmedCode = "";
+    if (state.localPromoConfirmedCode !== normalized) {
+      state.localPromoConfirmedCode = "";
+      state.promoConfirmation = null;
+    }
     renderAccess();
   });
   $("promoConfirmBtn")?.addEventListener("click", () => {
-    const code = normalizePromoCode($("spinCodeInput").value);
-    if (!code) return toast("Promo Code ထည့်ပေးပါ။", "error");
-    state.localPromoConfirmedCode = code;
-    toast("Promo Code အတည်ပြုပြီးပါပြီ။", "success");
+    confirmPromoCodeFrom($("spinCodeInput").value, "inline");
+  });
+  $("promoPopupCodeInput")?.addEventListener("input", (event) => {
+    const normalized = normalizePromoCode(event.target.value);
+    if (event.target.value !== normalized) event.target.value = normalized;
+    if (state.localPromoConfirmedCode !== normalized) {
+      state.localPromoConfirmedCode = "";
+      state.promoConfirmation = null;
+    }
+    if ($("spinCodeInput")) $("spinCodeInput").value = normalized;
+    syncPromoPopupUi();
     renderAccess();
+  });
+  $("promoPopupConfirmBtn")?.addEventListener("click", () => {
+    confirmPromoCodeFrom($("promoPopupCodeInput").value, "popup");
   });
   $("resultCloseBtn").addEventListener("click", () => {
     $("resultModal").classList.add("hidden");
