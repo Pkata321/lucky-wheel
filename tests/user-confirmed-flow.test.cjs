@@ -14,7 +14,7 @@ const config = JSON.parse(fs.readFileSync(path.join(root, "vercel.json"), "utf8"
 for (const copy of [
   "ကိုယ်တိုင်အကောင့်ဖောက်ရန်",
   "CS သို့ဆက်သွယ်ရန်",
-  "Verified Game Account",
+  "Promo Code ဖြင့် Spin လှည့်ရန် အသင့်ဖြစ်သည်",
   "Promo Code",
 ]) {
   assert.ok(html.includes(copy), `Player copy missing: ${copy}`);
@@ -36,3 +36,8 @@ assert.equal(routes.get("/test"), "/index.html");
 assert.equal(routes.get("/test/:path*"), "/index.html");
 
 console.log("Lucky77 confirmed frontend flow: PASS");
+
+const css = fs.readFileSync(path.join(root, "styles.css"), "utf8");
+assert.ok(css.includes("minmax(0, 1fr)"), "Inbox scroll tracks must allow independent shrinking");
+assert.ok(css.includes("overscroll-behavior-y: contain"), "Inbox panels must contain scroll chaining");
+assert.ok(player.includes("Confirmed flow: player spins with Promo Code first"));
