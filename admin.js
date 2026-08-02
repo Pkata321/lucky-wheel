@@ -1,7 +1,7 @@
 "use strict";
 
 const ADMIN = {
-  API_BASE: "/backend",
+  API_BASE: window.LUCKY77_API_BASE || "/backend",
   ACCOUNT: "lucky77_dashboard_account",
   SIDEBAR: "lucky77_sidebar_expanded_v6",
   YANGON_OFFSET_MINUTES: 390,
@@ -256,7 +256,7 @@ function renderOverview() {
   const counts = data.counts || {};
   applyTheme(event);
   $("overviewTitle").textContent = event.title || "Lucky77 Grand Spin";
-  $("overviewSubtitle").textContent = `${event.subtitle || ""} Â· ${safe(event.phase || "registration").toUpperCase()}`;
+  $("overviewSubtitle").textContent = `${event.subtitle || ""} · ${safe(event.phase || "registration").toUpperCase()}`;
   const live = !!event.event_live;
   $("overviewLive").classList.toggle("is-live", live);
   $("overviewLive").classList.toggle("is-waiting", !live);
@@ -321,7 +321,7 @@ function renderEventForm() {
   $("eventWheelColors").value = Array.isArray(event.wheel_colors) ? event.wheel_colors.join(", ") : "";
   $("eventSpinSound").value = safe(event.spin_sound_url);
   $("eventWinSound").value = safe(event.win_sound_url);
-  $("eventPhaseText").textContent = `Phase: ${safe(event.phase || "registration")} Â· Timezone: Asia/Yangon`;
+  $("eventPhaseText").textContent = `Phase: ${safe(event.phase || "registration")} · Timezone: Asia/Yangon`;
   $("eventLifecycleError").textContent = event.lifecycle_error || "";
   $("eventLifecycleError").classList.toggle("hidden", !event.lifecycle_error);
 }
@@ -404,7 +404,7 @@ function renderHistory() {
       <td>${item.username ? `@${esc(safe(item.username).replace(/^@/, ""))}` : "-"}</td>
       <td><span class="table-status ${done ? "is-good" : "is-waiting"}">${done ? "Done" : "Undone"}</span></td>
       <td>${esc(dateText(item.at || item.created_at || item.last_message_at))}</td>
-      <td><button class="table-mode-btn ${done ? "" : "is-test"}" data-history-status="${done ? "pending" : "done"}" data-user-id="${esc(uid)}">${done ? "Undone áá¼ááºáá¯ááºáááº" : "áá°áááºáá¼áá·áºáá¼á®á¸ Done"}</button></td>
+      <td><button class="table-mode-btn ${done ? "" : "is-test"}" data-history-status="${done ? "pending" : "done"}" data-user-id="${esc(uid)}">${done ? "Undone ပြန်လုပ်မည်" : "ယူနစ်ဖြည့်ပြီး Done"}</button></td>
     </tr>`;
   }).join("") : `<tr><td colspan="7"><div class="empty-copy">No winner history yet.</div></td></tr>`;
 }
@@ -418,7 +418,7 @@ async function updateWinnerStatusFromHistory(button) {
     await api("/winner/status", { method: "POST", body: { user_id: uid, status } });
     state.winners = state.winners.map((item) => safe(item.user_id) === uid ? { ...item, cs_status: status, status } : item);
     renderHistory();
-    toast(status === "done" ? "áá°áááºáá¼áá·áºáá¼á®á¸ Done" : "Undone áá¼ááºáá¯ááºáá¼á®á¸", "success");
+    toast(status === "done" ? "ယူနစ်ဖြည့်ပြီး Done" : "Undone ပြန်လုပ်ပြီး", "success");
   } catch (error) {
     toast(error.message, "error");
   } finally {
@@ -442,7 +442,7 @@ function renderSystem() {
   const supabase = health.supabase || {};
   $("systemHealthCards").innerHTML = [
     ["Backend", health.ok ? "Online" : "Offline"],
-    ["Version", health.version || "6.4.2"],
+    ["Version", health.version || "6.4.4"],
     ["Redis slot", redis.slot || health.redis_slot || "-"],
     ["Supabase", supabase.ready ? "Ready" : supabase.configured ? "Configured" : "Not configured"],
     ["Timezone", "Asia/Yangon"],
@@ -499,29 +499,59 @@ function renderAll() {
   renderSystem();
 }
 
+async function safeApi(path, fallback = {}) {
+  try {
+    return { ok: true, data: await api(path), path };
+  } catch (error) {
+    console.warn(`[Lucky77 Admin] ${path} failed`, error);
+    return { ok: false, data: fallback, path, error };
+  }
+}
+
 async function refresh() {
   $("adminRefresh").disabled = true;
   try {
-    const [overview, eventPack, posts, staged, health, promoPack, branding, auditPack, claimsPack, winnersPack] = await Promise.all([
-      api("/admin/overview"), api("/admin/event"), api("/settings/posts"),
-      api("/channel/post/staged"), api("/health/full"), api("/admin/promos"),
-      api("/admin/branding"), api("/admin/audit?limit=100"), api("/admin/claims?limit=200"),
-      api("/winners/cs"),
+    const [overviewRes, eventRes, postsRes, stagedRes, healthRes, promoRes, brandingRes, auditRes, claimsRes, winnersRes] = await Promise.all([
+      safeApi("/admin/overview", state.overview || {}),
+      safeApi("/admin/event", { event: state.event || {} }),
+      safeApi("/settings/posts", state.posts?.settings || {}),
+      safeApi("/channel/post/staged", state.posts?.staged || {}),
+      safeApi("/health/full", state.health || { ok: false }),
+      safeApi("/admin/promos", { promos: state.promos || [] }),
+      safeApi("/admin/branding", state.branding || {}),
+      safeApi("/admin/audit?limit=100", { logs: state.audit || [] }),
+      safeApi("/admin/claims?limit=200", { claims: state.claims || [] }),
+      safeApi("/winners/cs", { winners: state.winners || [] }),
     ]);
+
+    const overview = overviewRes.data || {};
+    const eventPack = eventRes.data || {};
+    const posts = postsRes.data || {};
+    const staged = stagedRes.data || {};
+    const health = healthRes.data || {};
+    const promoPack = promoRes.data || {};
+    const branding = brandingRes.data || {};
+    const auditPack = auditRes.data || {};
+    const claimsPack = claimsRes.data || {};
+    const winnersPack = winnersRes.data || {};
+
     state.overview = overview;
-    state.event = eventPack.event || {};
-    state.posts = { settings: posts.settings || posts, staged: staged.staged || staged };
+    state.event = eventPack.event || state.event || {};
+    state.posts = { settings: posts.settings || posts || state.posts?.settings || {}, staged: staged.staged || staged || state.posts?.staged || {} };
     state.health = health;
-    state.promos = promoPack.promos || [];
-    state.branding = branding;
-    state.audit = auditPack.logs || [];
-    state.claims = claimsPack.claims || [];
-    state.winners = (winnersPack.winners || []).map(flattenWinner);
-    renderHealth(true);
+    state.promos = promoPack.promos || state.promos || [];
+    state.branding = branding || state.branding || {};
+    state.audit = auditPack.logs || state.audit || [];
+    state.claims = claimsPack.claims || state.claims || [];
+    state.winners = (winnersPack.winners || state.winners || []).map(flattenWinner);
+
+    const backendOnline = !!(healthRes.ok && (health.ok || health.version || health.mode));
+    const usefulDataLoaded = [overviewRes, eventRes, winnersRes, promoRes].some((r) => r.ok);
+    renderHealth(backendOnline || usefulDataLoaded);
     renderAll();
-  } catch (error) {
-    renderHealth(false);
-    toast(error.message, "error");
+
+    const failed = [overviewRes, eventRes, postsRes, stagedRes, healthRes, promoRes, brandingRes, auditRes, claimsRes, winnersRes].filter((r) => !r.ok);
+    if (failed.length) toast(`Partial refresh: ${failed.length} endpoint(s) retrying. Old data kept.`, "info");
   } finally {
     $("adminRefresh").disabled = false;
   }
@@ -632,7 +662,7 @@ async function sendPromos() {
       method: "POST",
       body: { event_id: state.event?.event_id, user_ids: selected },
     });
-    toast(`${number(data.delivered)} delivered Â· ${number(data.failed)} failed`, data.failed ? "info" : "success");
+    toast(`${number(data.delivered)} delivered · ${number(data.failed)} failed`, data.failed ? "info" : "success");
     await refresh();
   } catch (error) { toast(error.message, "error"); }
 }
@@ -641,7 +671,7 @@ async function copyTestLink() {
   try {
     const link = $("testLinkUrl").value.trim() || `${location.origin}/test/preview`;
     await navigator.clipboard.writeText(link);
-    toast("Test Link áá­á¯ áá°á¸áá°áá¼á®á¸áá«áá¼á®", "success");
+    toast("Test Link ကို ကူးယူပြီးပါပြီ", "success");
   } catch (error) { toast(error.message, "error"); }
 }
 
@@ -726,7 +756,7 @@ function renderCommandWelcome() {
   log.dataset.ready = "1";
   appendCommandMessage("system", `
     <strong>Lucky77 Safe Command Box</strong>
-    <p>AI ááá«áá±á¸áá±á¬ Non-AI Base áá¼ááºáááºá Dashboard Login áááºáá¬á¸áá±á¬ Admin command áá»á¬á¸áá¬ Preview/Confirm flow áá¯á¶á¸áá­á¯ááºáááºá Member-facing Telegram Bot áá¾ Admin command ááá¯ááºáá­á¯ááºáá«á</p>
+    <p>AI မပါသေးသော Non-AI Base ဖြစ်သည်။ Dashboard Login ဝင်ထားသော Admin command များသာ Preview/Confirm flow သုံးနိုင်သည်။ Member-facing Telegram Bot မှ Admin command မလုပ်နိုင်ပါ။</p>
   `);
 }
 
@@ -737,8 +767,8 @@ function commandMockReply(text, file) {
     return {
       role,
       title: "Registration status checked",
-      body: `áááºáá¾á­ Event Registered ${number(members.registered)} Â· Live ${number(members.live_registered)} Â· Spin áá¼á®á¸ ${number(members.spun)} Â· Account pending ${number(members.pending_account)} áá¼ááºáááºá`,
-      action: role === "confirm" ? "Registration invite preview ready. Confirm áá¯ááºáá¾ Telegram áá­á¯á·áááºá" : "Read-only status only.",
+      body: `လက်ရှိ Event Registered ${number(members.registered)} · Live ${number(members.live_registered)} · Spin ပြီး ${number(members.spun)} · Account pending ${number(members.pending_account)} ဖြစ်သည်။`,
+      action: role === "confirm" ? "Registration invite preview ready. Confirm လုပ်မှ Telegram ပို့မည်။" : "Read-only status only.",
     };
   }
   if (/health|error|system/i.test(text)) {
@@ -746,23 +776,23 @@ function commandMockReply(text, file) {
     return {
       role: "read",
       title: "System diagnosis",
-      body: `Health status: ${esc(status)}. Bot/Webhook/Supabase/Redis/Storage áááºáá¯áá»ááºá¸áá®áá­á¯ System page áá½ááºáááºáá«á Secret values ááá¼áá«á`,
-      action: "Retry/Recheck action only; destructive action ááá¯ááºáá«á",
+      body: `Health status: ${esc(status)}. Bot/Webhook/Supabase/Redis/Storage တစ်ခုချင်းစီကို System page တွင်စစ်ပါ။ Secret values မပြပါ။`,
+      action: "Retry/Recheck action only; destructive action မလုပ်ပါ။",
     };
   }
   if (/post|channel|caption|button|link|broadcast/i.test(text)) {
     return {
       role: "confirm",
       title: "Channel post draft ready",
-      body: `Caption draft + Spin Now button áá­á¯ Preview áá¼áá¬á¸áááº${file ? ` Â· attachment: ${esc(file.name)}` : ""}. Confirm & Publish ááá¾á­ááºááá»ááºá¸ main channel áá­á¯á·ááá­á¯á·áá«á`,
-      action: "Preview â Confirm & Publish â Telegram message id + audit log.",
+      body: `Caption draft + Spin Now button ကို Preview ပြထားသည်${file ? ` · attachment: ${esc(file.name)}` : ""}. Confirm & Publish မနှိပ်မချင်း main channel သို့မပို့ပါ။`,
+      action: "Preview → Confirm & Publish → Telegram message id + audit log.",
       buttons: ["Spin Now", "Join Channel"],
     };
   }
   return {
     role,
     title: "Command parsed",
-    body: `áá® request áá­á¯ safe preview á¡áá¼ááºáááºáá¼á®á¸áá¬á¸áááº: â${esc(text)}â${file ? ` Â· attachment: ${esc(file.name)}` : ""}`,
+    body: `ဒီ request ကို safe preview အဖြစ်ဖတ်ပြီးထားသည်: “${esc(text)}”${file ? ` · attachment: ${esc(file.name)}` : ""}`,
     action: role === "read" ? "No write action required." : "Admin confirmation required before any write action.",
   };
 }
@@ -783,7 +813,7 @@ function submitCommandBox(event) {
   const input = $("commandInput");
   const file = $("commandFile")?.files?.[0] || null;
   const text = input.value.trim();
-  if (!text && !file) return toast("Command áá­á¯á· attachment ááá·áºáá«", "error");
+  if (!text && !file) return toast("Command သို့ attachment ထည့်ပါ", "error");
   appendCommandMessage("admin", `<strong>Admin</strong><p>${esc(text || "[Attachment only]")}</p>${file ? `<small>Attached: ${esc(file.name)}</small>` : ""}`);
   const reply = commandMockReply(text, file);
   const badge = reply.role === "read" ? "READ" : reply.role === "confirm" ? "CONFIRM REQUIRED" : "OWNER ONLY";
@@ -805,17 +835,17 @@ function bindCommandBox() {
     const file = $("commandFile").files?.[0];
     const node = $("commandAttachmentPreview");
     if (!file) return node.classList.add("hidden");
-    node.textContent = `${file.name} Â· ${Math.ceil(file.size / 1024)} KB staged for preview`;
+    node.textContent = `${file.name} · ${Math.ceil(file.size / 1024)} KB staged for preview`;
     node.classList.remove("hidden");
   });
   $("confirmMockAction")?.addEventListener("click", () => {
-    appendCommandMessage("system", `<strong>Mock publish blocked</strong><p>Production áá½ááº Backend confirmation endpoint áá¾áá·áº audit log áá»á­ááºáá¼á®á¸áá¾ Telegram áá­á¯á·áá­á¯á·áááºá ááá¯ Non-AI Base preview áá½ááº real post ááá­á¯á·áá«á</p>`);
+    appendCommandMessage("system", `<strong>Mock publish blocked</strong><p>Production တွင် Backend confirmation endpoint နှင့် audit log ချိတ်ပြီးမှ Telegram သို့ပို့မည်။ ယခု Non-AI Base preview တွင် real post မပို့ပါ။</p>`);
     $("pendingActionCard").classList.add("hidden");
-    toast("Preview confirmed Â· real send disabled in base build", "success");
+    toast("Preview confirmed · real send disabled in base build", "success");
   });
   $("cancelMockAction")?.addEventListener("click", () => {
     $("pendingActionCard").classList.add("hidden");
-    appendCommandMessage("system", `<strong>Action cancelled</strong><p>Pending channel/broadcast action áá­á¯áá»ááºáá­á¯ááºáááºá</p>`);
+    appendCommandMessage("system", `<strong>Action cancelled</strong><p>Pending channel/broadcast action ကိုဖျက်လိုက်သည်။</p>`);
   });
 }
 
@@ -842,7 +872,7 @@ function bind() {
   $("showAdminPass").addEventListener("click", () => {
     const input = $("adminPass");
     input.type = input.type === "password" ? "text" : "password";
-    $("showAdminPass").textContent = input.type === "password" ? "áá¼áááº" : "áá»á±á¬ááºáááº";
+    $("showAdminPass").textContent = input.type === "password" ? "ပြမည်" : "ဖျောက်မည်";
   });
   qa(".admin-nav-btn").forEach((button) => button.addEventListener("click", () => switchSection(button.dataset.section)));
   qa(".nav-shortcut").forEach((button) => button.addEventListener("click", () => switchSection(button.dataset.target)));
