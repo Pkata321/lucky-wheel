@@ -53,6 +53,40 @@ function flattenWinner(item = {}) {
     amount: winnerAmount(item),
   };
 }
+
+function firstArrayFromPack(pack, keys = []) {
+  if (Array.isArray(pack)) return pack;
+  if (!pack || typeof pack !== "object") return [];
+  for (const key of keys) {
+    const value = pack[key];
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === "object") {
+      const nested = firstArrayFromPack(value, keys);
+      if (nested.length) return nested;
+    }
+  }
+  for (const value of Object.values(pack)) {
+    if (Array.isArray(value)) return value;
+  }
+  return [];
+}
+
+function extractWinners(pack, fallback = []) {
+  const list = firstArrayFromPack(pack, [
+    "winners", "winner_history", "history", "conversations", "items",
+    "rows", "results", "list", "data", "records"
+  ]);
+  return (list.length ? list : fallback || []).map(flattenWinner);
+}
+
+function extractPromos(pack, fallback = []) {
+  const list = firstArrayFromPack(pack, [
+    "promos", "promo_codes", "codes", "items", "rows",
+    "results", "list", "data", "records"
+  ]);
+  return list.length ? list : fallback || [];
+}
+
 const esc = (value) => safe(value)
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
   .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
@@ -539,11 +573,11 @@ async function refresh() {
     state.event = eventPack.event || state.event || {};
     state.posts = { settings: posts.settings || posts || state.posts?.settings || {}, staged: staged.staged || staged || state.posts?.staged || {} };
     state.health = health;
-    state.promos = promoPack.promos || state.promos || [];
+    state.promos = extractPromos(promoPack, state.promos || []);
     state.branding = branding || state.branding || {};
     state.audit = auditPack.logs || state.audit || [];
     state.claims = claimsPack.claims || state.claims || [];
-    state.winners = (winnersPack.winners || state.winners || []).map(flattenWinner);
+    state.winners = extractWinners(winnersPack, state.winners || []);
 
     const backendOnline = !!(healthRes.ok && (health.ok || health.version || health.mode));
     const usefulDataLoaded = [overviewRes, eventRes, winnersRes, promoRes].some((r) => r.ok);
