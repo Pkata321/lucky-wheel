@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="my">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Lucky77 · Safe Backup Merge Restore</title>
+  <link rel="stylesheet" href="./styles.css?v=6.4.9-backup-merge" />
+  <style>
+    body { font-family: Inter, "Noto Sans Myanmar", system-ui, sans-serif; background: linear-gradient(135deg,#eff8ff,#ffffff); color:#06233a; margin:0; }
+    .restore-shell { max-width: 960px; margin: 0 auto; padding: 28px 16px 60px; }
+    .restore-card { background:#fff; border:1px solid #cfe8ff; border-radius:24px; padding:22px; box-shadow:0 18px 50px rgba(8,126,234,.14); margin-bottom:16px; }
+    .restore-card h1,.restore-card h2 { margin: 0 0 10px; }
+    .restore-card p { line-height:1.65; }
+    .restore-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+    .restore-stat { border:1px solid #d8ecff; border-radius:16px; padding:14px; background:#f8fcff; }
+    .restore-stat span { display:block; color:#4b6477; font-size:12px; }
+    .restore-stat strong { display:block; font-size:26px; margin-top:4px; }
+    .restore-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+    .restore-actions button,.restore-actions a { border:0; border-radius:999px; padding:12px 16px; font-weight:800; text-decoration:none; cursor:pointer; }
+    .primary { background:#087eea; color:white; }
+    .secondary { background:#e8f5ff; color:#075caa; }
+    .danger { background:#ffe8e8; color:#9f1010; }
+    button:disabled { opacity:.45; cursor:not-allowed; }
+    textarea,input[type="text"] { width:100%; box-sizing:border-box; border:1px solid #cfe8ff; border-radius:16px; padding:12px; font:inherit; }
+    pre { white-space: pre-wrap; overflow:auto; background:#071928; color:#d8f3ff; padding:14px; border-radius:16px; max-height:420px; }
+    .warn { background:#fff7e6; border-color:#ffe1a3; }
+    .ok { background:#effff7; border-color:#b8f1d3; }
+  </style>
+</head>
+<body>
+  <main class="restore-shell">
+    <section class="restore-card">
+      <h1>Lucky77 Safe Backup Merge Restore</h1>
+      <p>ဒီ tool က backup JSON ကို <strong>ဖျက်/overwrite မလုပ်ဘဲ merge</strong> လုပ်ရန်အတွက်ပါ။ Admin Login ဝင်ထားပြီးမှ သုံးပါ။</p>
+      <div class="restore-actions">
+        <a class="secondary" href="./admin.html">Admin သို့ပြန်သွားမည်</a>
+        <a class="secondary" href="./admin.html?v=649">Admin refresh ဖွင့်မည်</a>
+      </div>
+    </section>
+
+    <section class="restore-card warn">
+      <h2>မလုပ်ခင်စစ်ရန်</h2>
+      <p>Render Environment တွင် restore လုပ်မည့်အချိန်အတွင်း <strong>ALLOW_BACKUP_MERGE_RESTORE=1</strong> ထည့်ထားရမည်။ Restore ပြီးတာနဲ့ ဒီ env ကိုပြန်ဖျက်ပါ။ Supabase ထဲပါ merge သိမ်းချင်မှ <strong>ALLOW_BACKUP_MERGE_TO_SUPABASE=1</strong> ထည့်ပါ။</p>
+    </section>
+
+    <section class="restore-card">
+      <h2>1. Backup JSON ရွေးပါ</h2>
+      <input id="backupFile" type="file" accept="application/json,.json" />
+      <div class="restore-actions">
+        <button id="previewBtn" class="primary" type="button" disabled>Preview စစ်မည်</button>
+      </div>
+    </section>
+
+    <section id="previewCard" class="restore-card hidden">
+      <h2>Preview Result</h2>
+      <div id="stats" class="restore-grid"></div>
+      <pre id="previewOutput"></pre>
+    </section>
+
+    <section class="restore-card warn">
+      <h2>2. Merge Restore Confirm</h2>
+      <p>အောက်က box ထဲမှာ <strong>MERGE ONLY</strong> လို့ရိုက်မှ Restore ခလုတ်အသက်ဝင်မယ်။ Full overwrite မလုပ်ပါ။</p>
+      <input id="confirmText" type="text" placeholder="MERGE ONLY" />
+      <div class="restore-actions">
+        <button id="restoreBtn" class="danger" type="button" disabled>Safe Merge Restore လုပ်မည်</button>
+      </div>
+    </section>
+
+    <section id="restoreCard" class="restore-card hidden">
+      <h2>Restore Result</h2>
+      <pre id="restoreOutput"></pre>
+    </section>
+  </main>
+  <script type="module" src="./restore.js?v=6.4.9-backup-merge"></script>
+</body>
+</html>

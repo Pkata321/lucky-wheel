@@ -1,6 +1,8 @@
 {
-  "version": "6.4.8",
+  "version": "6.4.9",
   "build": "final-flow-restore",
   "source": "UTF-8 static output synchronized root/dist",
-  "notes": "Restores mandatory Promo Code popup before wheel; Game Account after spin; admin winner/promo sync."
+  "notes": "Restores mandatory Promo Code popup before wheel; Game Account after spin; admin winner/promo sync.",
+  "label": "backup-merge-restore",
+  "generated_at": "2026-08-02T22:44:00+06:30"
 }
