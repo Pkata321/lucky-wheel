@@ -54,22 +54,42 @@ function flattenWinner(item = {}) {
   };
 }
 
-function firstArrayFromPack(pack, keys = []) {
-  if (Array.isArray(pack)) return pack;
-  if (!pack || typeof pack !== "object") return [];
+function firstArrayFromPack(pack, keys = [], seen = new Set()) {
+  // v6.4.7: prefer the first NON-EMPTY array. v6.4.6 could stop on winners: [] / promos: []
+  // even when conversations/items/data contained the real rows, causing Admin totals to show 0.
+  if (Array.isArray(pack)) return pack.length ? pack : [];
+  if (!pack || typeof pack !== "object" || seen.has(pack)) return [];
+  seen.add(pack);
+
+  const emptyArrays = [];
   for (const key of keys) {
     const value = pack[key];
-    if (Array.isArray(value)) return value;
+    if (Array.isArray(value)) {
+      if (value.length) return value;
+      emptyArrays.push(value);
+      continue;
+    }
     if (value && typeof value === "object") {
-      const nested = firstArrayFromPack(value, keys);
+      const nested = firstArrayFromPack(value, keys, seen);
       if (nested.length) return nested;
     }
   }
+
   for (const value of Object.values(pack)) {
-    if (Array.isArray(value)) return value;
+    if (Array.isArray(value)) {
+      if (value.length) return value;
+      emptyArrays.push(value);
+      continue;
+    }
+    if (value && typeof value === "object") {
+      const nested = firstArrayFromPack(value, keys, seen);
+      if (nested.length) return nested;
+    }
   }
-  return [];
+
+  return emptyArrays[0] || [];
 }
+
 
 function extractWinners(pack, fallback = []) {
   const list = firstArrayFromPack(pack, [
