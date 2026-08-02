@@ -8,11 +8,12 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      input: {
-        player: resolve(import.meta.dirname, "index.html"),
-        admin: resolve(import.meta.dirname, "admin.html"),
-        winners: resolve(import.meta.dirname, "winners.html"),
-      },
+  input: {
+  player: resolve(import.meta.dirname, "index.html"),
+  admin: resolve(import.meta.dirname, "admin.html"),
+  winners: resolve(import.meta.dirname, "winners.html"),
+  restore: resolve(import.meta.dirname, "restore.html"),
+},
     },
   },
 });
