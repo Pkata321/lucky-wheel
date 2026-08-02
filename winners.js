@@ -2,7 +2,7 @@
 
 /* =========================================================
    Lucky77 Winner Inbox Dashboard
-   Version: premium-hybrid-v6.4.1
+   Version: premium-hybrid-v6.4.2
    Backend: Render
    Frontend: Vercel
 ========================================================= */
@@ -11,7 +11,7 @@
 const APP = {
   BASE_URL: "/backend",
   BOT_URL: "https://t.me/Lucky77autoSpin_bot?start=dashboard",
-  CACHE_BUSTER: "winner-inbox-premium-v6-4-1",
+  CACHE_BUSTER: "winner-inbox-premium-v6-3-0",
   EMBEDDED: new URLSearchParams(location.search).get("embedded") === "1",
   ACCOUNT_KEY: "lucky77_dashboard_account",
   NOTIFICATION_KEY: "lucky77_inbox_notification_v1",
@@ -45,12 +45,12 @@ const state = {
   winners: [],
   filtered: [],
   messages: [],
-  messageCache: new Map(),
-  messageRequestSeq: 0,
 
   selectedUserId: "",
   selectedWinner: null,
   selectedFile: null,
+  listRefreshTimer: null,
+  chatRefreshTimer: null,
 
   filter: "all",
   search: "",
@@ -488,8 +488,6 @@ async function logout() {
   state.selectedUserId = "";
   state.selectedWinner = null;
   state.messages = [];
-  state.messageCache.clear();
-  state.messageRequestSeq += 1;
 
   showLogin();
   toast("Logged out", "info");
@@ -711,22 +709,21 @@ async function pollNewMessagesForNotification() {
 
   try {
     const oldUnread = getUnreadTotal();
-    const selectedUid = safeText(state.selectedUserId);
 
     const data = await api(`/winners/cs?_=${Date.now()}`);
     const nextWinners = Array.isArray(data.winners) ? data.winners : [];
+
     const newUnread = getUnreadTotal(nextWinners);
 
     state.winners = nextWinners;
 
-    if (selectedUid) {
-      const selected = state.winners.find((w) => String(w.user_id) === selectedUid);
+    if (state.selectedUserId) {
+      const selected = state.winners.find((w) => String(w.user_id) === String(state.selectedUserId));
       if (selected) {
         state.selectedWinner = selected;
         renderChatHeader();
         renderDetails();
       }
-      await loadMessages(selectedUid, false, { preserveOnEmpty: true, silent: true });
     }
 
     applyFilter({ keepVisible: true });
@@ -756,7 +753,7 @@ function startNotificationWatcher() {
 
   notificationState.timer = setInterval(() => {
     pollNewMessagesForNotification();
-  }, 15000);
+  }, 25000);
 }
 
 function stopNotificationWatcher() {
@@ -779,7 +776,8 @@ async function loadInitialData() {
 
     setOnline("Online");
     state.booted = true;
-    startNotificationWatcher ();
+    startNotificationWatcher();
+    startAutoRefresh();
   } catch (err) {
     console.error(err);
     setOffline("Error");
@@ -795,21 +793,34 @@ async function loadInitialData() {
 
 async function loadWinners(rebuild = false) {
   const query = rebuild ? "?rebuild=1" : `?_=${Date.now()}`;
+  const previous = state.winners;
   const data = await api(`/winners/cs${query}`);
+  const incoming = Array.isArray(data.winners) ? data.winners : [];
 
-  state.winners = Array.isArray(data.winners) ? data.winners : [];
-  state.visibleCount = APP.PAGE_SIZE;
+  // Do not blank the inbox while Redis/background cache is rebuilding or an API
+  // returns a stale/empty list. Keep current UI data visible and refresh in place.
+  if (incoming.length || !previous.length || !data.rebuild_pending) {
+    state.winners = incoming.length ? incoming : previous;
+  }
+  state.visibleCount = Math.max(state.visibleCount || APP.PAGE_SIZE, APP.PAGE_SIZE);
+
+  if (state.selectedUserId) {
+    const selected = state.winners.find((w) => String(w.user_id) === String(state.selectedUserId));
+    if (selected) state.selectedWinner = selected;
+  }
 
   setText(
     "cacheInfoText",
     data.rebuild_pending
-      ? "Cache rebuilding…"
-      : data.cache_at
-        ? `Cache: ${fmtTime(data.cache_at)}`
-        : "Cache ready"
+      ? "Background refresh… old inbox kept"
+      : data.supabase_first
+        ? "Supabase live + safe cache"
+        : data.cache_at
+          ? `Cache: ${fmtTime(data.cache_at)}`
+          : "Cache ready"
   );
 
-  applyFilter();
+  applyFilter({ keepVisible: true });
   renderStats();
 
   return state.winners;
@@ -824,7 +835,7 @@ async function rebuildCache() {
       body: {},
     });
 
-    toast(`Cache rebuilt: ${data.total || 0}`, "success");
+    toast(data.message || `Refresh started: ${data.total || 0}`, "success");
     await loadWinners(false);
   } catch (err) {
     toast(err.message || "Rebuild failed", "error");
@@ -833,27 +844,20 @@ async function rebuildCache() {
   }
 }
 
-async function loadMessages(userId, markRead = true, options = {}) {
-  const uid = safeText(userId).trim();
-  if (!uid) return;
-
-  const requestId = ++state.messageRequestSeq;
-  const cached = state.messageCache.get(uid);
-  if (String(state.selectedUserId) === uid && Array.isArray(cached) && cached.length && !state.messages.length) {
-    state.messages = [...cached];
-    renderMessages();
-  }
+async function loadMessages(userId, markRead = true) {
+  if (!userId) return;
+  const selectedBefore = String(state.selectedUserId || "");
 
   try {
     const data = await api(
-      `/winner/messages?user_id=${encodeURIComponent(uid)}&mark_read=${markRead ? "1" : "0"}&_=${Date.now()}`
+      `/winner/messages?user_id=${encodeURIComponent(userId)}&mark_read=${markRead ? "1" : "0"}&_=${Date.now()}`
     );
-    if (requestId !== state.messageRequestSeq || String(state.selectedUserId) !== uid) return;
+    if (String(state.selectedUserId || "") !== selectedBefore) return;
 
-    const fresh = Array.isArray(data.messages) ? data.messages : [];
-    const keepCached = options.preserveOnEmpty && fresh.length === 0 && Array.isArray(cached) && cached.length > 0;
-    state.messages = keepCached ? [...cached] : fresh;
-    state.messageCache.set(uid, [...state.messages]);
+    const incoming = Array.isArray(data.messages) ? data.messages : [];
+    if (incoming.length || !state.messages.length) {
+      state.messages = incoming;
+    }
 
     const summary = data.summary || {};
     syncSelectedWinnerPatch({
@@ -873,12 +877,9 @@ async function loadMessages(userId, markRead = true, options = {}) {
       renderStats();
     }
   } catch (err) {
-    if (Array.isArray(cached) && cached.length && String(state.selectedUserId) === uid) {
-      state.messages = [...cached];
-      renderMessages();
-    }
-    if (!options.silent) throw err;
-    console.warn("Conversation refresh failed", err);
+    // Keep current chat visible when backend returns stale/empty/error during cache refresh.
+    setOnline("Retrying");
+    if (!state.messages.length) renderMessages();
   }
 }
 
@@ -969,7 +970,7 @@ function renderWinnerList() {
   const visible = state.filtered.slice(0, state.visibleCount);
 
   if (!visible.length) {
-    listEl.innerHTML = `<div class="cs-empty">No members found.</div>`;
+    listEl.innerHTML = `<div class="cs-empty">No winners found.</div>`;
     setHidden($("loadMoreBtn"), true);
     return;
   }
@@ -980,45 +981,58 @@ function renderWinnerList() {
       const unread = Number(w.unread || 0);
       const status = safeText(w.cs_status || "pending");
       const done = status === "done";
-      const preview = w.last_preview || (unread ? "New message received" : "No message yet");
+
+      const preview =
+        w.last_preview ||
+        (unread ? "New message received" : "No message yet");
 
       return `
-        <article class="cs-winner-item ${active ? "is-active" : ""} ${unread ? "has-unread" : ""}" data-user-id="${esc(w.user_id)}">
-          <button type="button" class="cs-winner-select" data-select-user-id="${esc(w.user_id)}">
-            <div class="cs-avatar">${esc(avatarText(w))}</div>
-            <div class="cs-winner-main">
-              <div class="cs-winner-title">
-                <b>${esc(w.display || w.name || w.username || w.user_id)}</b>
-                ${unread ? `<span class="cs-unread-badge">${unread}</span>` : ""}
-              </div>
-              <div class="cs-winner-sub">
-                <span>${esc(usernameText(w.username))}</span><span>•</span><span>ID ${esc(w.user_id)}</span>
-              </div>
-              <div class="cs-winner-preview">${esc(compactText(preview, 64))}</div>
+        <button
+          type="button"
+          class="cs-winner-item ${active ? "is-active" : ""} ${unread ? "has-unread" : ""}"
+          data-user-id="${esc(w.user_id)}"
+        >
+          <div class="cs-avatar">${esc(avatarText(w))}</div>
+
+          <div class="cs-winner-main">
+            <div class="cs-winner-title">
+              <b>${esc(w.display || w.name || w.username || w.user_id)}</b>
+              ${unread ? `<span class="cs-unread-badge">${unread}</span>` : ""}
             </div>
-            <div class="cs-winner-side">
-              <strong class="cs-prize-badge">${esc(moneyText(w.prize))}</strong>
-              <small>${esc(fmtTime(w.last_message_at || w.at))}</small>
+
+            <div class="cs-winner-sub">
+              <span>${esc(usernameText(w.username))}</span>
+              <span>•</span>
+              <span>ID ${esc(w.user_id)}</span>
             </div>
-          </button>
-          <button type="button" class="cs-list-status-toggle ${done ? "is-done" : "is-undone"}" data-list-status-user-id="${esc(w.user_id)}" data-next-status="${done ? "pending" : "done"}" aria-label="${done ? "Mark Undone" : "Mark Done"}">
-            ${done ? "Done" : "Undone"}
-          </button>
-        </article>
+
+            <div class="cs-winner-preview">${esc(compactText(preview, 64))}</div>
+          </div>
+
+          <div class="cs-winner-side">
+            <strong class="cs-prize-badge">${esc(moneyText(w.prize))}</strong>
+            <button class="cs-mini-status ${done ? "is-done" : "is-pending"}" data-inline-status="${done ? "pending" : "done"}" data-inline-user-id="${esc(w.user_id)}" type="button">
+              ${done ? "Done" : "Undone"}
+            </button>
+            <small>${esc(fmtTime(w.last_message_at || w.at))}</small>
+          </div>
+        </button>
       `;
     })
     .join("");
 
-  qsa("[data-select-user-id]", listEl).forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const uid = btn.dataset.selectUserId;
-      if (uid) selectWinner(uid);
+  qsa("[data-inline-status]", listEl).forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      await toggleSimpleWinnerStatus(btn.dataset.inlineUserId, btn.dataset.inlineStatus);
     });
   });
-  qsa("[data-list-status-user-id]", listEl).forEach((btn) => {
-    btn.addEventListener("click", async (event) => {
-      event.stopPropagation();
-      await toggleSimpleWinnerStatus(btn.dataset.listStatusUserId, btn.dataset.nextStatus || "pending");
+
+  qsa(".cs-winner-item", listEl).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const uid = btn.dataset.userId;
+      if (uid) selectWinner(uid);
     });
   });
 
@@ -1041,8 +1055,7 @@ async function selectWinner(userId) {
 
   state.selectedUserId = uid;
   state.selectedWinner = winner;
-  const cachedMessages = state.messageCache.get(uid);
-  state.messages = Array.isArray(cachedMessages) ? [...cachedMessages] : [];
+  state.messages = [];
 
   renderWinnerList();
   renderChatHeader();
@@ -1151,8 +1164,6 @@ function renderDetails() {
     setValue("detailNote", "");
     const cb = $("detailDoneCheckbox");
     if (cb) cb.checked = false;
-    $("detailDoneBtn")?.classList.remove("is-active");
-    $("detailUndoneBtn")?.classList.remove("is-active");
     return;
   }
 
@@ -1167,17 +1178,8 @@ function renderDetails() {
 
   setValue("detailNote", w.note || "");
 
-  const done = status === "done";
   const cb = $("detailDoneCheckbox");
-  if (cb) cb.checked = done;
-  $("detailDoneBtn")?.classList.toggle("is-active", done);
-  $("detailUndoneBtn")?.classList.toggle("is-active", !done);
-  const mainToggle = $("markDoneBtn");
-  if (mainToggle) {
-    mainToggle.textContent = done ? "Undone" : "Done";
-    mainToggle.classList.toggle("is-done", done);
-    mainToggle.dataset.nextStatus = done ? "pending" : "done";
-  }
+  if (cb) cb.checked = status === "done";
 }
 
 function syncSelectedWinnerPatch(patch) {
@@ -1226,7 +1228,6 @@ async function sendTextMessage(text, source = "cs") {
 
     if (data.message) {
       state.messages.push(data.message);
-      state.messageCache.set(String(uid), [...state.messages]);
       renderMessages();
     }
 
@@ -1275,7 +1276,6 @@ async function sendMediaMessage(file, caption = "") {
 
     if (data.message) {
       state.messages.push(data.message);
-      state.messageCache.set(String(uid), [...state.messages]);
       renderMessages();
     }
 
@@ -1358,15 +1358,39 @@ async function sendNotice() {
   await sendTextMessage(text, "notice");
 }
 
-async function markDone(nextStatus = "") {
+async function markDone() {
   const uid = state.selectedUserId;
   if (!uid) {
     toast("Select winner first", "error");
     return;
   }
-  const currentDone = safeText(state.selectedWinner?.cs_status) === "done";
-  const status = nextStatus ? (nextStatus === "done" ? "done" : "pending") : (currentDone ? "pending" : "done");
-  await toggleSimpleWinnerStatus(uid, status);
+
+  setLoading(true, "Saving");
+
+  try {
+    await api("/winner/status", {
+      method: "POST",
+      body: {
+        user_id: uid,
+        status: "done",
+      },
+    });
+
+    syncSelectedWinnerPatch({
+      cs_status: "done",
+      unread: 0,
+    });
+
+    applyFilter({ keepVisible: true });
+    renderStats();
+    renderDetails();
+
+    toast("Marked done", "success");
+  } catch (err) {
+    toast(err.message || "Mark done failed", "error");
+  } finally {
+    setLoading(false);
+  }
 }
 
 async function setDoneFromCheckbox() {
@@ -2019,9 +2043,6 @@ async function toggleSimpleWinnerStatus(userId, nextStatus) {
     applyFilter({ keepVisible: true });
     renderStats();
     renderSimpleWinnerList();
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage({ type: "lucky77:winner-status", user_id: uid, status }, location.origin);
-    }
 
     toast(status === "done" ? "Marked Done" : "Marked Undone", "success");
   } catch (err) {
@@ -2029,6 +2050,20 @@ async function toggleSimpleWinnerStatus(userId, nextStatus) {
   } finally {
     setLoading(false);
   }
+}
+
+
+function startAutoRefresh() {
+  clearInterval(state.listRefreshTimer);
+  clearInterval(state.chatRefreshTimer);
+  state.listRefreshTimer = setInterval(() => {
+    if (!state.loading) loadWinners(false).catch(() => {});
+  }, 8000);
+  state.chatRefreshTimer = setInterval(() => {
+    if (!state.loading && state.selectedUserId) {
+      loadMessages(state.selectedUserId, false).catch(() => {});
+    }
+  }, 5000);
 }
 
 /* ================= Modal Helpers ================= */
@@ -2160,11 +2195,9 @@ $("simpleWinnerRefreshBtn")?.addEventListener("click", async () => {
   /* ---------- Chat actions ---------- */
   $("quickAccountRequestBtn")?.addEventListener("click", insertAccountRequest);
   $("sendNoticeBtn")?.addEventListener("click", sendNotice);
-  $("markDoneBtn")?.addEventListener("click", () => markDone($("markDoneBtn")?.dataset.nextStatus || ""));
+  $("markDoneBtn")?.addEventListener("click", markDone);
   $("sendReplyBtn")?.addEventListener("click", sendReply);
   $("saveNoteBtn")?.addEventListener("click", saveWinnerNote);
-  $("detailDoneBtn")?.addEventListener("click", () => markDone("done"));
-  $("detailUndoneBtn")?.addEventListener("click", () => markDone("pending"));
   $("detailDoneCheckbox")?.addEventListener("change", setDoneFromCheckbox);
 
   $("assignBtn")?.addEventListener("click", () => {
@@ -2243,18 +2276,6 @@ $("simpleWinnerRefreshBtn")?.addEventListener("click", async () => {
   }
 });
 }
-
-window.addEventListener("message", (event) => {
-  if (event.origin !== location.origin || event.data?.type !== "lucky77:winner-status") return;
-  const uid = safeText(event.data.user_id);
-  const status = event.data.status === "done" ? "done" : "pending";
-  state.winners = state.winners.map((winner) => String(winner.user_id) === uid ? { ...winner, cs_status: status, unread: status === "done" ? 0 : Number(winner.unread || 0) } : winner);
-  if (String(state.selectedUserId) === uid) syncSelectedWinnerPatch({ cs_status: status, unread: status === "done" ? 0 : Number(state.selectedWinner?.unread || 0) });
-  applyFilter({ keepVisible: true });
-  renderStats();
-  renderDetails();
-  renderSimpleWinnerList();
-});
 
 /* ================= Start ================= */
 document.addEventListener("DOMContentLoaded", boot);
