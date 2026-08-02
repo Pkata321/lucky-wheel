@@ -2,7 +2,7 @@
 
 /* =========================================================
    Lucky77 Winner Inbox Dashboard
-   Version: premium-hybrid-v6.4.2
+   Version: premium-hybrid-v6.4.4
    Backend: Render
    Frontend: Vercel
 ========================================================= */
@@ -2078,8 +2078,18 @@ function closeReplyModal() {
 }
 
 /* ================= Layout Stability ================= */
+function syncInboxViewportHeight() {
+  const telegram = window.Telegram?.WebApp;
+  const stableHeight = Number(telegram?.viewportStableHeight || 0);
+  const height = stableHeight > 0 ? `${stableHeight}px` : `${Math.max(320, window.innerHeight || 0)}px`;
+  document.documentElement.style.setProperty("--inbox-viewport-height", height);
+}
+
 function initStableLayout() {
   try {
+    syncInboxViewportHeight();
+    window.Telegram?.WebApp?.onEvent?.("viewportChanged", syncInboxViewportHeight);
+    window.addEventListener("resize", syncInboxViewportHeight, { passive: true });
     qsa(".cs-grid-resizer").forEach((el) => el.remove());
 
     localStorage.removeItem("lucky77_cs_left_width");
