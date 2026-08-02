@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="my">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lucky77 Premium Inbox</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=6.4.0-non-ai-base" />
-  <link rel="stylesheet" href="./v6.css?v=6.4.0-non-ai-base" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Myanmar:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css?v=6.4.5-real-flow-fix" />
+  <link rel="stylesheet" href="./v6.css?v=6.4.5-real-flow-fix" />
 </head>
 
 <body class="cs-inbox-body">
@@ -130,7 +130,7 @@
       <header class="cs-topbar">
         <div class="cs-title-group">
           <h1>Lucky77 Premium Inbox</h1>
-          <p>Player စာများ၊ Media Backup နှင့် Broadcast များကို တစ်နေရာတည်းမှ စီမံရန်</p>
+          <p>Member စာများ၊ Media နှင့် Broadcast များကို တစ်နေရာတည်းမှ စီမံရန်</p>
         </div>
 
         <div class="cs-top-actions">
@@ -207,7 +207,7 @@
           </div>
 
           <div class="cs-search-row">
-            <input id="searchInput" type="search" placeholder="Search name, username, user id..." />
+            <input id="searchInput" type="search" placeholder="Name၊ Username သို့ User ID ဖြင့်ရှာရန်..." />
           </div>
 
           <div id="winnerList" class="cs-winner-list">
@@ -226,8 +226,8 @@
           <div id="emptyChat" class="cs-chat-empty">
             <div>
               <span>💬</span>
-              <h2>Select a Winner</h2>
-              <p>စာပြန်ရန်၊ Account တောင်းရန်၊ Media သို့မဟုတ် အသိပေးစာပို့ရန် Player Conversation ကို ရွေးပါ။</p>
+              <h2>Member တစ်ယောက်ကိုရွေးပါ</h2>
+              <p>စာပြန်ရန်၊ Game Account တောင်းရန် သို့မဟုတ် Media ပို့ရန် ဘယ်ဘက် Member List မှ Conversation ကိုရွေးပါ။</p>
             </div>
           </div>
 
@@ -258,9 +258,16 @@
             </div>
 
             <footer class="cs-composer">
+              <div class="cs-shortcut-bar" aria-label="Saved shortcuts">
+                <button type="button" data-cs-shortcut="Game Account Name ပေးပို့ပေးပါရှင့်။ ဆုယူနစ်ဖြည့်ရန် Account Name လိုအပ်ပါသည်။">Acc တောင်း</button>
+                <button type="button" data-cs-shortcut="ယူနစ်ဖြည့်ပြီးပါပြီရှင့်။ Account ထဲပြန်စစ်ပေးပါ။">Done စာ</button>
+                <button type="button" data-cs-shortcut="ခဏစောင့်ပေးပါရှင့်။ CS Team မှ စစ်ဆေးပေးနေပါတယ်။">စောင့်ရန်</button>
+                <button type="button" data-cs-shortcut="Promo Code / Spin အဆင်မပြေပါက Screenshot ပို့ပေးပါရှင့်။">Error တောင်း</button>
+              </div>
+
               <textarea
                 id="replyText"
-                placeholder="Type reply message... Ctrl/Command + Enter to send"
+                placeholder="စာပြန်ရေးရန်... Ctrl/Command + Enter ဖြင့်ပို့နိုင်သည်"
               ></textarea>
 
               <div id="selectedFilePreview" class="cs-file-preview" hidden>
@@ -273,7 +280,7 @@
                   📎
                   <input id="mediaInput" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" hidden />
                 </label>
-
+                <button id="composerDoneBtn" type="button" class="cs-top-btn cs-done-toggle">Done</button>
                 <button id="sendReplyBtn" type="button" class="cs-send-btn">
                   Send
                 </button>
@@ -285,7 +292,7 @@
         <!-- Detail panel -->
         <aside class="cs-detail-panel">
           <div class="cs-detail-card">
-            <h3>Winner Detail</h3>
+            <h3>Member / Winner Detail</h3>
 
             <div class="cs-detail-row">
               <span>Name</span>
@@ -324,8 +331,8 @@
           </div>
 
           <div class="cs-detail-card">
-            <h3>CS Note</h3>
-            <textarea id="detailNote" placeholder="Internal note..."></textarea>
+            <h3>CS Note / Game Account</h3>
+            <textarea id="detailNote" placeholder="Game Account Name သို့ Internal Note မှတ်ရန်..."></textarea>
             <button id="saveNoteBtn" type="button" class="cs-primary-btn">
               Save Note
             </button>
@@ -589,6 +596,6 @@
   <!-- Toast -->
   <div id="toast" class="cs-toast" hidden></div>
 
-  <script type="module" src="./winners.js?v=6.4.0-non-ai-base"></script>
+  <script type="module" src="./winners.js?v=6.4.5-real-flow-fix"></script>
 </body>
 </html>

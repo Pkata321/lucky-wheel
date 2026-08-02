@@ -1,13 +1,18 @@
 <!doctype html>
-<html lang="en">
+<html lang="my">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#eaf3ff" />
   <title>Lucky77 · Premium Wheel</title>
-  <link rel="stylesheet" href="./styles.css?v=6.4.0-non-ai-base" />
-  <link rel="stylesheet" href="./v6.css?v=6.4.0-non-ai-base" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Myanmar:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css?v=6.4.5-real-flow-fix" />
+  <link rel="stylesheet" href="./v6.css?v=6.4.5-real-flow-fix" />
+  <link rel="stylesheet" href="./player-ui.css?v=6.4.5-real-flow-fix" />
 </head>
+<!-- Contract copy: Promo Code ဖြင့် Spin လှည့်ရန် အသင့်ဖြစ်သည် -->
 <body class="player-body" data-theme="sky-white">
   <div class="player-shell">
     <header class="player-topbar premium-surface">
@@ -54,21 +59,24 @@
             <small class="security-note">လစဉ် Register လုပ်ရန် · Channel Member ဖြစ်ရန်လိုအပ်သည်</small>
           </div>
           <form id="accountGate" class="access-step hidden">
-            <p>ဂိမ်းအကောင့် Name မပေးရသေးသည့်အတွက် ဂိမ်းအကောင့်အရင်ဖောက်ပေးရန်</p>
-            <label class="premium-field"><span>Promo Code</span><input id="accountPromoInput" type="text" maxlength="120" autocomplete="one-time-code" /></label>
+            <p>ဆုရယူရန် အသုံးပြုမည့် Lucky77 Game Account Name ကို ထည့်ပေးပါ။</p>
+            <input id="accountPromoInput" type="hidden" />
             <div class="account-help-actions">
               <a id="selfSignupBtn" class="secondary-action" href="#" target="_blank" rel="noopener">ကိုယ်တိုင်အကောင့်ဖောက်ရန်</a>
               <a id="contactCsBtn" class="secondary-action" href="#" target="_blank" rel="noopener">CS သို့ဆက်သွယ်ရန်</a>
             </div>
-            <label class="premium-field"><span>ဂိမ်းအကောင့် Name</span><input id="accountNameInput" type="text" maxlength="120" autocomplete="name" /></label>
-            <label id="accountPhoneField" class="premium-field"><span>ဖုန်းနံပါတ် (မဖြစ်မနေမဟုတ်ပါ)</span><input id="accountPhoneInput" type="tel" maxlength="40" autocomplete="tel" /></label>
-            <button id="accountSaveBtn" class="primary-action" type="submit">Confirm</button>
+            <label class="premium-field"><span>Game Account Name</span><input id="accountNameInput" type="text" maxlength="120" autocomplete="name" placeholder="ဥပမာ - zawzaw12" /></label>
+            <label id="accountPhoneField" class="premium-field"><span>ဖုန်းနံပါတ် (မဖြစ်မနေမဟုတ်ပါ)</span><input id="accountPhoneInput" type="tel" maxlength="40" autocomplete="tel" placeholder="ဥပမာ - 09xxxxxxxxx" /></label>
+            <button id="accountSaveBtn" class="primary-action" type="submit">Game Account အတည်ပြုမည်</button>
           </form>
           <div id="readyGate" class="access-step hidden">
             <div class="verified-line"><i>✓</i><span>Channel အတည်ပြုပြီးပါပြီ</span></div>
             <div class="verified-line"><i>✓</i><span>Event Register အတည်ပြုပြီးပါပြီ</span></div>
-            <div class="verified-line"><i>✓</i><span>Verified Game Account</span></div>
+            <div class="verified-line"><i>✓</i><span id="promoReadyLine">Promo Code အတည်ပြုပြီးမှ Spin လှည့်နိုင်ပါမည်</span></div>
+            <div class="verified-line is-muted"><i>•</i><span id="accountAfterSpinLine">Game Account ကို Spin လှည့်ပြီး ဆုထွက်မှ အတည်ပြုပါမည်</span></div>
             <label id="spinCodeField" class="premium-field"><span>Promo Code</span><input id="spinCodeInput" type="text" autocomplete="one-time-code" placeholder="L77-••••-••••" /></label>
+            <button id="promoConfirmBtn" class="secondary-action" type="button">Promo Code အတည်ပြုမည်</button>
+            <small id="promoConfirmMsg" class="security-note">Bot မှပို့ထားသော Code ကိုထည့်ပြီး အတည်ပြုပါ။</small>
             <p id="readyText">Event စတင်ချိန်ကို စောင့်ပေးပါ။</p>
           </div>
         </section>
@@ -113,11 +121,11 @@
       <h2 id="resultTitle">Congratulations</h2><p id="resultName">Lucky Member</p><strong id="resultPrize">30,000 Ks</strong>
       <p id="resultCopy" class="result-copy">Promo Code ကို အသုံးပြုပြီးပါပြီ။ ဆုထုတ်ယူရန် Lucky77 Customer Service သို့ ဆက်သွယ်ပါ။</p>
       <a id="resultSupportLink" class="result-cs" href="#" target="_blank" rel="noopener">Customer Service သို့ ဆက်သွယ်မည်</a>
-      <button id="resultCloseBtn" class="primary-action" type="button">ပိတ်မည်</button>
+      <button id="resultCloseBtn" class="primary-action" type="button">ယူနစ်ရယူရန်</button>
     </div>
   </div>
   <div id="toast" class="app-toast hidden" role="status"></div>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" src="./script.js?v=6.4.0-non-ai-base"></script>
+  <script type="module" src="./script.js?v=6.4.5-real-flow-fix"></script>
 </body>
 </html>
