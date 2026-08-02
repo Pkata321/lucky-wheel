@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="my">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#eaf3ff" />
+  <title>Lucky77 · Event Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Myanmar:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css?v=6.4.4-player-inbox" />
+  <link rel="stylesheet" href="./v6.css?v=6.4.4-player-inbox" />
+</head>
+<body class="admin-body" data-theme="sky-white">
+  <section id="adminLogin" class="admin-login">
+    <div class="login-brand">
+      <span class="brand-seal"><img src="./assets/lucky77-logo.png" alt="Lucky77" /></span>
+      <div><strong>Lucky77</strong><small>Event Operations</small></div>
+    </div>
+    <form id="adminLoginForm" class="admin-login-card premium-surface">
+      <span class="section-kicker">လုံခြုံသော စီမံခန့်ခွဲမှုနေရာ</span>
+      <h1>Admin Login</h1>
+      <p>Render တွင် သတ်မှတ်ထားသော Dashboard Account နှင့် API Pass ကို အသုံးပြုပါ။</p>
+      <label class="premium-field">
+        <span>Account</span>
+        <input id="adminAccount" type="text" value="lucky77autospin" autocomplete="username" />
+      </label>
+      <label class="premium-field">
+        <span>API Pass</span>
+        <div class="password-field">
+          <input id="adminPass" type="password" autocomplete="current-password" placeholder="••••••••••••" />
+          <button id="showAdminPass" type="button">ပြမည်</button>
+        </div>
+      </label>
+      <div id="adminLoginError" class="form-error hidden"></div>
+      <button id="adminLoginButton" class="primary-action" type="submit">Dashboard ဝင်မည်</button>
+    </form>
+  </section>
+
+  <div id="adminApp" class="admin-app hidden">
+    <button id="sidebarOverlay" class="sidebar-overlay" type="button" aria-label="Close menu"></button>
+    <aside id="adminSidebar" class="admin-sidebar premium-surface" aria-label="Dashboard navigation">
+      <div class="sidebar-brand-row">
+        <a class="brand-lockup" href="./">
+          <span class="brand-seal"><img src="./assets/lucky77-logo.png" alt="Lucky77" /></span>
+          <span class="sidebar-label"><strong>Lucky77</strong><small>Event Control</small></span>
+        </a>
+        <button id="sidebarCollapse" class="sidebar-close" type="button" aria-label="Collapse menu">‹</button>
+      </div>
+
+      <nav class="admin-nav">
+        <button class="admin-nav-btn is-active" data-section="overview" type="button"><i>⌂</i><span class="sidebar-label">Overview</span></button>
+        <button class="admin-nav-btn" data-section="event" type="button"><i>◷</i><span class="sidebar-label">Event Timeline</span></button>
+        <button class="admin-nav-btn" data-section="prizes" type="button"><i>◇</i><span class="sidebar-label">Prize Inventory</span></button>
+        <button class="admin-nav-btn" data-section="members" type="button"><i>♙</i><span class="sidebar-label">Members</span></button>
+        <button class="admin-nav-btn" data-section="promo" type="button"><i>⌁</i><span class="sidebar-label">Promo Codes</span></button>
+        <button class="admin-nav-btn" data-section="test" type="button"><i>⚗</i><span class="sidebar-label">Test Event</span></button>
+        <button class="admin-nav-btn" data-section="branding" type="button"><i>✦</i><span class="sidebar-label">Branding</span></button>
+        <button class="admin-nav-btn" data-section="inbox" type="button"><i>✉</i><span class="sidebar-label">CS Inbox</span></button>
+        <button class="admin-nav-btn" data-section="posts" type="button"><i>▤</i><span class="sidebar-label">Channel Posts</span></button>
+        <button class="admin-nav-btn" data-section="command" type="button"><i>⌘</i><span class="sidebar-label">Bot Command Box</span></button>
+        <button class="admin-nav-btn" data-section="history" type="button"><i>♛</i><span class="sidebar-label">Winner History</span></button>
+        <button class="admin-nav-btn" data-section="reports" type="button"><i>▥</i><span class="sidebar-label">Reports</span></button>
+        <button class="admin-nav-btn" data-section="system" type="button"><i>⚙</i><span class="sidebar-label">System</span></button>
+      </nav>
+
+      <div class="sidebar-links">
+        <a href="./player" target="_blank"><i>↗</i><span class="sidebar-label">Player Link</span></a>
+        <a href="./test/preview" target="_blank"><i>⚗</i><span class="sidebar-label">Test Link</span></a>
+      </div>
+      <button id="adminLogout" class="admin-logout" type="button"><i>⎋</i><span class="sidebar-label">ထွက်မည်</span></button>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div class="topbar-title">
+          <button id="sidebarToggle" class="round-btn menu-toggle" type="button" aria-label="Open menu">☰</button>
+          <div><span class="section-kicker">Lucky77 operations</span><h1 id="adminPageTitle">Event Overview</h1></div>
+        </div>
+        <div class="admin-top-actions">
+          <span id="adminHealth" class="event-pill is-waiting"><i></i><span>CONNECTING</span></span>
+          <button id="adminRefresh" class="round-btn" type="button" title="Refresh">↻</button>
+          <div class="member-chip"><span>77</span><div><strong id="adminAccountName">Admin</strong><small>Controller</small></div></div>
+        </div>
+      </header>
+
+      <section id="adminSection-overview" class="admin-section">
+        <article class="admin-event-hero premium-surface">
+          <div>
+            <span id="overviewLive" class="event-pill is-waiting"><i></i><span>EVENT WAITING</span></span>
+            <h2 id="overviewTitle">Lucky77 Grand Spin</h2>
+            <p id="overviewSubtitle">One member · One code · One premium spin</p>
+            <div id="overviewIssue" class="inline-alert hidden"></div>
+          </div>
+          <div class="event-hero-actions">
+            <button class="secondary-action nav-shortcut" data-target="event" type="button">အချိန်သတ်မှတ်ချက် ပြင်မည်</button>
+            <a class="primary-action" href="./?demo=1" target="_blank">Player ပုံစံကြည့်မည်</a>
+          </div>
+        </article>
+
+        <div class="admin-metrics six">
+          <article class="admin-metric premium-surface"><span>Register လုပ်ထားသူ</span><strong id="adminMetricRegistered">0</strong><small>လက်ရှိ Event</small></article>
+          <article class="admin-metric premium-surface"><span>Live Member</span><strong id="adminMetricLive">0</strong><small>Test မပါဝင်ပါ</small></article>
+          <article class="admin-metric premium-surface"><span>Account စောင့်ဆိုင်း</span><strong id="adminMetricPending">0</strong><small>ဆုစာရင်းတွင် ပါဝင်သည်</small></article>
+          <article class="admin-metric premium-surface"><span>Code ပို့ပြီး</span><strong id="adminMetricCodes">0</strong><small>ကိုယ်ပိုင် Access</small></article>
+          <article class="admin-metric premium-surface"><span>Spin ပြီးဆုံး</span><strong id="adminMetricSpun">0</strong><small>Result သိမ်းပြီး</small></article>
+          <article class="admin-metric premium-surface"><span>ကျန်ရှိဆု</span><strong id="adminMetricPrizes">0</strong><small>လုံခြုံသော Inventory</small></article>
+        </div>
+
+        <div class="admin-overview-grid">
+          <section class="admin-panel premium-surface">
+            <div class="section-head"><div><span class="section-kicker">Event အခြေအနေ</span><h2>Recent Winners</h2></div><button class="text-button nav-shortcut" data-target="history" type="button">အားလုံးကြည့်မည်</button></div>
+            <div id="overviewWinners" class="admin-activity-list"></div>
+          </section>
+          <section class="admin-panel premium-surface">
+            <div class="section-head"><div><span class="section-kicker">Inventory ကိုက်ညီမှု</span><h2>Prize Health</h2></div><button class="text-button nav-shortcut" data-target="prizes" type="button">စီမံမည်</button></div>
+            <div class="prize-health">
+              <div class="prize-health-ring"><strong id="prizeHealthPercent">0%</strong><span>ကျန်ရှိ</span></div>
+              <div><p id="prizeHealthCopy">Event အတွက် ဆုများထည့်ပေးပါ။</p><div class="health-bar"><i id="prizeHealthBar"></i></div></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="adminSection-event" class="admin-section hidden">
+        <form id="eventForm" class="settings-layout">
+          <section class="settings-panel premium-surface settings-wide">
+            <div class="section-head"><div><span class="section-kicker">Asia/Yangon အချိန်</span><h2>Current Event</h2></div><button class="primary-action compact-action" type="submit">Event သိမ်းမည်</button></div>
+            <div class="control-switches four">
+              <label class="switch-card"><input id="eventRegistrationOpen" type="checkbox" /><span class="switch-ui"></span><div><strong>Registration</strong><small>လက်ရှိ Event Member လက်ခံမည်</small></div></label>
+              <label class="switch-card"><input id="eventLive" type="checkbox" /><span class="switch-ui"></span><div><strong>Event Live</strong><small>Freeze စစ်ဆေးပြီး စတင်မည်</small></div></label>
+              <label class="switch-card"><input id="eventAutoStart" type="checkbox" /><span class="switch-ui"></span><div><strong>Auto Start</strong><small>ရွေးချယ်ထားသောအချိန်တွင် စမည်</small></div></label>
+              <label class="switch-card"><input id="eventAutoEnd" type="checkbox" /><span class="switch-ui"></span><div><strong>Auto End</strong><small>ရွေးချယ်ထားသောအချိန်တွင် ရပ်မည်</small></div></label>
+            </div>
+            <div class="settings-grid three">
+              <label class="premium-field"><span>Current Event ID</span><input id="eventId" type="text" placeholder="2026-07" /></label>
+              <label class="premium-field"><span>Event starts at</span><input id="eventStartsAt" type="datetime-local" /></label>
+              <label class="premium-field"><span>Event ends at</span><input id="eventEndsAt" type="datetime-local" /></label>
+            </div>
+            <div class="event-action-strip">
+              <button id="freezeStartEvent" class="primary-action compact-action" type="button">စာရင်းပိတ်ပြီး ယခုစမည်</button>
+              <button id="endEventNow" class="secondary-action compact-action" type="button">Event ကို ယခုပိတ်မည်</button>
+              <span id="eventPhaseText" class="event-phase-copy">Phase: registration</span>
+            </div>
+            <div id="eventLifecycleError" class="inline-alert hidden"></div>
+          </section>
+
+          <section class="settings-panel premium-surface">
+            <div class="section-head"><div><span class="section-kicker">Access rules</span><h2>Member gate</h2></div></div>
+            <label class="switch-card"><input id="eventRequireAccount" type="checkbox" /><span class="switch-ui"></span><div><strong>Result ပြီးမှ Game Account တောင်းမည်</strong><small>Promo Code ဖြင့် Spin လှည့်ပြီး ဆုရမှ Game Account Name တောင်းရန်</small></div></label>
+            <label class="switch-card"><input id="eventRequireCode" type="checkbox" /><span class="switch-ui"></span><div><strong>Unique code required</strong><small>Member တစ်ဦးအတွက် ကိုယ်ပိုင် Promo Code တစ်ခု</small></div></label>
+            <label class="premium-field"><span>Player / Game link</span><input id="eventGameLink" type="url" placeholder="https://your-vercel-site.vercel.app/" /></label>
+            <label class="premium-field"><span>Test Link</span><input id="eventTestLink" type="url" placeholder="https://your-vercel-site.vercel.app/test/preview" /></label>
+            <label class="premium-field"><span>ကိုယ်တိုင်အကောင့်ဖောက်ရန် Link</span><input id="eventSelfSignupLink" type="url" placeholder="ပြင်ပ Account ဖွင့်ရန် Link" /></label>
+            <label class="premium-field"><span>CS Telegram Bot Link</span><input id="eventCsLink" type="url" placeholder="https://t.me/your_bot" /></label>
+          </section>
+
+          <section class="settings-panel premium-surface">
+            <div class="section-head"><div><span class="section-kicker">Next event</span><h2>Pre-registration rollover</h2></div></div>
+            <label class="premium-field"><span>Next Event ID</span><input id="nextEventId" type="text" placeholder="2026-08" /></label>
+            <div class="settings-grid two">
+              <label class="premium-field"><span>Next starts at</span><input id="nextEventStartsAt" type="datetime-local" /></label>
+              <label class="premium-field"><span>Next ends at</span><input id="nextEventEndsAt" type="datetime-local" /></label>
+            </div>
+            <button id="rolloverEventNow" class="secondary-action" type="button">Next Event သို့ ယခုပြောင်းမည်</button>
+          </section>
+
+          <section class="settings-panel premium-surface">
+            <div class="section-head"><div><span class="section-kicker">Player copy</span><h2>Event content</h2></div></div>
+            <label class="premium-field"><span>Event title</span><input id="eventTitleInput" type="text" /></label>
+            <label class="premium-field"><span>Subtitle</span><input id="eventSubtitleInput" type="text" /></label>
+            <label class="premium-field"><span>Announcement</span><textarea id="eventAnnouncement" rows="4"></textarea></label>
+            <label class="premium-field"><span>Banner image URL</span><input id="eventBannerUrl" type="url" placeholder="Optional" /></label>
+          </section>
+
+          <section class="settings-panel premium-surface">
+            <div class="section-head"><div><span class="section-kicker">Visual system</span><h2>Theme &amp; sound</h2></div></div>
+            <label class="premium-field"><span>Theme preset</span><select id="eventTheme"><option value="sky-white">Sky White · Default</option><option value="ocean-glass">Ocean Glass</option><option value="pearl-magenta">Pearl Magenta</option><option value="midnight-blue">Midnight Blue</option></select></label>
+            <div class="settings-grid two"><label class="premium-field"><span>Primary accent</span><input id="eventAccent" type="color" value="#3478f6" /></label><label class="premium-field"><span>Secondary accent</span><input id="eventAccent2" type="color" value="#86b5ff" /></label></div>
+            <label class="premium-field"><span>Wheel colors · comma separated</span><input id="eventWheelColors" type="text" /></label>
+            <label class="premium-field"><span>Spin sound URL</span><input id="eventSpinSound" type="url" placeholder="Optional MP3" /></label>
+            <label class="premium-field"><span>Winner sound URL</span><input id="eventWinSound" type="url" placeholder="Optional MP3" /></label>
+          </section>
+        </form>
+      </section>
+
+      <section id="adminSection-prizes" class="admin-section hidden">
+        <section class="admin-panel premium-surface">
+            <div class="section-head"><div><span class="section-kicker">စာတစ်ကြောင်းသည် Live Member တစ်ဦးအတွက်</span><h2>Prize Inventory</h2></div><button id="savePrizes" class="primary-action compact-action" type="button">သိမ်းပြီး ပြန်ဖြည့်မည်</button></div>
+          <div id="prizeMatchStatus" class="inventory-match-card"></div>
+          <textarea id="prizeEditor" class="prize-editor" spellcheck="false" placeholder="10,000 Ks&#10;10,000 Ks&#10;20,000 Ks"></textarea>
+          <div class="editor-footer"><span><strong id="prizeSourceCount">0</strong> configured</span><span><strong id="prizeRequiredCount">0</strong> required</span><span><strong id="prizeBagCount">0</strong> remaining</span></div>
+        </section>
+      </section>
+
+      <section id="adminSection-members" class="admin-section hidden">
+        <section class="admin-panel premium-surface table-panel">
+          <div class="section-head">
+            <div><span class="section-kicker">လက်ရှိ Event</span><h2>Registered Members</h2></div>
+            <div class="section-actions"><label class="table-search"><span>⌕</span><input id="memberSearch" type="search" placeholder="Member ရှာမည်" /></label><button id="reconcileMembers" class="secondary-action compact-action" type="button">Channel စစ်မည်</button></div>
+          </div>
+          <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Member</th><th>Account</th><th>Code</th><th>Mode</th><th>Status</th><th>Action</th></tr></thead><tbody id="memberTable"></tbody></table></div>
+        </section>
+      </section>
+
+      <section id="adminSection-promo" class="admin-section hidden">
+        <div class="settings-layout">
+          <section class="settings-panel premium-surface">
+            <div class="section-head"><div><span class="section-kicker">Member-bound access</span><h2>Generate promo codes</h2></div></div>
+            <label class="premium-field"><span>Target</span><select id="promoTarget"><option value="registered">All registered members</option><option value="selected">Selected User IDs</option></select></label>
+            <label class="premium-field"><span>Selected User IDs · comma separated</span><textarea id="promoUserIds" rows="3"></textarea></label>
+            <div class="settings-grid three">
+              <label class="premium-field"><span>Spin count</span><input id="promoSpinTotal" type="number" min="1" max="20" value="1" /></label>
+              <label class="premium-field"><span>Starts at</span><input id="promoStartsAt" type="datetime-local" /></label>
+              <label class="premium-field"><span>Expires at</span><input id="promoExpiresAt" type="datetime-local" /></label>
+            </div>
+            <div class="event-action-strip">
+              <button id="promoGenerate" class="secondary-action" type="button">Code ထုတ်မည်</button>
+              <button id="promoSend" class="primary-action" type="button">Spin Link ပို့မည်</button>
+            </div>
+          </section>
+          <section class="settings-panel premium-surface settings-wide table-panel">
+            <div class="section-head"><div><span class="section-kicker">Current event</span><h2>Promo usage</h2></div><strong id="promoCount">0</strong></div>
+            <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Member</th><th>Code</th><th>Status</th><th>Spins</th><th>Expire</th></tr></thead><tbody id="promoTable"></tbody></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="adminSection-test" class="admin-section hidden">
+        <div class="settings-layout">
+          <section class="settings-panel premium-surface">
+            <div class="section-head"><div><span class="section-kicker">Real Data နှင့် သီးခြားဖြစ်သည်</span><h2>Test Link</h2></div></div>
+            <label class="premium-field"><span>Test Link URL</span><input id="testLinkUrl" type="url" readonly /></label>
+            <div class="event-action-strip">
+              <button id="testCopyLink" class="primary-action" type="button">Link ကူးယူမည်</button>
+              <a id="testOpenLink" class="secondary-action" href="./test/preview" target="_blank">Test Link ဖွင့်မည်</a>
+            </div>
+          </section>
+          <section class="settings-panel premium-surface settings-wide">
+            <div class="section-head"><div><span class="section-kicker">သိမ်းဆည်းမှုမရှိသော စမ်းသပ်မှု</span><h2>Test Flow</h2></div></div>
+            <div id="testLinksOutput" class="admin-activity-list">
+              <div class="empty-copy">ကြိုက်သည့် Promo Code နှင့် ဂိမ်းအကောင့် Name ကိုထည့်၍ အကြိမ်ကြိမ် Spin လှည့်နိုင်သည်။ Member၊ Promo၊ Prize Stock၊ Winner၊ Claim၊ Report နှင့် Spin Count တစ်ခုမျှ Real Data ထဲသို့ မသိမ်းပါ။</div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="adminSection-branding" class="admin-section hidden">
+        <div class="settings-layout">
+          <section class="settings-panel premium-surface">
+            <div class="section-head"><div><span class="section-kicker">Logo and theme</span><h2>Branding draft</h2></div></div>
+            <label class="premium-field"><span>Logo URL</span><input id="brandingLogoUrl" type="url" /></label>
+            <div class="settings-grid three">
+              <label class="premium-field"><span>Primary</span><input id="brandingPrimary" type="color" value="#087eea" /></label>
+              <label class="premium-field"><span>Secondary</span><input id="brandingSecondary" type="color" value="#04c7f2" /></label>
+              <label class="premium-field"><span>Text</span><input id="brandingText" type="color" value="#06233a" /></label>
+            </div>
+            <label class="premium-field"><span>Logo/image/audio/video upload</span><input id="brandingFile" type="file" accept="image/*,audio/*,video/*" /></label>
+            <div class="event-action-strip">
+              <button id="brandingUpload" class="secondary-action" type="button">Asset တင်မည်</button>
+              <button id="brandingSaveDraft" class="secondary-action" type="button">Draft သိမ်းမည်</button>
+              <button id="brandingPublish" class="primary-action" type="button">အသုံးပြုမည်</button>
+            </div>
+          </section>
+          <section class="settings-panel premium-surface">
+            <div class="section-head"><div><span class="section-kicker">Preview</span><h2>Current logo</h2></div></div>
+            <img id="brandingPreview" src="./assets/lucky77-logo.png" alt="Lucky77 preview" style="display:block;max-width:240px;width:100%;margin:auto;" />
+          </section>
+        </div>
+      </section>
+
+      <section id="adminSection-posts" class="admin-section hidden">
+        <form id="postSettingsForm" class="settings-layout">
+          <section class="settings-panel premium-surface">
+            <div class="section-head"><div><span class="section-kicker">Mini App registration</span><h2>Register post</h2></div></div>
+            <label class="premium-field"><span>Caption</span><textarea id="registerCaption" rows="6"></textarea></label>
+            <label class="premium-field"><span>Button label</span><input id="registerButton" type="text" /></label>
+          </section>
+          <section class="settings-panel premium-surface">
+            <div class="section-head"><div><span class="section-kicker">Official channel</span><h2>Channel post</h2></div></div>
+            <label class="premium-field"><span>Caption</span><textarea id="channelCaption" rows="6"></textarea></label>
+            <label class="premium-field"><span>Button label</span><input id="channelButton" type="text" /></label>
+            <div id="channelStageStatus" class="inventory-match-card"></div>
+          </section>
+          <button class="primary-action" type="submit">Post Setting သိမ်းမည်</button>
+        </form>
+      </section>
+
+
+      <section id="adminSection-command" class="admin-section hidden">
+        <div class="settings-layout command-layout">
+          <section class="admin-panel premium-surface command-chat-panel">
+            <div class="section-head">
+              <div><span class="section-kicker">Admin-only command workspace</span><h2>Bot Command Box · Non-AI Base</h2></div>
+              <span class="mini-live">SAFE PREVIEW</span>
+            </div>
+            <div id="commandChatLog" class="command-chat-log" aria-live="polite"></div>
+            <form id="commandForm" class="command-composer">
+              <label class="premium-field command-input-field">
+                <span>Command / Natural request</span>
+                <textarea id="commandInput" rows="4" placeholder="ဥပမာ - /regstatus
+ဥပမာ - main channel အတွက် post draft လုပ်ပေး
+ဥပမာ - register မလုပ်သေးသူတွေကို စာပို့ရန် preview လုပ်"></textarea>
+              </label>
+              <label class="premium-field"><span>Image/File attachment</span><input id="commandFile" type="file" accept="image/*,video/*,audio/*,.pdf,.txt,.csv" /></label>
+              <div id="commandAttachmentPreview" class="attachment-preview hidden"></div>
+              <div class="event-action-strip">
+                <button class="secondary-action compact-action command-template" data-template="/regstatus" type="button">/regstatus</button>
+                <button class="secondary-action compact-action command-template" data-template="/health" type="button">/health</button>
+                <button class="secondary-action compact-action command-template" data-template="/draftpost Main channel caption + Spin Now button" type="button">Draft Post</button>
+                <button id="commandSend" class="primary-action" type="submit">Preview Action</button>
+              </div>
+            </form>
+          </section>
+
+          <aside class="settings-panel premium-surface command-side-panel">
+            <div class="section-head"><div><span class="section-kicker">Guardrails</span><h2>Safe Action Engine</h2></div></div>
+            <div class="guardrail-list">
+              <div><strong>Member bot commands</strong><span>Admin action မလုပ်ပါ။ CS Inbox ထဲသာဝင်မည်။</span></div>
+              <div><strong>Read commands</strong><span>Count / Health / Status ကို confirm မလိုဘဲစစ်နိုင်။</span></div>
+              <div><strong>Write commands</strong><span>Channel post / invite / broadcast ကို Confirm မနှိပ်မချင်းမပို့။</span></div>
+              <div><strong>Owner-only</strong><span>Token, database, restore, mass delete ကို production မှာ Owner approval လိုမည်။</span></div>
+            </div>
+            <div id="pendingActionCard" class="pending-action-card hidden">
+              <span class="section-kicker">Pending confirmation</span>
+              <h3 id="pendingActionTitle">Channel post draft</h3>
+              <p id="pendingActionCopy"></p>
+              <div id="pendingActionButtons" class="post-button-preview"></div>
+              <div class="event-action-strip">
+                <button id="confirmMockAction" class="primary-action compact-action" type="button">Confirm & Publish</button>
+                <button id="cancelMockAction" class="secondary-action compact-action" type="button">Cancel</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="adminSection-history" class="admin-section hidden">
+        <section class="admin-panel premium-surface table-panel">
+          <div class="section-head"><div><span class="section-kicker">သိမ်းဆည်းထားသော မှတ်တမ်း</span><h2>Winner History</h2></div><button class="secondary-action compact-action nav-shortcut" data-target="inbox" type="button">CS Inbox ဖွင့်မည်</button></div>
+          <div class="winner-summary-grid">
+            <div><span>Winner စုစုပေါင်း</span><b id="historySummaryTotal">0</b></div>
+            <div><span>ယူနစ်ဖြည့်ပြီး</span><b id="historySummaryDone">0</b></div>
+            <div><span>မဖြည့်ရသေး</span><b id="historySummaryUndone">0</b></div>
+            <div><span>Done Amount</span><b id="historySummaryAmount">0 Ks</b></div>
+          </div>
+          <div class="winner-toolbar">
+            <input id="historySearch" type="search" placeholder="အမည် / Username / Telegram ID / ဆု / Amount ဖြင့်ရှာရန်" />
+            <select id="historyStatusFilter">
+              <option value="all">အားလုံး</option>
+              <option value="done">ယူနစ်ဖြည့်ပြီး</option>
+              <option value="undone">မဖြည့်ရသေး</option>
+            </select>
+          </div>
+          <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Turn</th><th>Winner</th><th>Prize / Amount</th><th>Telegram</th><th>Status</th><th>Time</th><th>Action</th></tr></thead><tbody id="historyTable"></tbody></table></div>
+        </section>
+      </section>
+
+      <section id="adminSection-reports" class="admin-section hidden">
+        <div class="settings-layout">
+          <section class="settings-panel premium-surface settings-wide table-panel">
+            <div class="section-head"><div><span class="section-kicker">Operations</span><h2>Audit log</h2></div></div>
+            <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th></tr></thead><tbody id="auditTable"></tbody></table></div>
+          </section>
+          <section class="settings-panel premium-surface settings-wide table-panel">
+            <div class="section-head"><div><span class="section-kicker">Winner payout</span><h2>Claims</h2></div></div>
+            <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Claim</th><th>Member</th><th>Prize</th><th>Status</th></tr></thead><tbody id="claimsTable"></tbody></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="adminSection-inbox" class="admin-section admin-inbox-section hidden">
+        <section class="admin-panel premium-surface inbox-frame-panel">
+          <div class="section-head">
+            <div><span class="section-kicker">Telegram Bot မှ Player စာများ</span><h2>CS Inbox</h2></div>
+            <button id="reloadInboxFrame" class="secondary-action compact-action" type="button">ပြန်လည်ဖွင့်မည်</button>
+          </div>
+          <iframe id="csInboxFrame" class="cs-inbox-frame" title="Lucky77 CS Inbox" data-src="./winners.html?embedded=1"></iframe>
+        </section>
+      </section>
+
+      <section id="adminSection-system" class="admin-section hidden">
+        <div class="settings-layout">
+          <section class="settings-panel premium-surface"><div class="section-head"><div><span class="section-kicker">Storage</span><h2>System health</h2></div></div><div id="systemHealthCards" class="system-health-grid"></div></section>
+          <section class="settings-panel premium-surface"><div class="section-head"><div><span class="section-kicker">လုံခြုံသော ထိန်းချုပ်မှု</span><h2>Maintenance</h2></div></div><p class="panel-copy">Event Register မှဖယ်ရှားသော်လည်း Member မှတ်တမ်း မပျက်ပါ။ Backup တွင် Event Access Record များပါဝင်သည်။</p><button class="secondary-action nav-shortcut" data-target="inbox" type="button">Backup နှင့် Broadcast Tools ဖွင့်မည်</button></section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="adminToast" class="app-toast hidden" role="status"></div>
+  <script type="module" src="./admin.js?v=6.4.4-player-inbox"></script>
+</body>
+</html>
