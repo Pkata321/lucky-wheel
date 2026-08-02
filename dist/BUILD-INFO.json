@@ -1,5 +1,6 @@
 {
-  "version": "6.4.5",
-  "build": "player-inbox-real-flow-fix",
-  "generated_at": "2026-08-02T20:17:00+06:30"
+  "version": "6.4.8",
+  "build": "final-flow-restore",
+  "source": "UTF-8 static output synchronized root/dist",
+  "notes": "Restores mandatory Promo Code popup before wheel; Game Account after spin; admin winner/promo sync."
 }

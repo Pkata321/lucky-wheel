@@ -8,12 +8,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Myanmar:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=6.4.5-real-flow-fix" />
-  <link rel="stylesheet" href="./v6.css?v=6.4.5-real-flow-fix" />
-  <link rel="stylesheet" href="./player-ui.css?v=6.4.5-real-flow-fix" />
+  <link rel="stylesheet" href="./styles.css?v=6.4.8-final-flow-restore" />
+  <link rel="stylesheet" href="./v6.css?v=6.4.8-final-flow-restore" />
+  <link rel="stylesheet" href="./player-ui.css?v=6.4.8-final-flow-restore" />
 </head>
 <!-- Contract copy: Promo Code ဖြင့် Spin လှည့်ရန် အသင့်ဖြစ်သည် -->
-<body class="player-body" data-theme="sky-white">
+<body class="player-body promo-code-inline-hidden" data-theme="sky-white">
   <div class="player-shell">
     <header class="player-topbar premium-surface">
       <a class="brand-lockup" href="./"><span class="brand-seal"><img src="./assets/lucky77-logo.png" alt="Lucky77" /></span><span><strong>Lucky77</strong><small>Premium Wheel</small></span></a>
@@ -74,9 +74,9 @@
             <div class="verified-line"><i>✓</i><span>Event Register အတည်ပြုပြီးပါပြီ</span></div>
             <div class="verified-line"><i>✓</i><span id="promoReadyLine">Promo Code အတည်ပြုပြီးမှ Spin လှည့်နိုင်ပါမည်</span></div>
             <div class="verified-line is-muted"><i>•</i><span id="accountAfterSpinLine">Game Account ကို Spin လှည့်ပြီး ဆုထွက်မှ အတည်ပြုပါမည်</span></div>
-            <label id="spinCodeField" class="premium-field"><span>Promo Code</span><input id="spinCodeInput" type="text" autocomplete="one-time-code" placeholder="L77-••••-••••" /></label>
-            <button id="promoConfirmBtn" class="secondary-action" type="button">Promo Code အတည်ပြုမည်</button>
-            <small id="promoConfirmMsg" class="security-note">Bot မှပို့ထားသော Code ကိုထည့်ပြီး အတည်ပြုပါ။</small>
+            <label id="spinCodeField" class="premium-field"><span>Promo Code</span><input id="spinCodeInput" type="text" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" aria-describedby="promoConfirmMsg" placeholder="L77-••••-••••" /></label>
+            <button id="promoConfirmBtn" class="secondary-action" type="button" disabled aria-controls="spinBtn">Promo Code အတည်ပြုမည်</button>
+            <small id="promoConfirmMsg" class="security-note" role="status" aria-live="polite">Bot မှပို့ထားသော Code ကိုထည့်ပြီး အတည်ပြုပါ။</small>
             <p id="readyText">Event စတင်ချိန်ကို စောင့်ပေးပါ။</p>
           </div>
         </section>
@@ -113,6 +113,26 @@
     </main>
   </div>
 
+  <div id="promoVerifyModal" class="promo-verify-modal hidden" role="dialog" aria-modal="true" aria-labelledby="promoVerifyTitle">
+    <div class="promo-verify-backdrop" aria-hidden="true"></div>
+    <section class="promo-verify-card premium-surface">
+      <div class="promo-logo"><img src="./assets/lucky77-logo.png" alt="Lucky77" /></div>
+      <span class="promo-overline">LUCKY77 OFFICIAL EVENT</span>
+      <h2 id="promoVerifyTitle">Promo Code အတည်ပြုရန်</h2>
+      <p>Bot မှပို့ထားသော Promo Code ကိုအရင်ထည့်ပြီး အတည်ပြုပြီးမှ Wheel လှည့်နိုင်ပါမည်။ Game Account ကိစ္စကို Spin လှည့်ပြီး Result ထွက်မှသာ ဖြည့်ရပါမည်။</p>
+      <label class="promo-code-field">
+        <span>Promo Code</span>
+        <input id="promoPopupCodeInput" type="text" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="ဥပမာ - L77-ABCD-2345" />
+      </label>
+      <div id="promoPopupState" class="promo-verify-state">
+        <span class="state-icon">77</span>
+        <div><strong>Code မထည့်ရသေးပါ</strong><small>Promo Code အတည်ပြုပြီးမှ SPIN ခလုတ်အသက်ဝင်ပါမည်။</small></div>
+      </div>
+      <button id="promoPopupConfirmBtn" class="promo-confirm-btn" type="button" disabled><span>Promo Code အတည်ပြုမည်</span><i>→</i></button>
+      <small class="promo-security-note">ဤ popup ကို Code အတည်ပြုမှသာပိတ်ပါမည်။</small>
+    </section>
+  </div>
+
   <div id="resultModal" class="result-modal hidden" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
     <div class="result-backdrop"></div>
     <div class="result-card premium-surface">
@@ -126,6 +146,6 @@
   </div>
   <div id="toast" class="app-toast hidden" role="status"></div>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" src="./script.js?v=6.4.5-real-flow-fix"></script>
+  <script type="module" src="./script.js?v=6.4.8-final-flow-restore"></script>
 </body>
 </html>
