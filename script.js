@@ -53,7 +53,7 @@ function normalizePromoCode(value) {
   return safe(value)
     .normalize("NFKC")
     .replace(/[\u200B-\u200D\uFEFF]/g, "")
-    .replace(/[ââââââ]/g, "-")
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, "-")
     .replace(/\s+/g, "")
     .toUpperCase();
 }
@@ -61,20 +61,20 @@ function normalizePromoCode(value) {
 function playerErrorMessage(error) {
   const code = safe(error?.data?.error || "");
   const messages = {
-    registration_required: "áá® Event á¡áá½ááº Register áá¯ááºáá¬á¸áá¾ Spin áá¾áá·áºáá­á¯ááºáá«áááºá",
-    invalid_unique_code: "Promo Code ááá¾ááºáá«á Telegram Bot áá¾áá­á¯á·áá¬á¸áá±á¬ Code áá­á¯ áá¼ááºáááºáá«á",
-    promo_not_started: "Promo Code áá­á¯ á¡áá¯á¶á¸áá¼á¯áá­á¯ááºááá·áºá¡áá»á­ááº ááá±á¬ááºáá±á¸áá«á",
-    promo_expired: "Promo Code áááºáááºá¸áá¯ááºáá¯á¶á¸áá½á¬á¸áá«áá¼á®á",
-    event_not_live: "Event áááááºáá±á¸áá«á Event Live áá¼ááºááá·áºá¡áá»á­ááº áá¼ááºáá¾áá·áºáá«á",
-    channel_membership_required: "Lucky77 Channel áá­á¯ Join áá¬á¸áá¾ Spin áá¾áá·áºáá­á¯ááºáá«áááºá",
-    telegram_verification_required: "Official Telegram Bot áá¾ Player Link áá­á¯ áá¼ááºáá½áá·áºáá«á",
-    spin_in_progress: "Spin áá¾áá·áºáá±áá²áá¼ááºáá«áááºá áááá±á¬áá·áºáá«á",
-    no_prize_left: "áá® Event á¡áá½ááº áá¯áá»á¬á¸áá¯ááºáá¯á¶á¸áá½á¬á¸áá«áá¼á®á",
-    account_after_spin_required: "Spin áá¾áá·áºáá¼á®á¸ áá¯ááá¾á­áá¾ Game Account Name ááá·áºáá­á¯ááºáá«áááºá",
-    promo_already_used: "áá® Promo Code áá­á¯ á¡áá¯á¶á¸áá¼á¯áá¼á®á¸áá«áá¼á®á",
-    test_link_required: "Test access áá­á¯ Test Event Link áá¼áá·áºáá¬áá½áá·áºáá«á",
+    registration_required: "\u1012\u102e Event \u1021\u1010\u103d\u1000\u103a Register \u101c\u102f\u1015\u103a\u1011\u102c\u1038\u1019\u103e Spin \u101c\u103e\u100a\u1037\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u101e\u100a\u103a\u104b",
+    invalid_unique_code: "Promo Code \u1019\u1019\u103e\u1014\u103a\u1015\u102b\u104b Telegram Bot \u1019\u103e\u1015\u102d\u102f\u1037\u1011\u102c\u1038\u101e\u1031\u102c Code \u1000\u102d\u102f \u1015\u103c\u1014\u103a\u1005\u1005\u103a\u1015\u102b\u104b",
+    promo_not_started: "Promo Code \u1000\u102d\u102f \u1021\u101e\u102f\u1036\u1038\u1015\u103c\u102f\u1014\u102d\u102f\u1004\u103a\u101e\u100a\u1037\u103a\u1021\u1001\u103b\u102d\u1014\u103a \u1019\u101b\u1031\u102c\u1000\u103a\u101e\u1031\u1038\u1015\u102b\u104b",
+    promo_expired: "Promo Code \u101e\u1000\u103a\u1010\u1019\u103a\u1038\u1000\u102f\u1014\u103a\u1006\u102f\u1036\u1038\u101e\u103d\u102c\u1038\u1015\u102b\u1015\u103c\u102e\u104b",
+    event_not_live: "Event \u1019\u1005\u1010\u1004\u103a\u101e\u1031\u1038\u1015\u102b\u104b Event Live \u1016\u103c\u1005\u103a\u101e\u100a\u1037\u103a\u1021\u1001\u103b\u102d\u1014\u103a \u1015\u103c\u1014\u103a\u101c\u103e\u100a\u1037\u103a\u1015\u102b\u104b",
+    channel_membership_required: "Lucky77 Channel \u1000\u102d\u102f Join \u1011\u102c\u1038\u1019\u103e Spin \u101c\u103e\u100a\u1037\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u101e\u100a\u103a\u104b",
+    telegram_verification_required: "Official Telegram Bot \u1019\u103e Player Link \u1000\u102d\u102f \u1015\u103c\u1014\u103a\u1016\u103d\u1004\u1037\u103a\u1015\u102b\u104b",
+    spin_in_progress: "Spin \u101c\u103e\u100a\u1037\u103a\u1014\u1031\u1006\u1032\u1016\u103c\u1005\u103a\u1015\u102b\u101e\u100a\u103a\u104b \u1001\u100f\u1005\u1031\u102c\u1004\u1037\u103a\u1015\u102b\u104b",
+    no_prize_left: "\u1012\u102e Event \u1021\u1010\u103d\u1000\u103a \u1006\u102f\u1019\u103b\u102c\u1038\u1000\u102f\u1014\u103a\u1006\u102f\u1036\u1038\u101e\u103d\u102c\u1038\u1015\u102b\u1015\u103c\u102e\u104b",
+    account_after_spin_required: "Spin \u101c\u103e\u100a\u1037\u103a\u1015\u103c\u102e\u1038 \u1006\u102f\u101b\u101b\u103e\u102d\u1019\u103e Game Account Name \u1011\u100a\u1037\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u101e\u100a\u103a\u104b",
+    promo_already_used: "\u1012\u102e Promo Code \u1000\u102d\u102f \u1021\u101e\u102f\u1036\u1038\u1015\u103c\u102f\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e\u104b",
+    test_link_required: "Test access \u1000\u102d\u102f Test Event Link \u1016\u103c\u1004\u1037\u103a\u101e\u102c\u1016\u103d\u1004\u1037\u103a\u1015\u102b\u104b",
   };
-  return messages[code] || safe(error?.message || "áá¯ááºáá±á¬ááºáá¾á¯áá¡á±á¬ááºáá¼ááºáá«á áá¼ááºáááºá¸áá«á");
+  return messages[code] || safe(error?.message || "\u101c\u102f\u1015\u103a\u1006\u1031\u102c\u1004\u103a\u1019\u103e\u102f\u1019\u1021\u1031\u102c\u1004\u103a\u1019\u103c\u1004\u103a\u1015\u102b\u104b \u1015\u103c\u1014\u103a\u1005\u1019\u103a\u1038\u1015\u102b\u104b");
 }
 
 function formatPrize(value) {
@@ -124,7 +124,7 @@ async function api(path, options = {}) {
     }
     return data;
   } catch (error) {
-  if (error?.name === "AbortError") throw new Error("áá»á­ááºáááºáá»á­ááº áá»á±á¬áºáá½ááºáá½á¬á¸áá«áá¼á®");
+  if (error?.name === "AbortError") throw new Error("\u1001\u103b\u102d\u1010\u103a\u1006\u1000\u103a\u1001\u103b\u102d\u1014\u103a \u1000\u103b\u1031\u102c\u103a\u101c\u103d\u1014\u103a\u101e\u103d\u102c\u1038\u1015\u102b\u1015\u103c\u102e");
     throw error;
   } finally { clearTimeout(timer); }
 }
@@ -171,10 +171,10 @@ function renderHeader() {
   $("memberName").textContent = name;
   $("memberAvatar").textContent = initials(state.user);
   $("memberStatus").textContent = state.testMode
-    ? state.user ? "Test Member" : "Telegram áá»á­ááºáááºáááº"
+    ? state.user ? "Test Member" : "Telegram \u1001\u103b\u102d\u1010\u103a\u1006\u1000\u103a\u101b\u1014\u103a"
     : state.spun
-      ? state.access.account_ready ? "áá¯ááá°áááºá¡áááºááá·áº" : "Game Account ááá·áºáááº"
-      : state.registered ? "Event Member" : state.user ? "á¡áááºáá¼á¯áááºáá­á¯á¡ááºáááº" : "Telegram áá»á­ááºáááºáááº";
+      ? state.access.account_ready ? "\u1006\u102f\u101b\u101a\u1030\u101b\u1014\u103a\u1021\u1006\u1004\u103a\u101e\u1004\u1037\u103a" : "Game Account \u1011\u100a\u1037\u103a\u101b\u1014\u103a"
+      : state.registered ? "Event Member" : state.user ? "\u1021\u1010\u100a\u103a\u1015\u103c\u102f\u101b\u1014\u103a\u101c\u102d\u102f\u1021\u1015\u103a\u101e\u100a\u103a" : "Telegram \u1001\u103b\u102d\u1010\u103a\u1006\u1000\u103a\u101b\u1014\u103a";
   const live = !!state.event?.event_live;
   $("liveBadge").classList.toggle("is-live", live);
   $("liveBadge").classList.toggle("is-waiting", !live);
@@ -184,17 +184,17 @@ function renderHeader() {
 function renderEvent() {
   const event = state.event || {};
   $("eventTitle").textContent = event.title || "Lucky77 Grand Spin";
-  $("eventSubtitle").textContent = event.subtitle || "One member Â· One code Â· One premium spin";
+  $("eventSubtitle").textContent = event.subtitle || "One member \u00b7 One code \u00b7 One premium spin";
   $("announcementText").textContent = event.announcement || "Register now. Your private code will arrive when the event starts.";
-  $("eventStartText").textContent = `ááááºáá»á­ááº: ${yangonDate(event.starts_at)}`;
-  $("eventEndText").textContent = `áá¼á®á¸áá¯á¶á¸áá»á­ááº: ${yangonDate(event.ends_at)}`;
+  $("eventStartText").textContent = `\u1005\u1010\u1004\u103a\u1001\u103b\u102d\u1014\u103a: ${yangonDate(event.starts_at)}`;
+  $("eventEndText").textContent = `\u1015\u103c\u102e\u1038\u1006\u102f\u1036\u1038\u1001\u103b\u102d\u1014\u103a: ${yangonDate(event.ends_at)}`;
   $("wheelEventId").textContent = safe(event.event_id || "EVENT");
   const phaseCopy = {
-    registration: "áááºáá¾á­ááááº Event á¡áá½ááº Register áá¯ááºáá­á¯ááºáá«áá¼á®á",
-    scheduled: "Register áá¬áááºá¸áá­ááºáá¼á®á¸ Event áá­á¯ á¡áá­á¯á¡áá»á±á¬ááºááááºáá«áááºá",
-    live: "Event ááááºáá±áá«áá¼á®á á¡áááºááá·áºáá¼ááºáá±á¬ Member áá»á¬á¸ Promo Code áá¼áá·áº áááºáá¼á­ááº Spin áá¾áá·áºáá­á¯ááºáá«áááºá",
-    ended: "áááºáá¾á­ Event áá¼á®á¸áá¯á¶á¸áá«áá¼á®á áá±á¬ááº Event á¡áá½ááº áá¼á­á¯áááº Register áá¯ááºáá­á¯ááºáá«áááºá",
-    blocked: event.lifecycle_error || "Event áááááºáá® Admin áá¾ áááºáá±á¸áááºáá­á¯á¡ááºáá«áááºá",
+    registration: "\u101c\u1000\u103a\u101b\u103e\u102d\u101c\u1005\u1009\u103a Event \u1021\u1010\u103d\u1000\u103a Register \u101c\u102f\u1015\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u1015\u103c\u102e\u104b",
+    scheduled: "Register \u1005\u102c\u101b\u1004\u103a\u1038\u1015\u102d\u1010\u103a\u1015\u103c\u102e\u1038 Event \u1000\u102d\u102f \u1021\u101c\u102d\u102f\u1021\u101c\u103b\u1031\u102c\u1000\u103a\u1005\u1010\u1004\u103a\u1015\u102b\u1019\u100a\u103a\u104b",
+    live: "Event \u1005\u1010\u1004\u103a\u1014\u1031\u1015\u102b\u1015\u103c\u102e\u104b \u1021\u1006\u1004\u103a\u101e\u1004\u1037\u103a\u1016\u103c\u1005\u103a\u101e\u1031\u102c Member \u1019\u103b\u102c\u1038 Promo Code \u1016\u103c\u1004\u1037\u103a \u1010\u1005\u103a\u1000\u103c\u102d\u1019\u103a Spin \u101c\u103e\u100a\u1037\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u101e\u100a\u103a\u104b",
+    ended: "\u101c\u1000\u103a\u101b\u103e\u102d Event \u1015\u103c\u102e\u1038\u1006\u102f\u1036\u1038\u1015\u102b\u1015\u103c\u102e\u104b \u1014\u1031\u102c\u1000\u103a Event \u1021\u1010\u103d\u1000\u103a \u1000\u103c\u102d\u102f\u1010\u1004\u103a Register \u101c\u102f\u1015\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u101e\u100a\u103a\u104b",
+    blocked: event.lifecycle_error || "Event \u1019\u1005\u1010\u1004\u103a\u1019\u102e Admin \u1019\u103e \u1005\u1005\u103a\u1006\u1031\u1038\u101b\u1014\u103a\u101c\u102d\u102f\u1021\u1015\u103a\u1015\u102b\u101e\u100a\u103a\u104b",
   };
   $("phaseNotice").textContent = phaseCopy[event.phase] || event.lifecycle_error || "Waiting for event settings.";
   applyTheme(event);
@@ -214,14 +214,14 @@ function setPromoConfirmUi(enteredCode, confirmed) {
   const hasCode = enteredCode.length > 0;
   btn.disabled = !hasCode || confirmed || state.promoConfirming || state.spinning || state.spun;
   btn.textContent = state.promoConfirming
-    ? "áááºáá±á¸áá±áá«áááº..."
-    : confirmed ? "Promo Code á¡áááºáá¼á¯áá¼á®á¸" : "Promo Code á¡áááºáá¼á¯áááº";
+    ? "\u1005\u1005\u103a\u1006\u1031\u1038\u1014\u1031\u1015\u102b\u101e\u100a\u103a..."
+    : confirmed ? "Promo Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u103c\u102e\u1038" : "Promo Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1019\u100a\u103a";
   msg.textContent = !hasCode
-    ? "Bot áá¾áá­á¯á·áá¬á¸áá±á¬ Promo Code áá­á¯ popup áá½ááºááá·áºáá«á"
+    ? "Bot \u1019\u103e\u1015\u102d\u102f\u1037\u1011\u102c\u1038\u101e\u1031\u102c Promo Code \u1000\u102d\u102f popup \u1010\u103d\u1004\u103a\u1011\u100a\u1037\u103a\u1015\u102b\u104b"
     : confirmed
-      ? "Code á¡áááºáá¼á¯áá¼á®á¸áá«áá¼á®á á¡áá¯ SPIN áá¾áá·áºáá­á¯ááºáá«áááºá"
-      : state.promoConfirming ? "Promo Code áá­á¯áááºáá±á¸áá±áá«áááº..." : "Code ááá·áºáá¼á®á¸ á¡áááºáá¼á¯áááºáá­á¯áá¾á­ááºáá«á";
-  if (line) line.textContent = confirmed ? "Promo Code á¡áááºáá¼á¯áá¼á®á¸áá«áá¼á®" : "Promo Code Popup áá¾ á¡áááºáá¼á¯áááºáá­á¯á¡ááºáááº";
+      ? "Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e\u104b \u1021\u1001\u102f SPIN \u101c\u103e\u100a\u1037\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u101e\u100a\u103a\u104b"
+      : state.promoConfirming ? "Promo Code \u1000\u102d\u102f\u1005\u1005\u103a\u1006\u1031\u1038\u1014\u1031\u1015\u102b\u101e\u100a\u103a..." : "Code \u1011\u100a\u1037\u103a\u1015\u103c\u102e\u1038 \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1019\u100a\u103a\u1000\u102d\u102f\u1014\u103e\u102d\u1015\u103a\u1015\u102b\u104b";
+  if (line) line.textContent = confirmed ? "Promo Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e" : "Promo Code Popup \u1019\u103e \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u101b\u1014\u103a\u101c\u102d\u102f\u1021\u1015\u103a\u101e\u100a\u103a";
 }
 
 function promoRequired() {
@@ -251,7 +251,7 @@ function setPromoPopupState(kind, title, copy) {
   const icon = stateNode.querySelector(".state-icon");
   const strong = stateNode.querySelector("strong");
   const small = stateNode.querySelector("small");
-  if (icon) icon.textContent = kind === "verified" ? "â" : kind === "error" ? "!" : "77";
+  if (icon) icon.textContent = kind === "verified" ? "\u2713" : kind === "error" ? "!" : "77";
   if (strong) strong.textContent = title;
   if (small) small.textContent = copy;
 }
@@ -277,12 +277,12 @@ function syncPromoPopupUi() {
   const confirmed = promoConfirmedForCurrentInput(code);
   button.disabled = !code || confirmed || state.promoConfirming || state.spinning || state.spun;
   button.querySelector("span").textContent = state.promoConfirming
-    ? "áááºáá±á¸áá±áá«áááº..."
-    : confirmed ? "Promo Code á¡áááºáá¼á¯áá¼á®á¸" : "Promo Code á¡áááºáá¼á¯áááº";
-  if (!code) setPromoPopupState("", "Code áááá·áºááá±á¸áá«", "Promo Code á¡áááºáá¼á¯áá¼á®á¸áá¾ SPIN ááá¯ááºá¡áááºáááºáá«áááºá");
-  else if (confirmed) setPromoPopupState("verified", "Promo Code á¡áááºáá¼á¯áá¼á®á¸áá«áá¼á®", "Popup áá­ááºáá¼á®á¸ Wheel áá¾áá·áºáá­á¯ááºáá«áá¼á®á");
-  else if (state.promoConfirming) setPromoPopupState("checking", "Code áááºáá±á¸áá±áá«áááº", "áááá±á¬áá·áºáá«á");
-  else setPromoPopupState("", "Code ááá·áºáá¬á¸áá«áááº", "á¡áááºáá¼á¯áááºáá­á¯áá¾á­ááºáá«á");
+    ? "\u1005\u1005\u103a\u1006\u1031\u1038\u1014\u1031\u1015\u102b\u101e\u100a\u103a..."
+    : confirmed ? "Promo Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u103c\u102e\u1038" : "Promo Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1019\u100a\u103a";
+  if (!code) setPromoPopupState("", "Code \u1019\u1011\u100a\u1037\u103a\u101b\u101e\u1031\u1038\u1015\u102b", "Promo Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u103c\u102e\u1038\u1019\u103e SPIN \u1001\u101c\u102f\u1010\u103a\u1021\u101e\u1000\u103a\u101d\u1004\u103a\u1015\u102b\u1019\u100a\u103a\u104b");
+  else if (confirmed) setPromoPopupState("verified", "Promo Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e", "Popup \u1015\u102d\u1010\u103a\u1015\u103c\u102e\u1038 Wheel \u101c\u103e\u100a\u1037\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u1015\u103c\u102e\u104b");
+  else if (state.promoConfirming) setPromoPopupState("checking", "Code \u1005\u1005\u103a\u1006\u1031\u1038\u1014\u1031\u1015\u102b\u101e\u100a\u103a", "\u1001\u100f\u1005\u1031\u102c\u1004\u1037\u103a\u1015\u102b\u104b");
+  else setPromoPopupState("", "Code \u1011\u100a\u1037\u103a\u1011\u102c\u1038\u1015\u102b\u101e\u100a\u103a", "\u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1019\u100a\u103a\u1000\u102d\u102f\u1014\u103e\u102d\u1015\u103a\u1015\u102b\u104b");
 }
 
 function shouldShowPromoPopup() {
@@ -297,7 +297,7 @@ function shouldShowPromoPopup() {
 async function confirmPromoCodeFrom(code, source = "inline") {
   code = normalizePromoCode(code);
   if (!code) {
-    toast("Promo Code ááá·áºáá±á¸áá«á", "error");
+    toast("Promo Code \u1011\u100a\u1037\u103a\u1015\u1031\u1038\u1015\u102b\u104b", "error");
     return false;
   }
   state.promoConfirming = true;
@@ -322,14 +322,14 @@ async function confirmPromoCodeFrom(code, source = "inline") {
       state.localPromoConfirmedCode = code;
       state.promoConfirmation = data.promo || { confirmed: true };
     }
-    setPromoPopupState("verified", "Promo Code á¡áááºáá¼á¯áá¼á®á¸áá«áá¼á®", "Popup áá­ááºáá¼á®á¸ Wheel áá¾áá·áºáá­á¯ááºáá«áá¼á®á");
-    toast("Promo Code á¡áááºáá¼á¯áá¼á®á¸áá«áá¼á®á", "success");
+    setPromoPopupState("verified", "Promo Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e", "Popup \u1015\u102d\u1010\u103a\u1015\u103c\u102e\u1038 Wheel \u101c\u103e\u100a\u1037\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u1015\u103c\u102e\u104b");
+    toast("Promo Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e\u104b", "success");
     setTimeout(() => setPromoModalOpen(false), 350);
     return true;
   } catch (error) {
     state.localPromoConfirmedCode = "";
     state.promoConfirmation = null;
-    setPromoPopupState("error", "Promo Code áá¡á±á¬ááºáá¼ááºáá«", playerErrorMessage(error));
+    setPromoPopupState("error", "Promo Code \u1019\u1021\u1031\u102c\u1004\u103a\u1019\u103c\u1004\u103a\u1015\u102b", playerErrorMessage(error));
     toast(playerErrorMessage(error), "error");
     return false;
   } finally {
@@ -345,29 +345,29 @@ function renderAccess() {
   const promoConfirmed = promoConfirmedForCurrentInput(enteredCode);
 
   if (!state.user) {
-    $("accessTitle").textContent = "Telegram áá¾ áá½áá·áºáá«";
+    $("accessTitle").textContent = "Telegram \u1019\u103e \u1016\u103d\u1004\u1037\u103a\u1015\u102b";
     revealGate("browserGate");
     spinBtn.disabled = true;
-    $("spinHint").textContent = "Official Telegram Bot áá¾ Player Link áá­á¯ áá½áá·áºáááºáá­á¯á¡ááºáááº";
+    $("spinHint").textContent = "Official Telegram Bot \u1019\u103e Player Link \u1000\u102d\u102f \u1016\u103d\u1004\u1037\u103a\u101b\u1014\u103a\u101c\u102d\u102f\u1021\u1015\u103a\u101e\u100a\u103a";
     setPromoModalOpen(false);
     return;
   }
 
   if (!state.channel?.joined) {
-    $("accessTitle").textContent = "Channel á¡áááºáá¼á¯áááº";
+    $("accessTitle").textContent = "Channel \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u101b\u1014\u103a";
     revealGate("joinGate");
     spinBtn.disabled = true;
-    $("spinHint").textContent = "Lucky77 Channel áá­á¯ Join áá¼á®á¸ Member á¡áááºáá¼á¯áá«";
+    $("spinHint").textContent = "Lucky77 Channel \u1000\u102d\u102f Join \u1015\u103c\u102e\u1038 Member \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u102b";
     setPromoModalOpen(false);
     return;
   }
 
   if (state.testMode && state.previewAccountPending && !state.access.account_ready) {
-    $("accessTitle").textContent = "Test Result Â· Game Account Preview";
+    $("accessTitle").textContent = "Test Result \u00b7 Game Account Preview";
     $("accountPhoneField").classList.remove("hidden");
     revealGate("accountGate");
     spinBtn.disabled = true;
-    $("spinHint").textContent = "Test flow á¡áá½ááº Game Account Name UI áá­á¯ áááºá¸áááºáá«á Data ááá­ááºá¸áá«á";
+    $("spinHint").textContent = "Test flow \u1021\u1010\u103d\u1000\u103a Game Account Name UI \u1000\u102d\u102f \u1005\u1019\u103a\u1038\u101e\u1015\u103a\u1015\u102b\u104b Data \u1019\u101e\u102d\u1019\u103a\u1038\u1015\u102b\u104b";
     setPromoModalOpen(false);
     return;
   }
@@ -377,11 +377,11 @@ function renderAccess() {
     revealGate("readyGate");
     $("spinCodeField").classList.remove("hidden");
     setPromoConfirmUi(enteredCode, promoConfirmed);
-    $("readyText").textContent = "Unlimited Test Spin Â· Promo Code ááá·áºáá¼á®á¸ á¡áááºáá¼á¯áá«á Result áá­á¯ Real Data áá²ááá­ááºá¸áá«á";
+    $("readyText").textContent = "Unlimited Test Spin \u00b7 Promo Code \u1011\u100a\u1037\u103a\u1015\u103c\u102e\u1038 \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u102b\u104b Result \u1000\u102d\u102f Real Data \u1011\u1032\u1019\u101e\u102d\u1019\u103a\u1038\u1015\u102b\u104b";
     spinBtn.disabled = state.spinning || !promoConfirmed;
     $("spinHint").textContent = promoConfirmed
-      ? "Test Spin áá¾áá·áºáááº á¡ááá·áºáá¼ááºáááº Â· Result ááá­ááºá¸áá«"
-      : enteredCode.length ? "Promo Code á¡áááºáá¼á¯áááºáá­á¯áá¾á­ááºáá«" : "áááºá¸áááºáááº Promo Code áááºáá¯áá¯ááá·áºáá«";
+      ? "Test Spin \u101c\u103e\u100a\u1037\u103a\u101b\u1014\u103a \u1021\u101e\u1004\u1037\u103a\u1016\u103c\u1005\u103a\u101e\u100a\u103a \u00b7 Result \u1019\u101e\u102d\u1019\u103a\u1038\u1015\u102b"
+      : enteredCode.length ? "Promo Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1019\u100a\u103a\u1000\u102d\u102f\u1014\u103e\u102d\u1015\u103a\u1015\u102b" : "\u1005\u1019\u103a\u1038\u101e\u1015\u103a\u101b\u1014\u103a Promo Code \u1010\u1005\u103a\u1001\u102f\u1001\u102f\u1011\u100a\u1037\u103a\u1015\u102b";
     setPromoModalOpen(shouldShowPromoPopup());
     return;
   }
@@ -389,37 +389,37 @@ function renderAccess() {
   if (!state.registered) {
     const open = !!state.event?.registration_open;
     $("accessTitle").textContent = open
-      ? "Event Register áá¯ááºáááº"
-      : state.event?.next_event_id ? "áá±á¬ááº Event áá¼á­á¯áááº Register" : "Register áá­ááºáá¬á¸áááº";
+      ? "Event Register \u101c\u102f\u1015\u103a\u101b\u1014\u103a"
+      : state.event?.next_event_id ? "\u1014\u1031\u102c\u1000\u103a Event \u1000\u103c\u102d\u102f\u1010\u1004\u103a Register" : "Register \u1015\u102d\u1010\u103a\u1011\u102c\u1038\u101e\u100a\u103a";
     $("registerCopy").textContent = open
-      ? "áá® Event á¡áá½ááº Register áá¯ááºáá«á Event ááá»á­ááºáá½ááº ááá·áº Promo Code áá­á¯ Telegram Bot áá¾ áá®á¸ááá·áºáá­á¯á·áá«áááºá"
+      ? "\u1012\u102e Event \u1021\u1010\u103d\u1000\u103a Register \u101c\u102f\u1015\u103a\u1015\u102b\u104b Event \u1005\u1001\u103b\u102d\u1014\u103a\u1010\u103d\u1004\u103a \u101e\u1004\u1037\u103a Promo Code \u1000\u102d\u102f Telegram Bot \u1019\u103e \u101e\u102e\u1038\u101e\u1014\u1037\u103a\u1015\u102d\u102f\u1037\u1015\u102b\u1019\u100a\u103a\u104b"
       : state.event?.next_event_id
-        ? `áááºáá¾á­ Event áá­ááºáá¬á¸áá«áá¼á®á ${state.event.next_event_id} á¡áá½ááº áá¼á­á¯áááº Register áá¯ááºáá­á¯ááºáá«áááºá`
-        : "Register áá­ááºáá¬á¸áá¼á®á¸ áá±á¬ááº Event áá­á¯ ááááºáá¾ááºááá±á¸áá«á";
-    $("registerBtn").textContent = open ? "áááºáá¾á­ Event áá­á¯ Register áá¯ááºáááº" : "áá±á¬ááº Event áá­á¯ áá¼á­á¯áááº Register áá¯ááºáááº";
+        ? `\u101c\u1000\u103a\u101b\u103e\u102d Event \u1015\u102d\u1010\u103a\u1011\u102c\u1038\u1015\u102b\u1015\u103c\u102e\u104b ${state.event.next_event_id} \u1021\u1010\u103d\u1000\u103a \u1000\u103c\u102d\u102f\u1010\u1004\u103a Register \u101c\u102f\u1015\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u101e\u100a\u103a\u104b`
+        : "Register \u1015\u102d\u1010\u103a\u1011\u102c\u1038\u1015\u103c\u102e\u1038 \u1014\u1031\u102c\u1000\u103a Event \u1000\u102d\u102f \u1019\u101e\u1010\u103a\u1019\u103e\u1010\u103a\u101b\u101e\u1031\u1038\u1015\u102b\u104b";
+    $("registerBtn").textContent = open ? "\u101c\u1000\u103a\u101b\u103e\u102d Event \u1000\u102d\u102f Register \u101c\u102f\u1015\u103a\u1019\u100a\u103a" : "\u1014\u1031\u102c\u1000\u103a Event \u1000\u102d\u102f \u1000\u103c\u102d\u102f\u1010\u1004\u103a Register \u101c\u102f\u1015\u103a\u1019\u100a\u103a";
     $("registerBtn").disabled = !open && !state.event?.next_event_id;
     revealGate("registerGate");
     spinBtn.disabled = true;
-    $("spinHint").textContent = "Event Register áá¯ááºáá¼á®á¸áá¾ Promo Code áá¼áá·áº Spin áá¾áá·áºáá­á¯ááºáá«áááº";
+    $("spinHint").textContent = "Event Register \u101c\u102f\u1015\u103a\u1015\u103c\u102e\u1038\u1019\u103e Promo Code \u1016\u103c\u1004\u1037\u103a Spin \u101c\u103e\u100a\u1037\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u101e\u100a\u103a";
     setPromoModalOpen(false);
     return;
   }
 
   // Confirmed flow: player spins with Promo Code first, then submits Game Account Name.
   if (state.spun && !state.access.account_ready) {
-    $("accessTitle").textContent = "áá¯ááá°áááº Game Account ááá·áºáá«";
+    $("accessTitle").textContent = "\u1006\u102f\u101b\u101a\u1030\u101b\u1014\u103a Game Account \u1011\u100a\u1037\u103a\u1015\u102b";
     $("accountPhoneField").classList.remove("hidden");
     $("accountPromoInput").value = state.access.promo_code || enteredCode;
     $("accountNameInput").value = state.access.account_name || $("accountNameInput").value || "";
     $("accountPhoneInput").value = state.access.phone || $("accountPhoneInput").value || "";
     revealGate("accountGate");
     spinBtn.disabled = true;
-    $("spinHint").textContent = "áá¶áá°á¸áá¯ááá°áááº Game Account Name áá­á¯ á¡áááºáá¼á¯áá«";
+    $("spinHint").textContent = "\u1000\u1036\u1011\u1030\u1038\u1006\u102f\u101b\u101a\u1030\u101b\u1014\u103a Game Account Name \u1000\u102d\u102f \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u102b";
     setPromoModalOpen(false);
     return;
   }
 
-  $("accessTitle").textContent = state.spun ? "Spin áá¾áá·áºáá¼á®á¸áá«áá¼á®" : "Promo Code á¡áááºáá¼á¯áááº";
+  $("accessTitle").textContent = state.spun ? "Spin \u101c\u103e\u100a\u1037\u103a\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e" : "Promo Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u101b\u1014\u103a";
   revealGate("readyGate");
   $("spinCodeField").classList.toggle("hidden", !state.event?.require_unique_code);
   if (state.access.promo_code && !$("spinCodeInput").value) {
@@ -427,21 +427,21 @@ function renderAccess() {
   }
 
   $("readyText").textContent = state.spun
-    ? `áá¶áá°á¸áá¯: ${formatPrize(state.result?.prize)} Â· Game Account á¡áááºáá¼á¯áá¼á®á¸áá«áá¼á®á`
+    ? `\u1000\u1036\u1011\u1030\u1038\u1006\u102f: ${formatPrize(state.result?.prize)} \u00b7 Game Account \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e\u104b`
     : state.event?.event_live
       ? state.access.promo_sent_at
-        ? "Telegram Bot áá¾áá­á¯á·áá¬á¸áá±á¬ Promo Code áá­á¯ ááá·áºáá¼á®á¸ Spin áá¾áá·áºáá«á"
-        : "Promo Code áá­á¯ ááá·áºáá¼á®á¸ Spin áá¾áá·áºáá«á"
-      : "Register á¡áááºáá¼á¯áá¼á®á¸áá«áá¼á®á Event ááááºáá»á­ááºáá­á¯ áá±á¬áá·áºáá±á¸áá«á";
+        ? "Telegram Bot \u1019\u103e\u1015\u102d\u102f\u1037\u1011\u102c\u1038\u101e\u1031\u102c Promo Code \u1000\u102d\u102f \u1011\u100a\u1037\u103a\u1015\u103c\u102e\u1038 Spin \u101c\u103e\u100a\u1037\u103a\u1015\u102b\u104b"
+        : "Promo Code \u1000\u102d\u102f \u1011\u100a\u1037\u103a\u1015\u103c\u102e\u1038 Spin \u101c\u103e\u100a\u1037\u103a\u1015\u102b\u104b"
+      : "Register \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e\u104b Event \u1005\u1010\u1004\u103a\u1001\u103b\u102d\u1014\u103a\u1000\u102d\u102f \u1005\u1031\u102c\u1004\u1037\u103a\u1015\u1031\u1038\u1015\u102b\u104b";
 
   setPromoConfirmUi(enteredCode, promoConfirmed);
   const codeReady = promoConfirmed;
   spinBtn.disabled = state.spun || !state.event?.event_live || state.spinning || !codeReady;
   $("spinHint").textContent = state.spun
-    ? "áá® Event á¡áá½ááº Spin áá¾áá·áºáá¼á®á¸áá«áá¼á®"
+    ? "\u1012\u102e Event \u1021\u1010\u103d\u1000\u103a Spin \u101c\u103e\u100a\u1037\u103a\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e"
     : state.event?.event_live
-      ? codeReady ? "Spin áá¾áá·áºáááº á¡ááá·áºáá¼ááºáááº" : enteredCode.length ? "Promo Code á¡áááºáá¼á¯áááºáá­á¯áá¾á­ááºáá«" : "Promo Code ááá·áºáá«"
-      : "Event Live áá¼ááºááá·áºá¡áá»á­ááº áá¼ááºáá¾áá·áºáá«";
+      ? codeReady ? "Spin \u101c\u103e\u100a\u1037\u103a\u101b\u1014\u103a \u1021\u101e\u1004\u1037\u103a\u1016\u103c\u1005\u103a\u101e\u100a\u103a" : enteredCode.length ? "Promo Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1019\u100a\u103a\u1000\u102d\u102f\u1014\u103e\u102d\u1015\u103a\u1015\u102b" : "Promo Code \u1011\u100a\u1037\u103a\u1015\u102b"
+      : "Event Live \u1016\u103c\u1005\u103a\u101e\u100a\u1037\u103a\u1021\u1001\u103b\u102d\u1014\u103a \u1015\u103c\u1014\u103a\u101c\u103e\u100a\u1037\u103a\u1015\u102b";
   setPromoModalOpen(shouldShowPromoPopup());
 }
 
@@ -454,7 +454,7 @@ function renderMetrics() {
 function renderPrizes() {
   const counts = new Map();
   state.wheelPrizes.forEach((prize) => counts.set(formatPrize(prize), (counts.get(formatPrize(prize)) || 0) + 1));
-  $("prizePool").innerHTML = counts.size ? Array.from(counts.entries()).slice(0, 5).map(([prize, count], index) => `<article class="prize-row"><span class="prize-medal">${index === 0 ? "77" : "â¦"}</span><div><strong>${esc(prize)}</strong><small>${index === 0 ? "Featured reward" : "Configured prize type"}</small></div><b>${count}</b></article>`).join("") : `<div class="empty-copy">Prize list appears after admin configuration.</div>`;
+  $("prizePool").innerHTML = counts.size ? Array.from(counts.entries()).slice(0, 5).map(([prize, count], index) => `<article class="prize-row"><span class="prize-medal">${index === 0 ? "77" : "\u2726"}</span><div><strong>${esc(prize)}</strong><small>${index === 0 ? "Featured reward" : "Configured prize type"}</small></div><b>${count}</b></article>`).join("") : `<div class="empty-copy">Prize list appears after admin configuration.</div>`;
 }
 
 function timeAgo(value) {
@@ -482,7 +482,7 @@ function drawWheel() {
     ctx.save(); ctx.rotate(start + slice / 2); ctx.translate(radius * .69, 0); ctx.rotate(Math.PI / 2);
     ctx.fillStyle = index % 3 === 2 ? "#16345f" : "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     const label = formatPrize(prize).replace(" Ks", ""); ctx.font = `800 ${prizes.length > 10 ? 20 : 25}px system-ui, sans-serif`;
-    ctx.fillText(label.length > 14 ? `${label.slice(0, 13)}â¦` : label, 0, 0); ctx.restore();
+    ctx.fillText(label.length > 14 ? `${label.slice(0, 13)}\u2026` : label, 0, 0); ctx.restore();
   });
   ctx.beginPath(); ctx.arc(0, 0, radius - 4, 0, Math.PI * 2); ctx.lineWidth = 10; ctx.strokeStyle = "rgba(255,255,255,.95)"; ctx.stroke(); ctx.restore();
 }
@@ -520,10 +520,10 @@ function showResult(result) {
   state.previewAccountPending = !!state.testMode;
   $("resultName").textContent = `${state.user?.first_name || ""} ${state.user?.last_name || ""}`.trim() || state.user?.username || "Lucky Member";
   $("resultPrize").textContent = formatPrize(result?.prize);
-  $("resultSaveLabel").textContent = state.testMode ? "TEST RESULT Â· NOT SAVED" : "Lucky77 Result áá­ááºá¸áá¼á®á¸áá«áá¼á®";
+  $("resultSaveLabel").textContent = state.testMode ? "TEST RESULT \u00b7 NOT SAVED" : "Lucky77 Result \u101e\u102d\u1019\u103a\u1038\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e";
   $("resultCopy").textContent = state.testMode
-    ? "Test Mode Result áá¼ááºáá¼á®á¸ Memberá Promoá Prize Stocká Winnerá Report áá­á¯á·ááá¯ááº Spin Count áááºáá¯áá»á¾ ááá­ááºá¸áá«á"
-    : "áá¯ááºáá°áá«áááºáá¾áá·áºá áá°áááºáá¯ááá°áááº á¡á±á¬ááºáá«ááá¯ááºáá­á¯áá¾á­ááºáá¼á®á¸ Game Account Name áá­á¯ ááá·áºáá±á¸áá«á";
+    ? "Test Mode Result \u1016\u103c\u1005\u103a\u1015\u103c\u102e\u1038 Member\u104a Promo\u104a Prize Stock\u104a Winner\u104a Report \u101e\u102d\u102f\u1037\u1019\u101f\u102f\u1010\u103a Spin Count \u1010\u1005\u103a\u1001\u102f\u1019\u103b\u103e \u1019\u101e\u102d\u1019\u103a\u1038\u1015\u102b\u104b"
+    : "\u1002\u102f\u100f\u103a\u101a\u1030\u1015\u102b\u1010\u101a\u103a\u101b\u103e\u1004\u1037\u103a\u104b \u101a\u1030\u1014\u1005\u103a\u1006\u102f\u101b\u101a\u1030\u101b\u1014\u103a \u1021\u1031\u102c\u1000\u103a\u1015\u102b\u1001\u101c\u102f\u1010\u103a\u1000\u102d\u102f\u1014\u103e\u102d\u1015\u103a\u1015\u103c\u102e\u1038 Game Account Name \u1000\u102d\u102f \u1011\u100a\u1037\u103a\u1015\u1031\u1038\u1015\u102b\u104b";
   $("resultModal").classList.remove("hidden");
   confetti(); [523, 659, 784, 1046].forEach((note, i) => setTimeout(() => simpleTone(note, .34, .06), i * 150));
   renderAccess(); renderHeader();
@@ -547,7 +547,7 @@ async function registerPlayer() {
     else {
       const data = await api("/api/player/register", { method: "POST", body: { init_data: state.initData } });
       state.registered = !!data.registered; state.preregistered = !!data.preregistered; await refreshPlayerStatus();
-      toast(data.message || "Register áá¯ááºáá¼á®á¸áá«áá¼á®", "success");
+      toast(data.message || "Register \u101c\u102f\u1015\u103a\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e", "success");
     }
     renderAll();
   } catch (error) { toast(error.message, "error"); } finally { button.disabled = false; }
@@ -560,7 +560,7 @@ async function saveAccount(event) {
     phone: $("accountPhoneInput").value.trim(),
   };
   if (!body.account_name) {
-    return toast("Game Account Name ááá·áºáá±á¸áá«á", "error");
+    return toast("Game Account Name \u1011\u100a\u1037\u103a\u1015\u1031\u1038\u1015\u102b\u104b", "error");
   }
   try {
     if (PLAYER.DEMO || state.testMode) {
@@ -578,7 +578,7 @@ async function saveAccount(event) {
       });
       state.access = { ...state.access, ...(data.access || {}) };
     }
-    toast("Game Account Name á¡áááºáá¼á¯áá¼á®á¸áá«áá¼á®á", "success");
+    toast("Game Account Name \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e\u104b", "success");
     if (state.testMode) {
       state.previewAccountPending = false;
       setTimeout(() => {
@@ -599,14 +599,14 @@ async function saveAccount(event) {
 async function verifyPlayer() {
   try {
     if (PLAYER.DEMO) state.channel = { joined: true }; else await refreshPlayerStatus();
-    renderAll(); toast(state.channel?.joined ? "Channel á¡áááºáá¼á¯áá¼á®á¸áá«áá¼á®" : "Channel áá­á¯ á¡áááº Join áá±á¸áá«", state.channel?.joined ? "success" : "error");
+    renderAll(); toast(state.channel?.joined ? "Channel \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e" : "Channel \u1000\u102d\u102f \u1021\u101b\u1004\u103a Join \u1015\u1031\u1038\u1015\u102b", state.channel?.joined ? "success" : "error");
   } catch (error) { toast(error.message, "error"); }
 }
 
 async function spin() {
   const code = normalizePromoCode($("spinCodeInput").value);
   if (promoRequired() && !promoConfirmedForCurrentInput(code)) {
-    return toast(code ? "Promo Code á¡áááºáá¼á¯áááºáá­á¯ á¡áááºáá¾á­ááºáá«á" : "Promo Code ááá·áºáá±á¸áá«á", "error");
+    return toast(code ? "Promo Code \u1021\u1010\u100a\u103a\u1015\u103c\u102f\u1019\u100a\u103a\u1000\u102d\u102f \u1021\u101b\u1004\u103a\u1014\u103e\u102d\u1015\u103a\u1015\u102b\u104b" : "Promo Code \u1011\u100a\u1037\u103a\u1015\u1031\u1038\u1015\u102b\u104b", "error");
   }
   if (state.spinning || $("spinBtn").disabled) return;
   setPromoModalOpen(false);
