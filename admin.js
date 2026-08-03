@@ -311,7 +311,7 @@ function renderOverview() {
   const counts = data.counts || {};
   applyTheme(event);
   $("overviewTitle").textContent = event.title || "Lucky77 Grand Spin";
-  $("overviewSubtitle").textContent = `${event.subtitle || ""} Â· ${safe(event.phase || "registration").toUpperCase()}`;
+  $("overviewSubtitle").textContent = `${event.subtitle || ""} \u00b7 ${safe(event.phase || "registration").toUpperCase()}`;
   const live = !!event.event_live;
   $("overviewLive").classList.toggle("is-live", live);
   $("overviewLive").classList.toggle("is-waiting", !live);
@@ -320,7 +320,7 @@ function renderOverview() {
   $("overviewIssue").classList.toggle("hidden", !event.lifecycle_error);
   if (!event.lifecycle_error && state.eventHistory?.ok) {
     const hc = state.eventHistory.counts || {};
-    $("overviewIssue").textContent = `Ended Event Report Â· Registered ${number(hc.registered_live)} Â· Spun ${number(hc.app_spin_used_1)} Â· Not Spun ${number(hc.not_spun_live)} Â· Removed ${number(hc.removed)}`;
+    $("overviewIssue").textContent = `Ended Event Report \u00b7 Registered ${number(hc.registered_live)} \u00b7 Spun ${number(hc.app_spin_used_1)} \u00b7 Not Spun ${number(hc.not_spun_live)} \u00b7 Removed ${number(hc.removed)}`;
     $("overviewIssue").classList.remove("hidden");
   }
 
@@ -381,7 +381,7 @@ function renderEventForm() {
   $("eventWheelColors").value = Array.isArray(event.wheel_colors) ? event.wheel_colors.join(", ") : "";
   $("eventSpinSound").value = safe(event.spin_sound_url);
   $("eventWinSound").value = safe(event.win_sound_url);
-  $("eventPhaseText").textContent = `Phase: ${safe(event.phase || "registration")} Â· Timezone: Asia/Yangon`;
+  $("eventPhaseText").textContent = `Phase: ${safe(event.phase || "registration")} \u00b7 Timezone: Asia/Yangon`;
   $("eventLifecycleError").textContent = event.lifecycle_error || "";
   $("eventLifecycleError").classList.toggle("hidden", !event.lifecycle_error);
 }
@@ -464,7 +464,7 @@ function renderHistory() {
       <td>${item.username ? `@${esc(safe(item.username).replace(/^@/, ""))}` : "-"}</td>
       <td><span class="table-status ${done ? "is-good" : "is-waiting"}">${done ? "Done" : "Undone"}</span></td>
       <td>${esc(dateText(item.at || item.created_at || item.last_message_at))}</td>
-      <td><button class="table-mode-btn ${done ? "" : "is-test"}" data-history-status="${done ? "pending" : "done"}" data-user-id="${esc(uid)}">${done ? "Undone áá¼ááºáá¯ááºáááº" : "áá°áááºáá¼áá·áºáá¼á®á¸ Done"}</button></td>
+      <td><button class="table-mode-btn ${done ? "" : "is-test"}" data-history-status="${done ? "pending" : "done"}" data-user-id="${esc(uid)}">${done ? "Undone \u1015\u103c\u1014\u103a\u101c\u102f\u1015\u103a\u1019\u100a\u103a" : "\u101a\u1030\u1014\u1005\u103a\u1016\u103c\u100a\u1037\u103a\u1015\u103c\u102e\u1038 Done"}</button></td>
     </tr>`;
   }).join("") : `<tr><td colspan="7"><div class="empty-copy">No winner history yet.</div></td></tr>`;
 }
@@ -478,7 +478,7 @@ async function updateWinnerStatusFromHistory(button) {
     await api("/winner/status", { method: "POST", body: { user_id: uid, status } });
     state.winners = state.winners.map((item) => safe(item.user_id) === uid ? { ...item, cs_status: status, status } : item);
     renderHistory();
-    toast(status === "done" ? "áá°áááºáá¼áá·áºáá¼á®á¸ Done" : "Undone áá¼ááºáá¯ááºáá¼á®á¸", "success");
+    toast(status === "done" ? "\u101a\u1030\u1014\u1005\u103a\u1016\u103c\u100a\u1037\u103a\u1015\u103c\u102e\u1038 Done" : "Undone \u1015\u103c\u1014\u103a\u101c\u102f\u1015\u103a\u1015\u103c\u102e\u1038", "success");
   } catch (error) {
     toast(error.message, "error");
   } finally {
@@ -753,7 +753,7 @@ async function sendPromos() {
       method: "POST",
       body: { event_id: state.event?.event_id, user_ids: selected },
     });
-    toast(`${number(data.delivered)} delivered Â· ${number(data.failed)} failed`, data.failed ? "info" : "success");
+    toast(`${number(data.delivered)} delivered \u00b7 ${number(data.failed)} failed`, data.failed ? "info" : "success");
     await refresh();
   } catch (error) { toast(error.message, "error"); }
 }
@@ -762,7 +762,7 @@ async function copyTestLink() {
   try {
     const link = $("testLinkUrl").value.trim() || `${location.origin}/test/preview`;
     await navigator.clipboard.writeText(link);
-    toast("Test Link áá­á¯ áá°á¸áá°áá¼á®á¸áá«áá¼á®", "success");
+    toast("Test Link \u1000\u102d\u102f \u1000\u1030\u1038\u101a\u1030\u1015\u103c\u102e\u1038\u1015\u102b\u1015\u103c\u102e", "success");
   } catch (error) { toast(error.message, "error"); }
 }
 
@@ -847,7 +847,7 @@ function renderCommandWelcome() {
   log.dataset.ready = "1";
   appendCommandMessage("system", `
     <strong>Lucky77 Safe Command Box</strong>
-    <p>AI ááá«áá±á¸áá±á¬ Non-AI Base áá¼ááºáááºá Dashboard Login áááºáá¬á¸áá±á¬ Admin command áá»á¬á¸áá¬ Preview/Confirm flow áá¯á¶á¸áá­á¯ááºáááºá Member-facing Telegram Bot áá¾ Admin command ááá¯ááºáá­á¯ááºáá«á</p>
+    <p>AI \u1019\u1015\u102b\u101e\u1031\u1038\u101e\u1031\u102c Non-AI Base \u1016\u103c\u1005\u103a\u101e\u100a\u103a\u104b Dashboard Login \u101d\u1004\u103a\u1011\u102c\u1038\u101e\u1031\u102c Admin command \u1019\u103b\u102c\u1038\u101e\u102c Preview/Confirm flow \u101e\u102f\u1036\u1038\u1014\u102d\u102f\u1004\u103a\u101e\u100a\u103a\u104b Member-facing Telegram Bot \u1019\u103e Admin command \u1019\u101c\u102f\u1015\u103a\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u104b</p>
   `);
 }
 
@@ -858,8 +858,8 @@ function commandMockReply(text, file) {
     return {
       role,
       title: "Registration status checked",
-      body: `áááºáá¾á­ Event Registered ${number(members.registered)} Â· Live ${number(members.live_registered)} Â· Spin áá¼á®á¸ ${number(members.spun)} Â· Account pending ${number(members.pending_account)} áá¼ááºáááºá`,
-      action: role === "confirm" ? "Registration invite preview ready. Confirm áá¯ááºáá¾ Telegram áá­á¯á·áááºá" : "Read-only status only.",
+      body: `\u101c\u1000\u103a\u101b\u103e\u102d Event Registered ${number(members.registered)} \u00b7 Live ${number(members.live_registered)} \u00b7 Spin \u1015\u103c\u102e\u1038 ${number(members.spun)} \u00b7 Account pending ${number(members.pending_account)} \u1016\u103c\u1005\u103a\u101e\u100a\u103a\u104b`,
+      action: role === "confirm" ? "Registration invite preview ready. Confirm \u101c\u102f\u1015\u103a\u1019\u103e Telegram \u1015\u102d\u102f\u1037\u1019\u100a\u103a\u104b" : "Read-only status only.",
     };
   }
   if (/health|error|system/i.test(text)) {
@@ -867,23 +867,23 @@ function commandMockReply(text, file) {
     return {
       role: "read",
       title: "System diagnosis",
-      body: `Health status: ${esc(status)}. Bot/Webhook/Supabase/Redis/Storage áááºáá¯áá»ááºá¸áá®áá­á¯ System page áá½ááºáááºáá«á Secret values ááá¼áá«á`,
-      action: "Retry/Recheck action only; destructive action ááá¯ááºáá«á",
+      body: `Health status: ${esc(status)}. Bot/Webhook/Supabase/Redis/Storage \u1010\u1005\u103a\u1001\u102f\u1001\u103b\u1004\u103a\u1038\u1005\u102e\u1000\u102d\u102f System page \u1010\u103d\u1004\u103a\u1005\u1005\u103a\u1015\u102b\u104b Secret values \u1019\u1015\u103c\u1015\u102b\u104b`,
+      action: "Retry/Recheck action only; destructive action \u1019\u101c\u102f\u1015\u103a\u1015\u102b\u104b",
     };
   }
   if (/post|channel|caption|button|link|broadcast/i.test(text)) {
     return {
       role: "confirm",
       title: "Channel post draft ready",
-      body: `Caption draft + Spin Now button áá­á¯ Preview áá¼áá¬á¸áááº${file ? ` Â· attachment: ${esc(file.name)}` : ""}. Confirm & Publish ááá¾á­ááºááá»ááºá¸ main channel áá­á¯á·ááá­á¯á·áá«á`,
-      action: "Preview â Confirm & Publish â Telegram message id + audit log.",
+      body: `Caption draft + Spin Now button \u1000\u102d\u102f Preview \u1015\u103c\u1011\u102c\u1038\u101e\u100a\u103a${file ? ` \u00b7 attachment: ${esc(file.name)}` : ""}. Confirm & Publish \u1019\u1014\u103e\u102d\u1015\u103a\u1019\u1001\u103b\u1004\u103a\u1038 main channel \u101e\u102d\u102f\u1037\u1019\u1015\u102d\u102f\u1037\u1015\u102b\u104b`,
+      action: "Preview \u2192 Confirm & Publish \u2192 Telegram message id + audit log.",
       buttons: ["Spin Now", "Join Channel"],
     };
   }
   return {
     role,
     title: "Command parsed",
-    body: `áá® request áá­á¯ safe preview á¡áá¼ááºáááºáá¼á®á¸áá¬á¸áááº: â${esc(text)}â${file ? ` Â· attachment: ${esc(file.name)}` : ""}`,
+    body: `\u1012\u102e request \u1000\u102d\u102f safe preview \u1021\u1016\u103c\u1005\u103a\u1016\u1010\u103a\u1015\u103c\u102e\u1038\u1011\u102c\u1038\u101e\u100a\u103a: \u201c${esc(text)}\u201d${file ? ` \u00b7 attachment: ${esc(file.name)}` : ""}`,
     action: role === "read" ? "No write action required." : "Admin confirmation required before any write action.",
   };
 }
@@ -904,7 +904,7 @@ function submitCommandBox(event) {
   const input = $("commandInput");
   const file = $("commandFile")?.files?.[0] || null;
   const text = input.value.trim();
-  if (!text && !file) return toast("Command áá­á¯á· attachment ááá·áºáá«", "error");
+  if (!text && !file) return toast("Command \u101e\u102d\u102f\u1037 attachment \u1011\u100a\u1037\u103a\u1015\u102b", "error");
   appendCommandMessage("admin", `<strong>Admin</strong><p>${esc(text || "[Attachment only]")}</p>${file ? `<small>Attached: ${esc(file.name)}</small>` : ""}`);
   const reply = commandMockReply(text, file);
   const badge = reply.role === "read" ? "READ" : reply.role === "confirm" ? "CONFIRM REQUIRED" : "OWNER ONLY";
@@ -926,17 +926,17 @@ function bindCommandBox() {
     const file = $("commandFile").files?.[0];
     const node = $("commandAttachmentPreview");
     if (!file) return node.classList.add("hidden");
-    node.textContent = `${file.name} Â· ${Math.ceil(file.size / 1024)} KB staged for preview`;
+    node.textContent = `${file.name} \u00b7 ${Math.ceil(file.size / 1024)} KB staged for preview`;
     node.classList.remove("hidden");
   });
   $("confirmMockAction")?.addEventListener("click", () => {
-    appendCommandMessage("system", `<strong>Mock publish blocked</strong><p>Production áá½ááº Backend confirmation endpoint áá¾áá·áº audit log áá»á­ááºáá¼á®á¸áá¾ Telegram áá­á¯á·áá­á¯á·áááºá ááá¯ Non-AI Base preview áá½ááº real post ááá­á¯á·áá«á</p>`);
+    appendCommandMessage("system", `<strong>Mock publish blocked</strong><p>Production \u1010\u103d\u1004\u103a Backend confirmation endpoint \u1014\u103e\u1004\u1037\u103a audit log \u1001\u103b\u102d\u1010\u103a\u1015\u103c\u102e\u1038\u1019\u103e Telegram \u101e\u102d\u102f\u1037\u1015\u102d\u102f\u1037\u1019\u100a\u103a\u104b \u101a\u1001\u102f Non-AI Base preview \u1010\u103d\u1004\u103a real post \u1019\u1015\u102d\u102f\u1037\u1015\u102b\u104b</p>`);
     $("pendingActionCard").classList.add("hidden");
-    toast("Preview confirmed Â· real send disabled in base build", "success");
+    toast("Preview confirmed \u00b7 real send disabled in base build", "success");
   });
   $("cancelMockAction")?.addEventListener("click", () => {
     $("pendingActionCard").classList.add("hidden");
-    appendCommandMessage("system", `<strong>Action cancelled</strong><p>Pending channel/broadcast action áá­á¯áá»ááºáá­á¯ááºáááºá</p>`);
+    appendCommandMessage("system", `<strong>Action cancelled</strong><p>Pending channel/broadcast action \u1000\u102d\u102f\u1016\u103b\u1000\u103a\u101c\u102d\u102f\u1000\u103a\u101e\u100a\u103a\u104b</p>`);
   });
 }
 
@@ -963,7 +963,7 @@ function bind() {
   $("showAdminPass").addEventListener("click", () => {
     const input = $("adminPass");
     input.type = input.type === "password" ? "text" : "password";
-    $("showAdminPass").textContent = input.type === "password" ? "áá¼áááº" : "áá»á±á¬ááºáááº";
+    $("showAdminPass").textContent = input.type === "password" ? "\u1015\u103c\u1019\u100a\u103a" : "\u1016\u103b\u1031\u102c\u1000\u103a\u1019\u100a\u103a";
   });
   qa(".admin-nav-btn").forEach((button) => button.addEventListener("click", () => switchSection(button.dataset.section)));
   qa(".nav-shortcut").forEach((button) => button.addEventListener("click", () => switchSection(button.dataset.target)));
