@@ -20,22 +20,22 @@ const APP = {
 };
 
 const ACCOUNT_REQUEST_TEXT = [
-  "မင်္ဂလာပါ Lucky77 မှ ဆက်သွယ်ခြင်းဖြစ်ပါတယ်။",
+  "\u1019\u1004\u103a\u1039\u1002\u101c\u102c\u1015\u102b Lucky77 \u1019\u103e \u1006\u1000\u103a\u101e\u103d\u101a\u103a\u1001\u103c\u1004\u103a\u1038\u1016\u103c\u1005\u103a\u1015\u102b\u1010\u101a\u103a\u104b",
   "",
-  "SpinWheel ဆုငွေထုတ်ယူရန် အောက်ပါအချက်အလက်များကို ပြန်ပို့ပေးပါရှင့်။",
+  "SpinWheel \u1006\u102f\u1004\u103d\u1031\u1011\u102f\u1010\u103a\u101a\u1030\u101b\u1014\u103a \u1021\u1031\u102c\u1000\u103a\u1015\u102b\u1021\u1001\u103b\u1000\u103a\u1021\u101c\u1000\u103a\u1019\u103b\u102c\u1038\u1000\u102d\u102f \u1015\u103c\u1014\u103a\u1015\u102d\u102f\u1037\u1015\u1031\u1038\u1015\u102b\u101b\u103e\u1004\u1037\u103a\u104b",
   "",
   "Account Name -",
   "Account Number -",
   "Payment Type -",
   "",
-  "ကျေးဇူးတင်ပါတယ်။"
+  "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1010\u1004\u103a\u1015\u102b\u1010\u101a\u103a\u104b"
 ].join("\n");
 
 const PRIZE_NOTICE_TEXT = [
-  "🎉 Congratulations ပါရှင့်",
+  "\ud83c\udf89 Congratulations \u1015\u102b\u101b\u103e\u1004\u1037\u103a",
   "",
-  "Lucky77 SpinWheel မှ ဆုရရှိထားပါတယ်။",
-  "ဆုငွေထုတ်ယူရန် Account information ပြန်ပို့ပေးပါရှင့်။"
+  "Lucky77 SpinWheel \u1019\u103e \u1006\u102f\u101b\u101b\u103e\u102d\u1011\u102c\u1038\u1015\u102b\u1010\u101a\u103a\u104b",
+  "\u1006\u102f\u1004\u103d\u1031\u1011\u102f\u1010\u103a\u101a\u1030\u101b\u1014\u103a Account information \u1015\u103c\u1014\u103a\u1015\u102d\u102f\u1037\u1015\u1031\u1038\u1015\u102b\u101b\u103e\u1004\u1037\u103a\u104b"
 ].join("\n");
 
 /* ================= State ================= */
@@ -134,7 +134,7 @@ function esc(value) {
 function compactText(value, max = 120) {
   const s = safeText(value).replace(/\s+/g, " ").trim();
   if (s.length <= max) return s;
-  return `${s.slice(0, max - 1)}…`;
+  return `${s.slice(0, max - 1)}\u2026`;
 }
 
 function moneyText(value) {
@@ -421,12 +421,12 @@ async function handleLogin(event) {
   showLoginError("");
 
   if (!account) {
-    showLoginError("Account လိုအပ်ပါတယ်။");
+    showLoginError("Account \u101c\u102d\u102f\u1021\u1015\u103a\u1015\u102b\u1010\u101a\u103a\u104b");
     return;
   }
 
   if (!pass) {
-    showLoginError("Api Pass လိုအပ်ပါတယ်။");
+    showLoginError("Api Pass \u101c\u102d\u102f\u1021\u1015\u103a\u1015\u102b\u1010\u101a\u103a\u104b");
     return;
   }
 
@@ -458,7 +458,7 @@ async function handleLogin(event) {
   try {
     await loadInitialData();
   } catch (err) {
-    setOffline("Connected · Data retry needed");
+    setOffline("Connected \u00b7 Data retry needed");
     toast(err.message || "Login success; dashboard data loading failed", "error");
   } finally {
     if (loginBtn) {
@@ -820,7 +820,7 @@ async function loadWinners(rebuild = false) {
   setText(
     "cacheInfoText",
     data.rebuild_pending
-      ? "Background refresh… old inbox kept"
+      ? "Background refresh\u2026 old inbox kept"
       : data.supabase_first
         ? "Supabase live + safe cache"
         : data.cache_at
@@ -1010,7 +1010,7 @@ function renderWinnerList() {
 
             <div class="cs-winner-sub">
               <span>${esc(usernameText(w.username))}</span>
-              <span>•</span>
+              <span>\u2022</span>
               <span>ID ${esc(w.user_id)}</span>
             </div>
 
@@ -1088,7 +1088,7 @@ function renderChatHeader() {
     moneyText(w.prize),
   ]
     .filter(Boolean)
-    .join(" • ");
+    .join(" \u2022 ");
 
   setText("chatSub", sub);
 }
@@ -1121,7 +1121,7 @@ function renderMedia(media) {
 
   return `
     <a class="cs-file-link" href="${esc(url)}" target="_blank" rel="noreferrer">
-      📎 ${esc(fileName)}
+      \ud83d\udcce ${esc(fileName)}
     </a>
   `;
 }
@@ -1646,8 +1646,8 @@ function renderCampaigns() {
       return `
         <div class="cs-campaign-item">
           <b>${esc(c.name || "Campaign")}</b>
-          <span>${esc(c.status || "-")} • ${Number(c.sent || 0)}/${Number(c.total || 0)}</span>
-          <small>Failed: ${Number(c.failed || 0)} • ${esc(fmtTime(c.updated_at || c.created_at))}</small>
+          <span>${esc(c.status || "-")} \u2022 ${Number(c.sent || 0)}/${Number(c.total || 0)}</span>
+          <small>Failed: ${Number(c.failed || 0)} \u2022 ${esc(fmtTime(c.updated_at || c.created_at))}</small>
         </div>
       `;
     })
@@ -1669,7 +1669,7 @@ async function previewBroadcast() {
   const payload = getBroadcastPayload();
 
   if (payload.target === "selected" && !payload.selected_user_id) {
-    toast("Selected Winner Only သုံးမယ်ဆို winner တစ်ယောက်ရွေးထားရမယ်", "error");
+    toast("Selected Winner Only \u101e\u102f\u1036\u1038\u1019\u101a\u103a\u1006\u102d\u102f winner \u1010\u1005\u103a\u101a\u1031\u102c\u1000\u103a\u101b\u103d\u1031\u1038\u1011\u102c\u1038\u101b\u1019\u101a\u103a", "error");
     return;
   }
 
@@ -1731,7 +1731,7 @@ function requireBroadcastConfirm(payload) {
   }[target] || target;
 
   return window.confirm(
-    `Broadcast target is "${label}".\n\nဒီ message ကို selected မဟုတ်ဘဲ target group ဆီ ပို့မှာပါ။ သေချာလား?`
+    `Broadcast target is "${label}".\n\n\u1012\u102e message \u1000\u102d\u102f selected \u1019\u101f\u102f\u1010\u103a\u1018\u1032 target group \u1006\u102e \u1015\u102d\u102f\u1037\u1019\u103e\u102c\u1015\u102b\u104b \u101e\u1031\u1001\u103b\u102c\u101c\u102c\u1038?`
   );
 }
 
@@ -1739,7 +1739,7 @@ async function sendBroadcastNow() {
   const payload = getBroadcastPayload();
 
   if (payload.target === "selected" && !payload.selected_user_id) {
-    toast("Winner တစ်ယောက်ရွေးပြီးမှ Selected Winner Only ပို့ပါ", "error");
+    toast("Winner \u1010\u1005\u103a\u101a\u1031\u102c\u1000\u103a\u101b\u103d\u1031\u1038\u1015\u103c\u102e\u1038\u1019\u103e Selected Winner Only \u1015\u102d\u102f\u1037\u1015\u102b", "error");
     return;
   }
 
@@ -1793,12 +1793,12 @@ async function scheduleBroadcast() {
   const payload = getBroadcastPayload();
 
   if (!payload.scheduled_at) {
-    toast("Schedule time လိုအပ်ပါတယ်", "error");
+    toast("Schedule time \u101c\u102d\u102f\u1021\u1015\u103a\u1015\u102b\u1010\u101a\u103a", "error");
     return;
   }
 
   if (payload.target === "selected" && !payload.selected_user_id) {
-    toast("Winner တစ်ယောက်ရွေးပြီးမှ schedule လုပ်ပါ", "error");
+    toast("Winner \u1010\u1005\u103a\u101a\u1031\u102c\u1000\u103a\u101b\u103d\u1031\u1038\u1015\u103c\u102e\u1038\u1019\u103e schedule \u101c\u102f\u1015\u103a\u1015\u102b", "error");
     return;
   }
 
@@ -2150,7 +2150,7 @@ function bindEvents() {
     try {
       await requestForgotPass(account);
       toast("Login info sent to admin Telegram bot", "success");
-      showLoginError("Admin Telegram bot ဆီ Login Info ပို့ထားပါပြီ။");
+      showLoginError("Admin Telegram bot \u1006\u102e Login Info \u1015\u102d\u102f\u1037\u1011\u102c\u1038\u1015\u102b\u1015\u103c\u102e\u104b");
     } catch (err) {
       toast(err.message || "Forgot request failed", "error");
       showLoginError(err.message || "Forgot request failed");
